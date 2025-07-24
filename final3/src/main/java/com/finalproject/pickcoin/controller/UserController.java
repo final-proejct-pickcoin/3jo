@@ -61,6 +61,7 @@ public class UserController {
         user.setName(name);
         user.setRole(Role.USER);
         user.setVerified(false);  /// ??
+        user.setCreatedAt(new Date());
         user.setVerificationToken(token);        
         // 인증 만료 시간 5분
         user.setExpiresAt(LocalDateTime.now().plusMinutes(5));

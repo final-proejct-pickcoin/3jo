@@ -3,10 +3,14 @@ package com.finalproject.pickcoin.domain;
 import java.time.LocalDateTime;
 import java.util.Date;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.finalproject.pickcoin.enums.Role;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +22,7 @@ import lombok.Data;
 
 @Data
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 public class Users {
     
     @Id
@@ -35,8 +40,9 @@ public class Users {
     @Column(columnDefinition = "boolean default false")
     private boolean onboarding_completed;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date created_at;
+    @Column(name="created_at", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)    
+    private Date createdAt;
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
