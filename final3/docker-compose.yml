@@ -1,7 +1,7 @@
 
 services:
   fastapi-app:
-    build: ./fastapi-chat
+    build: ./fastapi-app
     ports:
       - "8000:80"
     env_file:
@@ -10,10 +10,11 @@ services:
     environment:
       - MYSQL_HOST=mysql
       - MYSQL_USER=pickcoin
-      - MYSQL_PASSWORD=final
+      - MYSQL_PASSWORD=final3
       - MYSQL_DATABASE=coindb
     depends_on:
       - mysql
+      - redis
   mysql:
     image: mysql:8.0
     restart: always

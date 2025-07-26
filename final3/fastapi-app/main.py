@@ -20,7 +20,8 @@ redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
-host = '127.0.0.1'
+# host = '127.0.0.1'
+host = 'mysql'
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -122,10 +123,10 @@ async def register_page(request: Request):
 
 # 회원가입
 @app.post("/admin/register")
-async def register(email: str = Form(...), password: str = Form(...)):
+async def register(email: str = Form(...), password: str = Form(...), name: str = Form(...)):
 
     # db연결
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="ciondb", charset="utf8mb4")
+    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
@@ -135,17 +136,19 @@ async def register(email: str = Form(...), password: str = Form(...)):
         cursor.execute(sql, (email,))
         existing = cursor.fetchone()
         if existing:
-            return {"error": "이미 존재하는 사용자입니다."}
+            return JSONResponse(status_code=400, content={"error": "이미 존재하는 사용자입니다."})
         
         # 비밀번호 해싱
         hashed_pw = pwd_context.hash(password)
 
         # 사용자 등록
-        insert_sql = "INSERT INTO users(email, password, role) VALUES(%s, %s, %s)"
-        cursor.execute(insert_sql, (email, hashed_pw, Role.ADMIN.value))
+        insert_sql = "INSERT INTO users(email, password, name, role) VALUES(%s, %s, %s, %s)"
+        user_data = (email, hashed_pw, name, Role.ADMIN.value)
+        cursor.execute(insert_sql, user_data)
         conn.commit()
     except Exception as e:
         print(f"회원가입 실패 {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
     finally:
         conn.close()
 
@@ -156,9 +159,9 @@ async def register(email: str = Form(...), password: str = Form(...)):
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-logged_in_users: set[str] = set()
+logged_in_users: set[str] = set()  # 나중에 redis 사용해서 로그인회원 저장시켜야함.
 # 로그인 기능
-@app.post("/login")
+@app.post("/admin/login")
 async def login(email: str = Form(...), password: str = Form(...)):
 
     conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
@@ -204,15 +207,13 @@ async def login(email: str = Form(...), password: str = Form(...)):
 async def get_logged_in_users():
     return {"users": list(logged_in_users)}
 
-@app.post("/logout")
-async def logout(id: str = Form(...)):
-    logged_in_users.discard(id)
+@app.post("/admin/logout")
+async def logout(email: str = Form(...)):
+    logged_in_users.discard(email)
     return {"msg": "로그아웃됨"}
     
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     return templates.TemplateResponse("chat.html", {"request": request})
-
-
 
