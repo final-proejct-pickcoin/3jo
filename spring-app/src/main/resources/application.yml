@@ -4,12 +4,18 @@ server:
     context-path: /
 
 spring:
+  data:
+    redis:
+      # host: localhost
+      host: redis
+      port: 6379
   datasource:
-    url: jdbc:mysql://localhost:3306/coindb
+    url: jdbc:mysql://mysql:3306/coindb
+    # url: jdbc:mysql://localhost:3306/coindb
     username: pickcoin
     password: final3
     driver-class-name: com.mysql.cj.jdbc.Driver
-
+  
   jpa:
     hibernate:
       ddl-auto: update
@@ -60,6 +66,7 @@ spring:
             auth: true
             starttls:
               enable: true
+
 
 logging:
   level:

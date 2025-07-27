@@ -34,7 +34,25 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
-    restart: always
+    restart: always 
+  spring-app:
+    build: ./spring-app
+    container_name: spring-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SPRING_MAIL_HOST=smtp.gmail.com
+      - SPRING_MAIL_PORT=587
+      - SPRING_MAIL_USERNAME=jeesoo1899@gmail.com
+      - SPRING_MAIL_PASSWORD=yqpmfomkytgtokpm
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+      # 아래 base_url은 배포시 수정
+      - APP_BASE_URL=http://localhost:8080
+    depends_on:
+      - mysql
+      - redis
   react-app:
     build: ./react-app
     container_name: react-app
@@ -44,6 +62,7 @@ services:
       - NODE_ENV=production
     depends_on:
       - fastapi-app
+      - spring-app
 
 
 
