@@ -1,7 +1,9 @@
-
+##### 배포할 때는 fastapi, react, spring 모두 volumes 제거 / react에서 NODE_ENV=production으로 변경
 services:
   fastapi-app:
     build: ./fastapi-app
+    volumes:
+      - ./fastapi-app:/app
     ports:
       - "8000:8000"
     env_file:
@@ -15,6 +17,7 @@ services:
     depends_on:
       - mysql
       - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   mysql:
     image: mysql:8.0
     restart: always
@@ -37,6 +40,8 @@ services:
     restart: always 
   spring-app:
     build: ./spring-app
+    volumes:
+      - ./spring-app:/home/gradle/app
     container_name: spring-app
     ports:
       - "8080:8080"
@@ -53,16 +58,21 @@ services:
     depends_on:
       - mysql
       - redis
+    command: ./gradlew bootRun
   react-app:
-    build: ./react-app
+    build: ./react-app      
+    # volumes:
+    #   - ./react-app:/app
+    #   - /app/node_modules
     container_name: react-app
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
     depends_on:
       - fastapi-app
       - spring-app
+    # command: ["pnpm", "start"]
 
 
 

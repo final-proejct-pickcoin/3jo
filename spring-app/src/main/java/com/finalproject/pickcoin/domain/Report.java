@@ -2,6 +2,7 @@ package com.finalproject.pickcoin.domain;
 
 import java.util.Date;
 
+import com.finalproject.pickcoin.enums.EntityType;
 import com.finalproject.pickcoin.enums.ReportStatus;
 
 import jakarta.persistence.Column;
@@ -18,10 +19,9 @@ public class Report {
 
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
-    private Integer reportId; // 신고 ID
-    private Integer userId;
-    private Integer postId;
-    private Integer reply_id;
+    private Integer report_id; // 신고 ID
+    private Integer reported_id;
+    private EntityType reported_type; // 신고 대상
     private String description; // 신고 사유
     private ReportStatus status; // 신고 상태 (예: "pending", "resolved", "rejected") enum으로 바꿔야할수도.
 
