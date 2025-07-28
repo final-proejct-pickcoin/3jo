@@ -9,7 +9,8 @@ RUN mkdir -p /home/gradle/.gradle && chown -R gradle:gradle /home/gradle
 
 USER gradle
 # 로컬과 동일하게 gradlew 실행 (프로젝트 내 wrapper 사용)
-RUN ./gradlew --no-daemon clean build -x test
+# RUN ./gradlew --no-daemon clean build -x test
+RUN ./gradlew --no-daemon clean build
 
 FROM openjdk:17-jdk-slim
 WORKDIR /app
