@@ -7,6 +7,6 @@
     <title>Document</title>
 </head>
 <body>
-    <a href="http://localhost:8000/" target="_blank" rel="noopener noreferrer"><h1>테스트</h1></a>
+    <a href="http://localhost:8000/login" target="_blank" rel="noopener noreferrer"><h1>테스트</h1></a>
 </body>
 </html>
