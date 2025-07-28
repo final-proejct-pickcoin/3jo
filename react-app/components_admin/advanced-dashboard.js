@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Line, RadialBarChart, RadialBar } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
+import { Badge } from "@/components_admin/ui/badge";
+import { Progress } from "@/components_admin/ui/progress";
 import { TrendingUp, Users, Activity, DollarSign, Shield, Server, AlertTriangle, CheckCircle } from "lucide-react";
 
 // Enhanced color palette

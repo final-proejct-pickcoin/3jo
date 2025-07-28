@@ -2,14 +2,14 @@
 import React from "react";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components_admin/ui/button";
+import { Input } from "@/components_admin/ui/input";
+import { Label } from "@/components_admin/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components_admin/ui/dialog";
+import { Switch } from "@/components_admin/ui/switch";
+import { Separator } from "@/components_admin/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components_admin/ui/card";
+import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import { Eye, EyeOff, Shield, Smartphone, Mail, Phone, User, Building, CheckCircle, AlertTriangle } from "lucide-react";
 export default function ProfileDialogs({
   isDarkMode,

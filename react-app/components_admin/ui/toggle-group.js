@@ -4,7 +4,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 import * as React from "react";
 import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group";
 import { cn } from "@/lib/utils";
-import { toggleVariants } from "@/components/ui/toggle";
+import { toggleVariants } from "@/components_admin/ui/toggle";
 const ToggleGroupContext = /*#__PURE__*/React.createContext({
   size: "default",
   variant: "default"

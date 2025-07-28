@@ -3,11 +3,11 @@ import React from "react";
 
 import { useState } from "react";
 import { Eye, EyeOff, Shield, Smartphone } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components_admin/ui/button";
+import { Input } from "@/components_admin/ui/input";
+import { Label } from "@/components_admin/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
+import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 export default function LoginForm({
   onLogin
 }) {

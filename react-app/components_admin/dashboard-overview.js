@@ -2,10 +2,10 @@
 import React from "react";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
+import { Badge } from "@/components_admin/ui/badge";
+import { Button } from "@/components_admin/ui/button";
+import { Progress } from "@/components_admin/ui/progress";
 import { Users, Activity, DollarSign, TrendingUp, Server, Shield, RefreshCw, AlertTriangle, CheckCircle, Pause, Play, Eye, Clock } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
