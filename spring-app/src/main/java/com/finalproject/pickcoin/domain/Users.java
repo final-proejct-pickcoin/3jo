@@ -3,7 +3,6 @@ package com.finalproject.pickcoin.domain;
 import java.time.LocalDateTime;
 import java.util.Date;
 
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.finalproject.pickcoin.enums.Role;
@@ -41,7 +40,7 @@ public class Users {
     private boolean onboarding_completed;
 
     @Column(name="created_at", updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)    
+    @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;
 
     @Column(name = "expires_at")

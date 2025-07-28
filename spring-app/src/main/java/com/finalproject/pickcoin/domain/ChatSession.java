@@ -12,20 +12,21 @@ import jakarta.persistence.TemporalType;
 import lombok.Data;
 
 @Data
-@Entity
-public class Reply {
-    
+@Entity(name = "chat_session")
+public class ChatSession {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer reply_id;    
-    private Integer user_id;
-    private Integer post_id;
-    private String content;
+    private Integer session_id; // 세션 ID
+    private Integer user_id; // 사용자 ID
+    private Integer admin_id;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "created_at", updatable = false)
-    private Date createdAt;
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "updated_at")
-    private Date updatedAt;
+    @Column(name="start_at", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)    
+    private Date startAt;
+
+    @Column(name="edn_at", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)    
+    private Date endAt;
+    
 }
