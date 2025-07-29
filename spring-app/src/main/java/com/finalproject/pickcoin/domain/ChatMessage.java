@@ -6,6 +6,8 @@ import com.finalproject.pickcoin.enums.MessageType;
 import com.finalproject.pickcoin.enums.Role;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,8 +22,10 @@ public class ChatMessage {
     private Integer message_id; // 메시지 ID
     private Integer session_id;
     private Integer sender_id; // 발신자 ID
+    @Enumerated(EnumType.STRING)
     private Role sender_role;
     private String content; // 메시지 내용
+    @Enumerated(EnumType.STRING)
     private MessageType status; // 메시지 상태 (예: "sent", "delivered", "read") enum으로 변경 가능
     private Date timestamp; // 전송 시간
 }
