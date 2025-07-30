@@ -98,7 +98,7 @@ export const TradingInterface = () => {
         {/* Order Book */}
         <Card className="lg:row-span-2">
           <CardHeader>
-            <CardTitle className="text-lg font-bold">호가창 (Order Book)</CardTitle>
+            <CardTitle className="text-lg font-bold"> 호가창(Order Book)</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="grid grid-cols-3 gap-2 p-4 text-xs font-medium text-muted-foreground border-b">

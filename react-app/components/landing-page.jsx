@@ -61,7 +61,7 @@ export const LandingPage = () => {
             🚀 Next-Generation Virtual Trading Platform
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Master Crypto Trading
+            Master Crypto Trading!
             <br />
             Without the Risk
           </h1>

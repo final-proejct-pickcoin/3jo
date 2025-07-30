@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "lint": "next lint",
     "start": "next start",
     "build:babel": "npx babel . --out-dir converted --extensions \".ts,.tsx\" --ignore \"**/*.d.ts,**/node_modules/**,.next/**\" --presets @babel/preset-react,@babel/preset-typescript",

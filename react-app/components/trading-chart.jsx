@@ -282,7 +282,7 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 p-2">
               <div className="flex items-center bg-muted rounded-lg p-1">
                 {[
                   { value: "candlestick", label: "캔들스틱" },
@@ -301,11 +301,11 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
                   </Button>
                 ))}
               </div>
-
               <Button variant="outline" size="sm">
                 <Plus className="h-3 w-3 mr-1" />
                 지표 추가
               </Button>
+
             </div>
           </div>
 
