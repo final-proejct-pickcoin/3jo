@@ -8,13 +8,14 @@ import { Input } from "@/components_admin/ui/input";
 import { Label } from "@/components_admin/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Alert, AlertDescription } from "@/components_admin/ui/alert";
+import axios from "axios";
 export default function LoginForm({
   onLogin
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState("login");
   const [credentials, setCredentials] = useState({
-    username: "",
+    email: "",
     password: ""
   });
   const [twoFactorCode, setTwoFactorCode] = useState("");
@@ -25,14 +26,38 @@ export default function LoginForm({
     setIsLoading(true);
     setError("");
 
+    // 로그인 정보 FormData 형식으로 변환
+    const formData = new FormData();
+    formData.append("email", credentials.email);
+    formData.append("password", credentials.password);
+
+    // FastAPI에 로그인 정보 요청
+    axios.post("http://localhost:8000/admin/login", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    }).then(response => {
+      
+      if(response.data.role === "ADMIN"){
+        // console.log("로그인 성공:", response.data);
+        setStep("2fa");
+        setIsLoading(false);
+        // 토큰 저장
+        localStorage.setItem("access_token", response.data.access_token);
+      }else if(response.data.role === "USER"){
+        setError("관리자 계정이 아닙니다.");
+      } else {
+        setError("관리자 로그인에 실패했습니다.");
+      }
+    })
+    .catch(error => {
+      console.error("로그인 실패:", error);
+      setError("로그인에 실패했습니다.");
+    }).finally(() => {setIsLoading(false)})
+
     // 시뮬레이션 지연
     await new Promise(resolve => setTimeout(resolve, 1000));
-    if (credentials.username === "admin" && credentials.password === "admin123") {
-      setStep("2fa");
-    } else {
-      setError("잘못된 관리자 계정입니다.");
-    }
-    setIsLoading(false);
+
   };
   const handle2FA = async e => {
     e.preventDefault();
@@ -72,15 +97,15 @@ export default function LoginForm({
   }, /*#__PURE__*/React.createElement("div", {
     className: "space-y-2"
   }, /*#__PURE__*/React.createElement(Label, {
-    htmlFor: "username",
+    htmlFor: "email",
     className: "text-sm font-medium text-gray-700"
   }, "\uAD00\uB9AC\uC790 ID"), /*#__PURE__*/React.createElement(Input, {
-    id: "username",
+    id: "email",
     type: "text",
-    value: credentials.username,
+    value: credentials.email,
     onChange: e => setCredentials({
       ...credentials,
-      username: e.target.value
+      email: e.target.value
     }),
     placeholder: "\uAD00\uB9AC\uC790 ID\uB97C \uC785\uB825\uD558\uC138\uC694",
     className: "h-11",
