@@ -328,8 +328,7 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
           {/* 메인 차트 */}
           <div 
             ref={chartContainerRef} 
-            className="relative w-full bg-background overflow-hidden"
-            style={{ height: `${height}px` }}
+            className="relative w-full h-[80%] bg-background overflow-hidden"
           >
             {renderCandlesticks()}
           </div>
