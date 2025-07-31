@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useState } from "react";
 import { Bell, Settings, Search, Users, TrendingUp, FileText, Activity, DollarSign, Eye, Ban, Edit, Trash2, Plus, LogOut, Moon, Sun, Shield, Server, Download, MoreHorizontal, CheckCircle, XCircle, AlertTriangle, MessageSquare, User, Key, HelpCircle, ChevronDown, Archive } from "lucide-react";
@@ -21,8 +21,10 @@ import LoginForm from "./components_admin/login-form";
 import DashboardOverview from "./components_admin/dashboard-overview";
 import SupportManagement from "./components_admin/support-management";
 import ProfileDialogs from "./components_admin/profile-dialogs";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 export default function Component() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -49,10 +51,10 @@ export default function Component() {
 
   // 프로필 설정 상태
   const [profileData, setProfileData] = useState({
-    name: "관리자",
-    email: "admin@pickcoin.com",
+    name: "",
+    email: "",
     phone: "010-1234-5678",
-    department: "시스템 관리팀"
+    role: ""
   });
 
   // 비밀번호 변경 상태
@@ -195,9 +197,32 @@ export default function Component() {
   const handleDeleteAnnouncement = id => {
     setAnnouncements(announcements.filter(ann => ann.id !== id));
   };
+
+  const router = useRouter();
+  
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setActiveTab("dashboard");
+    const email = localStorage.getItem("sub");
+
+    // 로그아웃 처리
+    axios.post("http://localhost:8000/admin/logout", new URLSearchParams({ email }), {
+       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+      .then(() => {
+        // 토큰 삭제
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user_name");
+        localStorage.removeItem("role");
+        localStorage.removeItem("sub");
+
+        // 상태 초기화
+        setIsLoggedIn(false);
+
+        // 로그인 페이지로 리다이렉트
+        router.push("/admin");
+      }).catch(error => {
+        console.error("로그아웃 실패:", error);
+      });
+      
   };
   const handleExportLogs = () => {
     const selectedLogData = logs.filter(log => selectedLogs.includes(log.id));
@@ -265,11 +290,38 @@ export default function Component() {
       status: ann.status === "active" ? "expired" : "active"
     } : ann));
   };
-  if (!isLoggedIn) {
-    return /*#__PURE__*/React.createElement(LoginForm, {
-      onLogin: () => setIsLoggedIn(true)
-    });
+  
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if(!token){      
+      setIsLoggedIn(false);
+    }
+    else{
+      // profileData
+      const email = localStorage.getItem("sub");
+      const name = localStorage.getItem("name");
+      const role = localStorage.getItem("role");
+
+      console.log(email, name, role);
+      setProfileData({
+                      ...profileData,
+                      role: role,
+                      name: name,
+                      email: email
+                    }); 
+
+      setIsLoggedIn(true);
+    }
+  }, [])
+
+  if (isLoggedIn === null) {
+    return <div style={{ background: "#fff", width: "100%", height: "100vh" }} />; // 로딩 중
   }
+
+  if (!isLoggedIn) {
+    return <LoginForm onLogin={() => setIsLoggedIn(true)} />;
+  }
+
   return /*#__PURE__*/React.createElement("div", {
     className: `min-h-screen ${isDarkMode ? "dark bg-gray-900" : "bg-gray-50"}`
   }, /*#__PURE__*/React.createElement("header", {
@@ -455,9 +507,9 @@ export default function Component() {
     className: "hidden md:block text-left"
   }, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uAD00\uB9AC\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, profileData.name), /*#__PURE__*/React.createElement("p", {
     className: `text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
-  }, "admin@pickcoin.com")), /*#__PURE__*/React.createElement(ChevronDown, {
+  }, profileData.email)), /*#__PURE__*/React.createElement(ChevronDown, {
     className: `h-4 w-4 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
   }))), /*#__PURE__*/React.createElement(DropdownMenuContent, {
     align: "end",
@@ -466,9 +518,9 @@ export default function Component() {
     className: "px-3 py-2"
   }, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uAD00\uB9AC\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, profileData.name), /*#__PURE__*/React.createElement("p", {
     className: `text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
-  }, "admin@pickcoin.com")), /*#__PURE__*/React.createElement(DropdownMenuSeparator, {
+  }, profileData.email)), /*#__PURE__*/React.createElement(DropdownMenuSeparator, {
     className: isDarkMode ? "bg-gray-700" : ""
   }), /*#__PURE__*/React.createElement(DropdownMenuItem, {
     onClick: () => setIsProfileDialogOpen(true),
