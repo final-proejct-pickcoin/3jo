@@ -13,8 +13,10 @@ from alert_manager import AlertManager
 from typing import Dict
 from json import dumps
 from enums.Role import Role
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
+
 # docker-compose.yml의 서비스명이 redis이면
 redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -30,6 +32,20 @@ fake_users_db = {}
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+# CORS 설정
+origins = [
+    "http://localhost:3000",
+    "http://localhost:8080"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 manager = ConnectionManager()
 alert_manager = AlertManager()
@@ -142,8 +158,8 @@ async def register(email: str = Form(...), password: str = Form(...), name: str 
         hashed_pw = pwd_context.hash(password)
 
         # 사용자 등록
-        insert_sql = "INSERT INTO users(email, password, name, role) VALUES(%s, %s, %s, %s)"
-        user_data = (email, hashed_pw, name, Role.ADMIN.value)
+        insert_sql = "INSERT INTO users(email, password, name, role, is_verified) VALUES(%s, %s, %s, %s, %s)"
+        user_data = (email, hashed_pw, name, Role.ADMIN.value, True)
         cursor.execute(insert_sql, user_data)
         conn.commit()
     except Exception as e:
@@ -183,15 +199,21 @@ async def login(email: str = Form(...), password: str = Form(...)):
             token = create_access_token({"sub": email})
             conn.commit()
 
-            logged_in_users.add(email)  # ✅ 로그인한 유저 저장
-        
-            # ✅ 토큰을 응답으로 전달 (방법 1: JSON)
-            return JSONResponse(content={
-                "access_token": token,
-                "token_type": "bearer",
+            logged_in_users.add(email)  # 로그인한 유저 저장
+
+            response = JSONResponse(content={
                 "message": f"{email}님 로그인 성공!",
-                "sub": email
+                "sub": email,
+                "role": user["role"],
+                "name": user["name"],                
+                "access_token": token,
+                "token_type": "bearer"
+                
             })
+
+        
+            # 토큰을 응답으로 전달 ( JSON)
+            return response
         
         else:
             return {"error": "비밀번호가 일치하지 않습니다."}
@@ -209,9 +231,10 @@ async def get_logged_in_users():
 
 @app.post("/admin/logout")
 async def logout(email: str = Form(...)):
-    logged_in_users.discard(email)
-    return {"msg": "로그아웃됨"}
     
+    response = JSONResponse(content={"msg": "로그아웃됨"})
+    logged_in_users.discard(email)
+    return response
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):

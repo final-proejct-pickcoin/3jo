@@ -61,18 +61,21 @@ services:
     command: ./gradlew bootRun
   react-app:
     build: ./react-app      
-    # volumes:
-    #   - ./react-app:/app
-    #   - /app/node_modules
+    volumes:
+      - ./react-app:/app
+      - /app/node_modules
     container_name: react-app
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - FAST_REFRESH=true
     depends_on:
       - fastapi-app
       - spring-app
-    # command: ["pnpm", "start"]
+    command: ["pnpm", "dev"]
 
 
 
