@@ -51,10 +51,10 @@ export default function Component() {
 
   // 프로필 설정 상태
   const [profileData, setProfileData] = useState({
-    name: "관리자",
-    email: "admin@pickcoin.com",
+    name: "",
+    email: "",
     phone: "010-1234-5678",
-    department: "시스템 관리팀"
+    role: ""
   });
 
   // 비밀번호 변경 상태
@@ -293,10 +293,23 @@ export default function Component() {
   
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if(!token){
+    if(!token){      
       setIsLoggedIn(false);
     }
     else{
+      // profileData
+      const email = localStorage.getItem("sub");
+      const name = localStorage.getItem("name");
+      const role = localStorage.getItem("role");
+
+      console.log(email, name, role);
+      setProfileData({
+                      ...profileData,
+                      role: role,
+                      name: name,
+                      email: email
+                    }); 
+
       setIsLoggedIn(true);
     }
   }, [])

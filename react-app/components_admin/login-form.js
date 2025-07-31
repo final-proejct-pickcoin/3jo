@@ -56,6 +56,8 @@ export default function LoginForm({
         // 토큰 저장
         localStorage.setItem("access_token", response.data.access_token);
         localStorage.setItem("sub", response.data.sub);
+        localStorage.setItem("name", response.data.name);
+        localStorage.setItem("role", response.data.role);
         
         setToken(response.data.access_token);    // 상태 업데이트 추가
         
