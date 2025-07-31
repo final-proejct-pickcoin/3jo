@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useState } from "react";
 import { Eye, EyeOff, Shield, Smartphone } from "lucide-react";
@@ -13,23 +13,36 @@ export default function LoginForm({
   onLogin
 }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState("login");
+  // const [step, setStep] = useState("login");
   const [credentials, setCredentials] = useState({
     email: "",
     password: ""
   });
-  const [twoFactorCode, setTwoFactorCode] = useState("");
+  
+  const [token, setToken] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const handleLogin = async e => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
 
-    // 로그인 정보 FormData 형식으로 변환
+  // 로그인 정보 FormData 형식으로 변환
     const formData = new FormData();
     formData.append("email", credentials.email);
     formData.append("password", credentials.password);
+
+    // 컴포넌트 마운트 시 로컬스토리지에서 토큰 로드 (로그인 상태 복원)
+    useEffect(()=>{
+      const savedToken = localStorage.getItem("access_token");
+      if (savedToken && savedToken !== "" && savedToken !== "null") {
+        setToken(savedToken);
+        // setStep("2fa");
+        onLogin(); // 로그인 상태 업데이트
+      }
+    }, [])
+
+    // 로그인 핸들러
+  const handleLogin = async e => {
+    e.preventDefault();
+    // setIsLoading(true);
+    setError("");
 
     // FastAPI에 로그인 정보 요청
     axios.post("http://localhost:8000/admin/login", formData, {
@@ -40,10 +53,14 @@ export default function LoginForm({
       
       if(response.data.role === "ADMIN"){
         // console.log("로그인 성공:", response.data);
-        setStep("2fa");
-        setIsLoading(false);
         // 토큰 저장
         localStorage.setItem("access_token", response.data.access_token);
+        localStorage.setItem("sub", response.data.sub);
+        
+        setToken(response.data.access_token);    // 상태 업데이트 추가
+        
+        onLogin();
+        setError(null);
       }else if(response.data.role === "USER"){
         setError("관리자 계정이 아닙니다.");
       } else {
@@ -55,151 +72,59 @@ export default function LoginForm({
       setError("로그인에 실패했습니다.");
     }).finally(() => {setIsLoading(false)})
 
-    // 시뮬레이션 지연
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
   };
-  const handle2FA = async e => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
 
-    // 시뮬레이션 지연
-    await new Promise(resolve => setTimeout(resolve, 800));
-    if (twoFactorCode === "123456") {
-      onLogin();
-    } else {
-      setError("잘못된 인증 코드입니다.");
-    }
-    setIsLoading(false);
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "min-h-screen bg-gray-50 flex items-center justify-center p-4"
-  }, /*#__PURE__*/React.createElement(Card, {
-    className: "w-full max-w-md shadow-lg border border-gray-200"
-  }, /*#__PURE__*/React.createElement(CardHeader, {
-    className: "text-center pb-8"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-center space-x-3 mb-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-white font-bold text-xl"
-  }, "P")), /*#__PURE__*/React.createElement("span", {
-    className: "text-2xl font-bold text-gray-900"
-  }, "PickCoin Admin")), /*#__PURE__*/React.createElement(CardTitle, {
-    className: "text-xl font-semibold text-gray-900"
-  }, "\uAD00\uB9AC\uC790 \uB85C\uADF8\uC778"), /*#__PURE__*/React.createElement(CardDescription, {
-    className: "text-gray-600"
-  }, step === "login" ? "관리자 계정으로 로그인하세요" : "2단계 인증을 완료하세요")), /*#__PURE__*/React.createElement(CardContent, null, step === "login" ? /*#__PURE__*/React.createElement("form", {
-    onSubmit: handleLogin,
-    className: "space-y-4"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2"
-  }, /*#__PURE__*/React.createElement(Label, {
-    htmlFor: "email",
-    className: "text-sm font-medium text-gray-700"
-  }, "\uAD00\uB9AC\uC790 ID"), /*#__PURE__*/React.createElement(Input, {
-    id: "email",
-    type: "text",
-    value: credentials.email,
-    onChange: e => setCredentials({
-      ...credentials,
-      email: e.target.value
-    }),
-    placeholder: "\uAD00\uB9AC\uC790 ID\uB97C \uC785\uB825\uD558\uC138\uC694",
-    className: "h-11",
-    required: true,
-    disabled: isLoading
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2"
-  }, /*#__PURE__*/React.createElement(Label, {
-    htmlFor: "password",
-    className: "text-sm font-medium text-gray-700"
-  }, "\uBE44\uBC00\uBC88\uD638"), /*#__PURE__*/React.createElement("div", {
-    className: "relative"
-  }, /*#__PURE__*/React.createElement(Input, {
-    id: "password",
-    type: showPassword ? "text" : "password",
-    value: credentials.password,
-    onChange: e => setCredentials({
-      ...credentials,
-      password: e.target.value
-    }),
-    placeholder: "\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD558\uC138\uC694",
-    className: "h-11 pr-10",
-    required: true,
-    disabled: isLoading
-  }), /*#__PURE__*/React.createElement(Button, {
-    type: "button",
-    variant: "ghost",
-    size: "sm",
-    className: "absolute right-0 top-0 h-11 px-3 hover:bg-transparent",
-    onClick: () => setShowPassword(!showPassword),
-    disabled: isLoading
-  }, showPassword ? /*#__PURE__*/React.createElement(EyeOff, {
-    className: "h-4 w-4"
-  }) : /*#__PURE__*/React.createElement(Eye, {
-    className: "h-4 w-4"
-  })))), error && /*#__PURE__*/React.createElement(Alert, {
-    variant: "destructive"
-  }, /*#__PURE__*/React.createElement(AlertDescription, null, error)), /*#__PURE__*/React.createElement(Button, {
-    type: "submit",
-    className: "w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-medium",
-    disabled: isLoading
-  }, isLoading ? /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"
-  }), "\uB85C\uADF8\uC778 \uC911...") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Shield, {
-    className: "h-4 w-4 mr-2"
-  }), "\uB85C\uADF8\uC778")), /*#__PURE__*/React.createElement("div", {
-    className: "text-center text-sm text-gray-500 mt-4 p-3 bg-gray-50 rounded-lg"
-  }, /*#__PURE__*/React.createElement("p", null, "\uB370\uBAA8 \uACC4\uC815: admin / admin123"))) : /*#__PURE__*/React.createElement("form", {
-    onSubmit: handle2FA,
-    className: "space-y-4"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "text-center mb-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4"
-  }, /*#__PURE__*/React.createElement(Smartphone, {
-    className: "h-8 w-8 text-white"
-  })), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm text-gray-600"
-  }, "\uBAA8\uBC14\uC77C \uC571\uC5D0\uC11C \uC0DD\uC131\uB41C 6\uC790\uB9AC \uC778\uC99D \uCF54\uB4DC\uB97C \uC785\uB825\uD558\uC138\uC694")), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2"
-  }, /*#__PURE__*/React.createElement(Label, {
-    htmlFor: "2fa-code",
-    className: "text-sm font-medium text-gray-700"
-  }, "\uC778\uC99D \uCF54\uB4DC"), /*#__PURE__*/React.createElement(Input, {
-    id: "2fa-code",
-    type: "text",
-    value: twoFactorCode,
-    onChange: e => setTwoFactorCode(e.target.value),
-    placeholder: "123456",
-    maxLength: 6,
-    className: "h-11 text-center text-lg tracking-widest font-mono",
-    required: true,
-    disabled: isLoading
-  })), error && /*#__PURE__*/React.createElement(Alert, {
-    variant: "destructive"
-  }, /*#__PURE__*/React.createElement(AlertDescription, null, error)), /*#__PURE__*/React.createElement("div", {
-    className: "flex space-x-3"
-  }, /*#__PURE__*/React.createElement(Button, {
-    type: "button",
-    variant: "outline",
-    className: "flex-1 h-11 bg-transparent",
-    onClick: () => setStep("login"),
-    disabled: isLoading
-  }, "\uB4A4\uB85C"), /*#__PURE__*/React.createElement(Button, {
-    type: "submit",
-    className: "flex-1 h-11 bg-orange-500 hover:bg-orange-600 text-white font-medium",
-    disabled: isLoading
-  }, isLoading ? /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"
-  }), "\uC778\uC99D \uC911...") : "인증 완료")), /*#__PURE__*/React.createElement("div", {
-    className: "text-center text-sm text-gray-500 mt-4 p-3 bg-gray-50 rounded-lg"
-  }, /*#__PURE__*/React.createElement("p", null, "\uB370\uBAA8 \uCF54\uB4DC: 123456"))))));
+  return (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <Card className="w-full max-w-md shadow-lg border border-gray-200">
+      <CardHeader className="text-center pb-8">
+        <div className="flex items-center justify-center space-x-3 mb-6">
+          <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-xl">P</span>
+          </div>
+          <span className="text-2xl font-bold text-gray-900">PickCoin Admin</span>
+        </div>
+        <CardTitle className="text-xl font-semibold text-gray-900">관리자 로그인</CardTitle>
+        <CardDescription className="text-gray-600">
+          관리자 계정으로 로그인하세요
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!token ? (
+          <form onSubmit={handleLogin} className="space-y-4">
+                        
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">관리자 ID</Label>
+              <Input id="email" type="text" value={credentials.email} onChange={(e)=>setCredentials({...credentials, email: e.target.value})} required disabled={isLoading} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700">비밀번호</Label>
+              <div className="relative">
+                <Input id="password" type={showPassword ? "text" : "password"} value={credentials.password} onChange={(e)=>setCredentials({...credentials, password: e.target.value})} required disabled={isLoading} />
+                {/* ...눈 아이콘 등 */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-11 px-3"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                  >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            <Button type="submit" className="w-full h-11 ...">로그인</Button>
+            
+          </form>
+        ) : (
+          <MainDashboardComponent onLogout={handleLogout} />
+        )}
+      </CardContent>
+    </Card>
+  </div>
+);
+
+  
 }

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useState } from "react";
 import { Bell, Settings, Search, Users, TrendingUp, FileText, Activity, DollarSign, Eye, Ban, Edit, Trash2, Plus, LogOut, Moon, Sun, Shield, Server, Download, MoreHorizontal, CheckCircle, XCircle, AlertTriangle, MessageSquare, User, Key, HelpCircle, ChevronDown, Archive } from "lucide-react";
@@ -21,8 +21,10 @@ import LoginForm from "./components_admin/login-form";
 import DashboardOverview from "./components_admin/dashboard-overview";
 import SupportManagement from "./components_admin/support-management";
 import ProfileDialogs from "./components_admin/profile-dialogs";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 export default function Component() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -195,9 +197,32 @@ export default function Component() {
   const handleDeleteAnnouncement = id => {
     setAnnouncements(announcements.filter(ann => ann.id !== id));
   };
+
+  const router = useRouter();
+  
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setActiveTab("dashboard");
+    const email = localStorage.getItem("sub");
+
+    // 로그아웃 처리
+    axios.post("http://localhost:8000/admin/logout", new URLSearchParams({ email }), {
+       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+      .then(() => {
+        // 토큰 삭제
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user_name");
+        localStorage.removeItem("role");
+        localStorage.removeItem("sub");
+
+        // 상태 초기화
+        setIsLoggedIn(false);
+
+        // 로그인 페이지로 리다이렉트
+        router.push("/admin");
+      }).catch(error => {
+        console.error("로그아웃 실패:", error);
+      });
+      
   };
   const handleExportLogs = () => {
     const selectedLogData = logs.filter(log => selectedLogs.includes(log.id));
@@ -265,11 +290,25 @@ export default function Component() {
       status: ann.status === "active" ? "expired" : "active"
     } : ann));
   };
-  if (!isLoggedIn) {
-    return /*#__PURE__*/React.createElement(LoginForm, {
-      onLogin: () => setIsLoggedIn(true)
-    });
+  
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if(!token){
+      setIsLoggedIn(false);
+    }
+    else{
+      setIsLoggedIn(true);
+    }
+  }, [])
+
+  if (isLoggedIn === null) {
+    return <div style={{ background: "#fff", width: "100%", height: "100vh" }} />; // 로딩 중
   }
+
+  if (!isLoggedIn) {
+    return <LoginForm onLogin={() => setIsLoggedIn(true)} />;
+  }
+
   return /*#__PURE__*/React.createElement("div", {
     className: `min-h-screen ${isDarkMode ? "dark bg-gray-900" : "bg-gray-50"}`
   }, /*#__PURE__*/React.createElement("header", {

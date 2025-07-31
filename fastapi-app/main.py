@@ -199,16 +199,21 @@ async def login(email: str = Form(...), password: str = Form(...)):
             token = create_access_token({"sub": email})
             conn.commit()
 
-            logged_in_users.add(email)  # ✅ 로그인한 유저 저장
-        
-            # ✅ 토큰을 응답으로 전달 (방법 1: JSON)
-            return JSONResponse(content={
-                "access_token": token,
-                "token_type": "bearer",
+            logged_in_users.add(email)  # 로그인한 유저 저장
+
+            response = JSONResponse(content={
                 "message": f"{email}님 로그인 성공!",
                 "sub": email,
-                "role": user["role"]
+                "role": user["role"],
+                "name": user["name"],                
+                "access_token": token,
+                "token_type": "bearer"
+                
             })
+
+        
+            # 토큰을 응답으로 전달 ( JSON)
+            return response
         
         else:
             return {"error": "비밀번호가 일치하지 않습니다."}
@@ -226,9 +231,10 @@ async def get_logged_in_users():
 
 @app.post("/admin/logout")
 async def logout(email: str = Form(...)):
-    logged_in_users.discard(email)
-    return {"msg": "로그아웃됨"}
     
+    response = JSONResponse(content={"msg": "로그아웃됨"})
+    logged_in_users.discard(email)
+    return response
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
