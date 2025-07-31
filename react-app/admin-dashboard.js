@@ -507,9 +507,9 @@ export default function Component() {
     className: "hidden md:block text-left"
   }, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uAD00\uB9AC\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, profileData.name), /*#__PURE__*/React.createElement("p", {
     className: `text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
-  }, "admin@pickcoin.com")), /*#__PURE__*/React.createElement(ChevronDown, {
+  }, profileData.email)), /*#__PURE__*/React.createElement(ChevronDown, {
     className: `h-4 w-4 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
   }))), /*#__PURE__*/React.createElement(DropdownMenuContent, {
     align: "end",
@@ -518,9 +518,9 @@ export default function Component() {
     className: "px-3 py-2"
   }, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uAD00\uB9AC\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, profileData.name), /*#__PURE__*/React.createElement("p", {
     className: `text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
-  }, "admin@pickcoin.com")), /*#__PURE__*/React.createElement(DropdownMenuSeparator, {
+  }, profileData.email)), /*#__PURE__*/React.createElement(DropdownMenuSeparator, {
     className: isDarkMode ? "bg-gray-700" : ""
   }), /*#__PURE__*/React.createElement(DropdownMenuItem, {
     onClick: () => setIsProfileDialogOpen(true),
