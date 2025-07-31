@@ -28,6 +28,7 @@ const trendingCoins = [
   { symbol: "FLOKI", change: 12.3, reason: "Partnership news" },
 ]
 
+
 const marketNews = [
   {
     title: "Bitcoin ETF Approval Drives Market Rally",
@@ -72,6 +73,25 @@ export const MarketAnalysis = () => {
   const volumeKRW = volumeUSD * 1e8 * exchangeRate
   const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
   useEffect(() => { subscribe(marketData.map(coin => coin.symbol)) }, [subscribe])
+
+  // 관심 코인 추가 표시용
+  const [bookmarked,setBookmarked] = useState({})
+
+  // 관심 코인 추가 표시용 토글
+  const toggle_Bookmark=(symbol)=>{
+      const is_bookmarked = bookmarked[symbol];
+    
+      setBookmarked((prev)=>({
+        ...prev,
+      [symbol]: !is_bookmarked
+      }
+    ))
+
+    alert(`${symbol} ${is_bookmarked? '코인 북마크 해제됨':'코인 북마크 추가됨'}`)     
+    }
+
+    
+
   return (
     <div className="space-y-6">
       {/* 통화 선택 토글 */}
@@ -277,7 +297,10 @@ export const MarketAnalysis = () => {
                           <p>시가총액: {formatNumber(coin.marketCap)}</p>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline"><Star className="h-3 w-3" /></Button>
+                          <Button size="sm" variant="outline" onClick={()=> toggle_Bookmark(coin.symbol)}>
+                            {/* 클릭 통해 관심코인 추가시 노란별 변경/클릭시 해제와 빈 별 */}
+                            <Star className="h-3 w-3" fill={bookmarked[coin.symbol]? "yellow":"none"} />
+                            </Button>
                           <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button>
                         </div>
                       </div>

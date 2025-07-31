@@ -35,8 +35,10 @@ const RootLayout = ({ children }) => (
         <AuthProvider>
           <WebSocketProvider>
             <OnboardingProvider>
+              <bookmark_provider>
               {children}
               <Toaster />
+              </bookmark_provider>
             </OnboardingProvider>
           </WebSocketProvider>
         </AuthProvider>
