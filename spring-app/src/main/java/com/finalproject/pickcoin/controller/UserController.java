@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import java.time.LocalDateTime;
 import java.util.*;
 
+@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/users")
 @Transactional
@@ -95,6 +96,9 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> login(
             @RequestParam String email,
             @RequestParam String password) {
+
+        logger.info("로그인 시도: email={}, password={}", email, password);
+        
         Map<String, Object> result = new HashMap<>();
         Optional<Users> optionalUser  = userService.findByEmail(email);
         if (optionalUser .isEmpty()) {

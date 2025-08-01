@@ -63,6 +63,8 @@ export function AuthModal({ isOpen, onClose }) {
   const handleSubmit = async (e, isSignUp) => {
     e.preventDefault()
 
+    //  console.log("로그인 시도 값 확인:", formData.email, formData.password)
+
     if (!validateForm(isSignUp)) return
 
     try {
