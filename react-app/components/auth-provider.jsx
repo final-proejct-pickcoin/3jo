@@ -7,6 +7,7 @@ const AuthContext = createContext(undefined)
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+
   useEffect(() => {
     try {
       const token = localStorage.getItem("auth_token")
@@ -19,47 +20,75 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(false)
     }
   }, [])
+
+  // 로그인
   const login = async (email, password) => {
     setIsLoading(true)
-    await new Promise(r => setTimeout(r, 1000))
-    const mockUser = { id: "user_" + Date.now(), email, nickname: email.split("@")[0], isOnboardingCompleted: false, createdAt: new Date().toISOString() }
-    localStorage.setItem("auth_token", "jwt_" + Date.now())
-    localStorage.setItem("user_data", JSON.stringify(mockUser))
-    setUser(mockUser)
-    setIsLoading(false)
+    try {
+      const formData = new URLSearchParams()
+      formData.append("email", email)
+      formData.append("password", password)
+
+      const res = await fetch("http://localhost:8080/users/login", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error("Login failed")
+      const data = await res.json()
+
+      localStorage.setItem("auth_token", data.access_token)
+      localStorage.setItem(
+        "user_data",
+        JSON.stringify({ email: data.sub, nickname: data.sub.split("@")[0] })
+      )
+      setUser({ email: data.sub, nickname: data.sub.split("@")[0] })
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  // 회원가입
   const register = async (email, password, nickname) => {
     setIsLoading(true)
-    await new Promise(r => setTimeout(r, 1200))
-    const mockUser = { id: "user_" + Date.now(), email, nickname, isOnboardingCompleted: false, createdAt: new Date().toISOString() }
-    localStorage.setItem("auth_token", "jwt_" + Date.now())
-    localStorage.setItem("user_data", JSON.stringify(mockUser))
-    setUser(mockUser)
-    setIsLoading(false)
+    try {
+      const formData = new URLSearchParams()
+      formData.append("email", email)
+      formData.append("password", password)
+      formData.append("name", nickname) // 백엔드 UserController에서 name으로 받음
+
+      const res = await fetch("http://localhost:8080/users/register", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error("Registration failed")
+      const data = await res.json()
+
+      alert(data.success || data.error || "회원가입 완료! 이메일 인증 후 로그인하세요.")
+      return data
+    } finally {
+      setIsLoading(false)
+    }
   }
-  const loginWithOAuth = async (provider) => {
-    setIsLoading(true)
-    await new Promise(r => setTimeout(r, 1500))
-    const mockUser = { id: "oauth_" + Date.now(), email: `user@${provider}.com`, nickname: `${provider}_user`, avatar: `/placeholder.svg?height=40&width=40&text=${provider.toUpperCase()}`, isOnboardingCompleted: false, createdAt: new Date().toISOString() }
-    localStorage.setItem("auth_token", "oauth_jwt_" + Date.now())
-    localStorage.setItem("user_data", JSON.stringify(mockUser))
-    setUser(mockUser)
-    setIsLoading(false)
-  }
+
   const logout = () => {
     localStorage.removeItem("auth_token")
     localStorage.removeItem("user_data")
     setUser(null)
   }
-  const updateUser = (updates) => {
-    if (user) {
-      const updatedUser = { ...user, ...updates }
-      setUser(updatedUser)
-      localStorage.setItem("user_data", JSON.stringify(updatedUser))
-    }
-  }
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, loginWithOAuth, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
