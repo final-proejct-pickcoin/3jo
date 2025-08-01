@@ -110,9 +110,9 @@ export default function ProfileDialogs({
     className: `sm:max-w-[425px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`
   }, /*#__PURE__*/React.createElement(DialogHeader, null, /*#__PURE__*/React.createElement(DialogTitle, {
     className: isDarkMode ? "text-white" : ""
-  }, "\uD504\uB85C\uD544 \uC124\uC815"), /*#__PURE__*/React.createElement(DialogDescription, {
+  }, "프로필 설정"), /*#__PURE__*/React.createElement(DialogDescription, {
     className: isDarkMode ? "text-gray-400" : ""
-  }, "\uAD00\uB9AC\uC790 \uACC4\uC815 \uC815\uBCF4\uB97C \uC218\uC815\uD569\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("div", {
+  }, "사용자 정보를 수정합니다.")), /*#__PURE__*/React.createElement("div", {
     className: "grid gap-4 py-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid gap-2"
@@ -121,7 +121,7 @@ export default function ProfileDialogs({
     className: isDarkMode ? "text-gray-300" : ""
   }, /*#__PURE__*/React.createElement(User, {
     className: "h-4 w-4 inline mr-2"
-  }), "\uC774\uB984"), /*#__PURE__*/React.createElement(Input, {
+  }), "이름"), /*#__PURE__*/React.createElement(Input, {
     id: "name",
     value: profileData.name,
     onChange: e => setProfileData({
@@ -136,7 +136,7 @@ export default function ProfileDialogs({
     className: isDarkMode ? "text-gray-300" : ""
   }, /*#__PURE__*/React.createElement(Mail, {
     className: "h-4 w-4 inline mr-2"
-  }), "\uC774\uBA54\uC77C"), /*#__PURE__*/React.createElement(Input, {
+  }), "이메일"), /*#__PURE__*/React.createElement(Input, {
     id: "email",
     type: "email",
     value: profileData.email,
@@ -152,7 +152,7 @@ export default function ProfileDialogs({
     className: isDarkMode ? "text-gray-300" : ""
   }, /*#__PURE__*/React.createElement(Phone, {
     className: "h-4 w-4 inline mr-2"
-  }), "\uC804\uD654\uBC88\uD638"), /*#__PURE__*/React.createElement(Input, {
+  }), "전화번호"), /*#__PURE__*/React.createElement(Input, {
     id: "phone",
     value: profileData.phone,
     onChange: e => setProfileData({
@@ -167,7 +167,7 @@ export default function ProfileDialogs({
     className: isDarkMode ? "text-gray-300" : ""
   }, /*#__PURE__*/React.createElement(Building, {
     className: "h-4 w-4 inline mr-2"
-  }), "\uBD80\uC11C"), /*#__PURE__*/React.createElement(Input, {
+  }), "부서"), /*#__PURE__*/React.createElement(Input, {
     id: "department",
     value: profileData.role,
     onChange: e => setProfileData({
@@ -178,25 +178,25 @@ export default function ProfileDialogs({
   }))), /*#__PURE__*/React.createElement(DialogFooter, null, /*#__PURE__*/React.createElement(Button, {
     variant: "outline",
     onClick: () => setIsProfileDialogOpen(false)
-  }, "\uCDE8\uC18C"), /*#__PURE__*/React.createElement(Button, {
+  }, "취소"), /*#__PURE__*/React.createElement(Button, {
     onClick: handleProfileSave
-  }, "\uC800\uC7A5")))), /*#__PURE__*/React.createElement(Dialog, {
+  }, "저장")))), /*#__PURE__*/React.createElement(Dialog, {
     open: isPasswordDialogOpen,
     onOpenChange: setIsPasswordDialogOpen
   }, /*#__PURE__*/React.createElement(DialogContent, {
     className: `sm:max-w-[425px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`
   }, /*#__PURE__*/React.createElement(DialogHeader, null, /*#__PURE__*/React.createElement(DialogTitle, {
     className: isDarkMode ? "text-white" : ""
-  }, "\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD"), /*#__PURE__*/React.createElement(DialogDescription, {
+  }, "비밀번호 변경"), /*#__PURE__*/React.createElement(DialogDescription, {
     className: isDarkMode ? "text-gray-400" : ""
-  }, "\uBCF4\uC548\uC744 \uC704\uD574 \uD604\uC7AC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD55C \uD6C4 \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC124\uC815\uD569\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("div", {
+  }, "현재 비밀번호를 확인한 후 새 비밀번호를 설정합니다.")), /*#__PURE__*/React.createElement("div", {
     className: "grid gap-4 py-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid gap-2"
   }, /*#__PURE__*/React.createElement(Label, {
     htmlFor: "current-password",
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uD604\uC7AC \uBE44\uBC00\uBC88\uD638"), /*#__PURE__*/React.createElement("div", {
+  }, "현재 비밀번호"), /*#__PURE__*/React.createElement("div", {
     className: "relative"
   }, /*#__PURE__*/React.createElement(Input, {
     id: "current-password",
@@ -225,7 +225,7 @@ export default function ProfileDialogs({
   }, /*#__PURE__*/React.createElement(Label, {
     htmlFor: "new-password",
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0C8 \uBE44\uBC00\uBC88\uD638"), /*#__PURE__*/React.createElement("div", {
+  }, "새 비밀번호"), /*#__PURE__*/React.createElement("div", {
     className: "relative"
   }, /*#__PURE__*/React.createElement(Input, {
     id: "new-password",
@@ -254,7 +254,7 @@ export default function ProfileDialogs({
   }, /*#__PURE__*/React.createElement(Label, {
     htmlFor: "confirm-password",
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778"), /*#__PURE__*/React.createElement("div", {
+  }, "새 비밀번호 확인"), /*#__PURE__*/React.createElement("div", {
     className: "relative"
   }, /*#__PURE__*/React.createElement(Input, {
     id: "confirm-password",
@@ -284,29 +284,29 @@ export default function ProfileDialogs({
     className: "h-4 w-4"
   }), /*#__PURE__*/React.createElement(AlertDescription, null, passwordError)), /*#__PURE__*/React.createElement("div", {
     className: `text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"} mt-2`
-  }, /*#__PURE__*/React.createElement("p", null, "\uBE44\uBC00\uBC88\uD638 \uC694\uAD6C\uC0AC\uD56D:"), /*#__PURE__*/React.createElement("ul", {
+  }, /*#__PURE__*/React.createElement("p", null, "비밀번호 요구사항:"), /*#__PURE__*/React.createElement("ul", {
     className: "list-disc list-inside mt-1 space-y-1"
-  }, /*#__PURE__*/React.createElement("li", null, "\uCD5C\uC18C 8\uC790 \uC774\uC0C1"), /*#__PURE__*/React.createElement("li", null, "\uC601\uBB38, \uC22B\uC790, \uD2B9\uC218\uBB38\uC790 \uC870\uD569 \uAD8C\uC7A5")))), /*#__PURE__*/React.createElement(DialogFooter, null, /*#__PURE__*/React.createElement(Button, {
+  }, /*#__PURE__*/React.createElement("li", null, "최소 8자 이상"), /*#__PURE__*/React.createElement("li", null, "영문, 숫자, 특수문자 조합 필수")))), /*#__PURE__*/React.createElement(DialogFooter, null, /*#__PURE__*/React.createElement(Button, {
     variant: "outline",
     onClick: () => setIsPasswordDialogOpen(false)
-  }, "\uCDE8\uC18C"), /*#__PURE__*/React.createElement(Button, {
+  }, "취소"), /*#__PURE__*/React.createElement(Button, {
     onClick: handlePasswordChange
-  }, "\uBCC0\uACBD")))), /*#__PURE__*/React.createElement(Dialog, {
+  }, "저장")))), /*#__PURE__*/React.createElement(Dialog, {
     open: isSecurityDialogOpen,
     onOpenChange: setIsSecurityDialogOpen
   }, /*#__PURE__*/React.createElement(DialogContent, {
     className: `sm:max-w-[525px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`
   }, /*#__PURE__*/React.createElement(DialogHeader, null, /*#__PURE__*/React.createElement(DialogTitle, {
     className: isDarkMode ? "text-white" : ""
-  }, "\uBCF4\uC548 \uC124\uC815"), /*#__PURE__*/React.createElement(DialogDescription, {
+  }, "보안 설정"), /*#__PURE__*/React.createElement(DialogDescription, {
     className: isDarkMode ? "text-gray-400" : ""
-  }, "\uACC4\uC815 \uBCF4\uC548 \uBC0F \uC54C\uB9BC \uC124\uC815\uC744 \uAD00\uB9AC\uD569\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("div", {
+  }, "계정 보안 및 접근 설정을 관리합니다.")), /*#__PURE__*/React.createElement("div", {
     className: "space-y-6 py-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("h4", {
     className: `font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uC778\uC99D \uC124\uC815"), /*#__PURE__*/React.createElement("div", {
+  }, "인증 설정"), /*#__PURE__*/React.createElement("div", {
     className: "space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
@@ -316,9 +316,9 @@ export default function ProfileDialogs({
     className: "h-5 w-5 text-blue-500"
   }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "2\uB2E8\uACC4 \uC778\uC99D"), /*#__PURE__*/React.createElement("p", {
+  }, "2단계 인증"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "\uBAA8\uBC14\uC77C \uC571\uC744 \uD1B5\uD55C \uCD94\uAC00 \uBCF4\uC548 \uC778\uC99D"))), /*#__PURE__*/React.createElement(Switch, {
+  }, "모바일 앱을 통한 추가 인증 절차입니다."))), /*#__PURE__*/React.createElement(Switch, {
     checked: securitySettings.twoFactorEnabled,
     onCheckedChange: checked => setSecuritySettings({
       ...securitySettings,
@@ -332,13 +332,13 @@ export default function ProfileDialogs({
     className: "h-4 w-4 text-green-500 mr-2"
   }), /*#__PURE__*/React.createElement("span", {
     className: `text-sm ${isDarkMode ? "text-green-400" : "text-green-700"}`
-  }, "2\uB2E8\uACC4 \uC778\uC99D\uC774 \uD65C\uC131\uD654\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4"))))), /*#__PURE__*/React.createElement(Separator, {
+  }, "2단계 인증이 활성화되어 있습니다.")))))), /*#__PURE__*/React.createElement(Separator, {
     className: isDarkMode ? "bg-gray-700" : ""
   }), /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("h4", {
     className: `font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uC54C\uB9BC \uC124\uC815"), /*#__PURE__*/React.createElement("div", {
+  }, "알림 설정"), /*#__PURE__*/React.createElement("div", {
     className: "space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
@@ -348,9 +348,9 @@ export default function ProfileDialogs({
     className: "h-5 w-5 text-orange-500"
   }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "\uC774\uBA54\uC77C \uC54C\uB9BC"), /*#__PURE__*/React.createElement("p", {
+  }, "이메일 알림"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "\uC911\uC694\uD55C \uBCF4\uC548 \uC774\uBCA4\uD2B8 \uC2DC \uC774\uBA54\uC77C \uBC1C\uC1A1"))), /*#__PURE__*/React.createElement(Switch, {
+  }, "중요한 정보가 포함된 이메일을 발송"))), /*#__PURE__*/React.createElement(Switch, {
     checked: securitySettings.emailNotifications,
     onCheckedChange: checked => setSecuritySettings({
       ...securitySettings,
@@ -364,9 +364,9 @@ export default function ProfileDialogs({
     className: "h-5 w-5 text-red-500"
   }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "\uB85C\uADF8\uC778 \uC54C\uB9BC"), /*#__PURE__*/React.createElement("p", {
+  }, "로그인 알림"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "\uC0C8\uB85C\uC6B4 \uAE30\uAE30\uC5D0\uC11C \uB85C\uADF8\uC778 \uC2DC \uC54C\uB9BC"))), /*#__PURE__*/React.createElement(Switch, {
+  }, "새로운 기기에서 로그인할 때 알림을 받습니다."))), /*#__PURE__*/React.createElement(Switch, {
     checked: securitySettings.loginAlerts,
     onCheckedChange: checked => setSecuritySettings({
       ...securitySettings,
@@ -378,13 +378,13 @@ export default function ProfileDialogs({
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("h4", {
     className: `font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "\uC138\uC158 \uAD00\uB9AC"), /*#__PURE__*/React.createElement("div", {
+  }, "세션 관리"), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Label, {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "\uC790\uB3D9 \uB85C\uADF8\uC544\uC6C3"), /*#__PURE__*/React.createElement("p", {
+  }, "자동 로그아웃"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "30\uBD84 \uBE44\uD65C\uC131 \uC2DC \uC790\uB3D9 \uB85C\uADF8\uC544\uC6C3")), /*#__PURE__*/React.createElement(Switch, {
+  }, "30분 비활성화 시 자동 로그아웃")), /*#__PURE__*/React.createElement(Switch, {
     checked: securitySettings.sessionTimeout,
     onCheckedChange: checked => setSecuritySettings({
       ...securitySettings,
@@ -393,68 +393,68 @@ export default function ProfileDialogs({
   })))), /*#__PURE__*/React.createElement(DialogFooter, null, /*#__PURE__*/React.createElement(Button, {
     variant: "outline",
     onClick: () => setIsSecurityDialogOpen(false)
-  }, "\uCDE8\uC18C"), /*#__PURE__*/React.createElement(Button, {
+  }, "취소"), /*#__PURE__*/React.createElement(Button, {
     onClick: handleSecuritySave
-  }, "\uC800\uC7A5")))), /*#__PURE__*/React.createElement(Dialog, {
+  }, "저장")))), /*#__PURE__*/React.createElement(Dialog, {
     open: isHelpDialogOpen,
     onOpenChange: setIsHelpDialogOpen
   }, /*#__PURE__*/React.createElement(DialogContent, {
     className: `sm:max-w-[600px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`
   }, /*#__PURE__*/React.createElement(DialogHeader, null, /*#__PURE__*/React.createElement(DialogTitle, {
     className: isDarkMode ? "text-white" : ""
-  }, "\uB3C4\uC6C0\uB9D0"), /*#__PURE__*/React.createElement(DialogDescription, {
+  }, "도움말"), /*#__PURE__*/React.createElement(DialogDescription, {
     className: isDarkMode ? "text-gray-400" : ""
-  }, "PickCoin \uAD00\uB9AC\uC790 \uC2DC\uC2A4\uD15C \uC0AC\uC6A9\uBC95\uC744 \uC548\uB0B4\uD569\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("div", {
+  }, "PickCoin 관련자 시스템 사용법을 안내합니다.")), /*#__PURE__*/React.createElement("div", {
     className: "space-y-6 py-4 max-h-96 overflow-y-auto"
   }, /*#__PURE__*/React.createElement(Card, {
     className: isDarkMode ? "bg-gray-700 border-gray-600" : ""
   }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, {
     className: `text-lg ${isDarkMode ? "text-white" : ""}`
-  }, "\uC8FC\uC694 \uAE30\uB2A5")), /*#__PURE__*/React.createElement(CardContent, {
+  }, "주요 기능")), /*#__PURE__*/React.createElement(CardContent, {
     className: "space-y-3"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "\uB300\uC2DC\uBCF4\uB4DC"), /*#__PURE__*/React.createElement("p", {
+  }, "대시보드"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "\uC2E4\uC2DC\uAC04 \uC2DC\uC2A4\uD15C \uD604\uD669\uACFC \uC8FC\uC694 \uC9C0\uD45C\uB97C \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
+  }, "실시간 상태 대시보드를 통해 주요 지표를 확인할 수 있습니다.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "\uC0AC\uC6A9\uC790 \uAD00\uB9AC"), /*#__PURE__*/React.createElement("p", {
+  }, "사용자 관리"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "\uC0AC\uC6A9\uC790 \uACC4\uC815 \uC0C1\uD0DC\uB97C \uAD00\uB9AC\uD558\uACE0 \uC0C1\uC138 \uC815\uBCF4\uB97C \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
+  }, "사용자 계정을 관리하고 상세 정보를 확인할 수 있습니다.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
     className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "1:1 \uBB38\uC758"), /*#__PURE__*/React.createElement("p", {
+  }, "1:1 문의"), /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`
-  }, "\uC0AC\uC6A9\uC790 \uBB38\uC758\uC0AC\uD56D\uC5D0 \uC2E4\uC2DC\uAC04\uC73C\uB85C \uC751\uB2F5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.")))), /*#__PURE__*/React.createElement(Card, {
+  }, "사용자 문의사항에 실시간으로 대응할 수 있습니다.")))), /*#__PURE__*/React.createElement(Card, {
     className: isDarkMode ? "bg-gray-700 border-gray-600" : ""
   }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, {
     className: `text-lg ${isDarkMode ? "text-white" : ""}`
-  }, "\uB2E8\uCD95\uD0A4")), /*#__PURE__*/React.createElement(CardContent, {
+  }, "단축키")), /*#__PURE__*/React.createElement(CardContent, {
     className: "space-y-2"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between"
   }, /*#__PURE__*/React.createElement("span", {
     className: `text-sm ${isDarkMode ? "text-gray-300" : ""}`
-  }, "\uC0C8\uB85C\uACE0\uCE68"), /*#__PURE__*/React.createElement("code", {
+  }, "새로고침"), /*#__PURE__*/React.createElement("code", {
     className: `text-xs px-2 py-1 rounded ${isDarkMode ? "bg-gray-600 text-gray-200" : "bg-gray-100"}`
   }, "Ctrl + R")), /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between"
   }, /*#__PURE__*/React.createElement("span", {
     className: `text-sm ${isDarkMode ? "text-gray-300" : ""}`
-  }, "\uAC80\uC0C9"), /*#__PURE__*/React.createElement("code", {
+  }, "검색"), /*#__PURE__*/React.createElement("code", {
     className: `text-xs px-2 py-1 rounded ${isDarkMode ? "bg-gray-600 text-gray-200" : "bg-gray-100"}`
   }, "Ctrl + F")), /*#__PURE__*/React.createElement("div", {
     className: "flex justify-between"
   }, /*#__PURE__*/React.createElement("span", {
     className: `text-sm ${isDarkMode ? "text-gray-300" : ""}`
-  }, "\uB2E4\uD06C\uBAA8\uB4DC \uC804\uD658"), /*#__PURE__*/React.createElement("code", {
+  }, "다크모드 전환"), /*#__PURE__*/React.createElement("code", {
     className: `text-xs px-2 py-1 rounded ${isDarkMode ? "bg-gray-600 text-gray-200" : "bg-gray-100"}`
   }, "Ctrl + D")))), /*#__PURE__*/React.createElement(Card, {
     className: isDarkMode ? "bg-gray-700 border-gray-600" : ""
   }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, {
     className: `text-lg ${isDarkMode ? "text-white" : ""}`
-  }, "\uBB38\uC758\uD558\uAE30")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("p", {
+  }, "문의하기")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mb-3`
-  }, "\uC2DC\uC2A4\uD15C \uC0AC\uC6A9 \uC911 \uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD558\uBA74 \uC544\uB798 \uC5F0\uB77D\uCC98\uB85C \uBB38\uC758\uD574\uC8FC\uC138\uC694."), /*#__PURE__*/React.createElement("div", {
+  }, "시스템 사용 중 문제가 발생하면 아래 연락처로 문의해 주시기 바랍니다."), /*#__PURE__*/React.createElement("div", {
     className: "space-y-2"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center"
@@ -470,5 +470,5 @@ export default function ProfileDialogs({
     className: `text-sm ${isDarkMode ? "text-gray-300" : ""}`
   }, "1588-1234")))))), /*#__PURE__*/React.createElement(DialogFooter, null, /*#__PURE__*/React.createElement(Button, {
     onClick: () => setIsHelpDialogOpen(false)
-  }, "\uD655\uC778")))));
+  }, "확인"))));
 }

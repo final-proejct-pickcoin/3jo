@@ -9,6 +9,7 @@ import { Label } from "@/components_admin/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import axios from "axios";
+import SignUpModal from "./ui/signup-modal";
 export default function LoginForm({
   onLogin
 }) {
@@ -18,6 +19,7 @@ export default function LoginForm({
     email: "",
     password: ""
   });
+  const [isModalOpen, setModalOpen] = useState(false);
   
   const [token, setToken] = useState(null);
   const [error, setError] = useState("");
@@ -45,7 +47,7 @@ export default function LoginForm({
     setError("");
 
     // FastAPI에 로그인 정보 요청
-    axios.post("http://localhost:8000/admin/login", formData, {
+    await axios.post("http://localhost:8000/admin/login", formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }
@@ -63,6 +65,7 @@ export default function LoginForm({
         
         onLogin();
         setError(null);
+        window.location.reload();
       }else if(response.data.role === "USER"){
         setError("관리자 계정이 아닙니다.");
       } else {
@@ -93,7 +96,7 @@ export default function LoginForm({
       </CardHeader>
       <CardContent>
         {!token ? (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
                         
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">관리자 ID</Label>
@@ -118,11 +121,15 @@ export default function LoginForm({
             </div>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
             <Button type="submit" className="w-full h-11 ...">로그인</Button>
-            
           </form>
+            
         ) : (
           <MainDashboardComponent onLogout={handleLogout} />
         )}
+        <hr/>
+        <hr/>
+        <Button className="w-full h-11 ..." onClick={() => {setModalOpen(true)}}>회원가입</Button>
+        <SignUpModal isOpenSignUp={isModalOpen} onClose={() => setModalOpen(false)} />
       </CardContent>
     </Card>
   </div>

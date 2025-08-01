@@ -174,7 +174,7 @@ export default function AdvancedDashboard() {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: "text-orange-100 text-sm font-medium"
-  }, "\uCD1D \uC0AC\uC6A9\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, "총 사용자"), /*#__PURE__*/React.createElement("p", {
     className: "text-3xl font-bold"
   }, "15,420"), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center mt-2"
@@ -194,7 +194,7 @@ export default function AdvancedDashboard() {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: "text-blue-100 text-sm font-medium"
-  }, "\uC628\uB77C\uC778 \uC0AC\uC6A9\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, "온라인 사용자"), /*#__PURE__*/React.createElement("p", {
     className: "text-3xl font-bold"
   }, realTimeData.onlineUsers.toLocaleString()), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center mt-2"
@@ -202,7 +202,7 @@ export default function AdvancedDashboard() {
     className: "h-4 w-4 mr-1"
   }), /*#__PURE__*/React.createElement("span", {
     className: "text-sm"
-  }, "\uC2E4\uC2DC\uAC04"))), /*#__PURE__*/React.createElement(Activity, {
+  }, "실시간"))), /*#__PURE__*/React.createElement(Activity, {
     className: "h-12 w-12 text-blue-200"
   })))), /*#__PURE__*/React.createElement(Card, {
     className: "relative overflow-hidden bg-gradient-to-br from-green-500 to-emerald-500 border-0 text-white"
@@ -214,7 +214,7 @@ export default function AdvancedDashboard() {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: "text-green-100 text-sm font-medium"
-  }, "24\uC2DC\uAC04 \uAC70\uB798\uB7C9"), /*#__PURE__*/React.createElement("p", {
+  }, "24시간 거래량"), /*#__PURE__*/React.createElement("p", {
     className: "text-3xl font-bold"
   }, "28,450 BTC"), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center mt-2"
@@ -234,7 +234,7 @@ export default function AdvancedDashboard() {
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: "text-purple-100 text-sm font-medium"
-  }, "\uC218\uC218\uB8CC \uC218\uC775"), /*#__PURE__*/React.createElement("p", {
+  }, "수수료 수익"), /*#__PURE__*/React.createElement("p", {
     className: "text-3xl font-bold"
   }, "$847K"), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center mt-2"
@@ -252,7 +252,7 @@ export default function AdvancedDashboard() {
     className: "flex items-center"
   }, /*#__PURE__*/React.createElement(Server, {
     className: "h-5 w-5 mr-2 text-orange-500"
-  }), "\uC2DC\uC2A4\uD15C \uC131\uB2A5 \uBAA8\uB2C8\uD130\uB9C1"), /*#__PURE__*/React.createElement(CardDescription, null, "\uC2E4\uC2DC\uAC04 \uC11C\uBC84 \uB9AC\uC18C\uC2A4 \uC0AC\uC6A9\uB960")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }), "시스템 성능 모니터링"), /*#__PURE__*/React.createElement(CardDescription, null, "실시간 서버 리소스 사용량")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 300
   }, /*#__PURE__*/React.createElement(AreaChart, {
@@ -339,7 +339,7 @@ export default function AdvancedDashboard() {
     className: "flex items-center"
   }, /*#__PURE__*/React.createElement(Shield, {
     className: "h-5 w-5 mr-2 text-green-500"
-  }), "\uBCF4\uC548 \uD604\uD669"), /*#__PURE__*/React.createElement(CardDescription, null, "\uC2E4\uC2DC\uAC04 \uBCF4\uC548 \uC9C0\uD45C")), /*#__PURE__*/React.createElement(CardContent, {
+  }), "보안 현황"), /*#__PURE__*/React.createElement(CardDescription, null, "실시간 보안 지표")), /*#__PURE__*/React.createElement(CardContent, {
     className: "space-y-6"
   }, securityMetrics.map((metric, index) => /*#__PURE__*/React.createElement("div", {
     key: index,
@@ -365,7 +365,7 @@ export default function AdvancedDashboard() {
     className: "text-lg font-bold text-green-600"
   }, "99.9%"), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-gray-600"
-  }, "\uAC00\uB3D9\uB960")), /*#__PURE__*/React.createElement("div", {
+  }, "가동률")), /*#__PURE__*/React.createElement("div", {
     className: "text-center p-3 bg-orange-50 rounded-lg"
   }, /*#__PURE__*/React.createElement(AlertTriangle, {
     className: "h-6 w-6 text-orange-500 mx-auto mb-1"
@@ -373,9 +373,9 @@ export default function AdvancedDashboard() {
     className: "text-lg font-bold text-orange-600"
   }, "3"), /*#__PURE__*/React.createElement("div", {
     className: "text-xs text-gray-600"
-  }, "\uC54C\uB9BC"))))))), /*#__PURE__*/React.createElement("div", {
+  }, "경고"))))))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 lg:grid-cols-2 gap-6"
-  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uAC70\uB798\uC30D\uBCC4 \uBD84\uC11D"), /*#__PURE__*/React.createElement(CardDescription, null, "24\uC2DC\uAC04 \uAC70\uB798\uB7C9 \uBC0F \uBCC0\uB3D9\uB960")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "거래쌍별 분석"), /*#__PURE__*/React.createElement(CardDescription, null, "24시간 거래량 및 변동성")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 350
   }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
@@ -422,7 +422,7 @@ export default function AdvancedDashboard() {
     className: "text-xs"
   }, pair.change > 0 ? "+" : "", pair.change, "%"), /*#__PURE__*/React.createElement("span", {
     className: "text-sm text-gray-600"
-  }, pair.volume.toLocaleString(), " BTC"))))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uAC70\uB798\uB7C9 \uCD94\uC774"), /*#__PURE__*/React.createElement(CardDescription, null, "\uCD5C\uADFC 7\uC77C\uAC04 \uAC70\uB798 \uD65C\uB3D9")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }, pair.volume.toLocaleString(), " BTC"))))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "거래량 추이"), /*#__PURE__*/React.createElement(CardDescription, null, "최근 7일간 거래량 추이")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 350
   }, /*#__PURE__*/React.createElement(AreaChart, {
@@ -472,7 +472,7 @@ export default function AdvancedDashboard() {
     dot: {
       r: 4
     }
-  })))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC218\uC775\uC6D0 \uBD84\uC11D"), /*#__PURE__*/React.createElement(CardDescription, null, "\uC218\uC218\uB8CC \uC720\uD615\uBCC4 \uC218\uC775 \uAD6C\uC131")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
+  })))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "유저별 분석"), /*#__PURE__*/React.createElement(CardDescription, null, "상세 유저 유형별 유저 구성")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-3 gap-6"
   }, revenueStreamData.map((stream, index) => /*#__PURE__*/React.createElement("div", {
     key: index,
@@ -500,7 +500,7 @@ export default function AdvancedDashboard() {
     className: "text-2xl font-bold text-gray-800"
   }, "$", stream.amount.toLocaleString()), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-gray-600"
-  }, stream.value, "% of total"))))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC2E4\uC2DC\uAC04 \uD65C\uB3D9 \uD53C\uB4DC"), /*#__PURE__*/React.createElement(CardDescription, null, "\uCD5C\uADFC \uC2DC\uC2A4\uD15C \uD65C\uB3D9 \uBC0F \uC54C\uB9BC")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
+  }, stream.value, "% of total"))))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "실시간 활동 피드"), /*#__PURE__*/React.createElement(CardDescription, null, "최근 시스템 활동 및 알림")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center p-4 bg-green-50 rounded-lg border-l-4 border-green-500"
@@ -510,11 +510,11 @@ export default function AdvancedDashboard() {
     className: "flex-1"
   }, /*#__PURE__*/React.createElement("p", {
     className: "font-medium text-green-800"
-  }, "\uB300\uC6A9\uB7C9 \uAC70\uB798 \uCC98\uB9AC \uC644\uB8CC"), /*#__PURE__*/React.createElement("p", {
+  }, "대용량 거래 처리완료"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-green-600"
-  }, "BTC/USDT \uAC70\uB798\uC30D\uC5D0\uC11C 1,000 BTC \uAC70\uB798\uAC00 \uC131\uACF5\uC801\uC73C\uB85C \uCC98\uB9AC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("span", {
+  }, "BTC/USDT 거래쌍에서 1,000 BTC 거래가 성공적으로 체결되었습니다.")), /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-green-600"
-  }, "\uBC29\uAE08 \uC804")), /*#__PURE__*/React.createElement("div", {
+  }, "방금 전")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center p-4 bg-orange-50 rounded-lg border-l-4 border-orange-500"
   }, /*#__PURE__*/React.createElement(AlertTriangle, {
     className: "h-5 w-5 text-orange-500 mr-3"
@@ -522,11 +522,11 @@ export default function AdvancedDashboard() {
     className: "flex-1"
   }, /*#__PURE__*/React.createElement("p", {
     className: "font-medium text-orange-800"
-  }, "\uC2DC\uC2A4\uD15C \uBD80\uD558 \uC99D\uAC00"), /*#__PURE__*/React.createElement("p", {
+  }, "시스템 부하 경고"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-orange-600"
-  }, "CPU \uC0AC\uC6A9\uB960\uC774 85%\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4. \uBAA8\uB2C8\uD130\uB9C1\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("span", {
+  }, "CPU 사용률이 85%에 도달했습니다. 모니터링을 강화합니다.")), /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-orange-600"
-  }, "2\uBD84 \uC804")), /*#__PURE__*/React.createElement("div", {
+  }, "2분 전")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500"
   }, /*#__PURE__*/React.createElement(Users, {
     className: "h-5 w-5 text-blue-500 mr-3"
@@ -534,9 +534,9 @@ export default function AdvancedDashboard() {
     className: "flex-1"
   }, /*#__PURE__*/React.createElement("p", {
     className: "font-medium text-blue-800"
-  }, "\uC2E0\uADDC \uC0AC\uC6A9\uC790 \uAE09\uC99D"), /*#__PURE__*/React.createElement("p", {
+  }, "신규 사용자 급증"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm text-blue-600"
-  }, "\uC9C0\uB09C 1\uC2DC\uAC04 \uB3D9\uC548 234\uBA85\uC758 \uC2E0\uADDC \uC0AC\uC6A9\uC790\uAC00 \uAC00\uC785\uD588\uC2B5\uB2C8\uB2E4.")), /*#__PURE__*/React.createElement("span", {
+  }, "지난 1시간 동안 234명의 신규사용자가 가입했습니다.")), /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-blue-600"
-  }, "5\uBD84 \uC804"))))));
+  }, "5분 전"))))));
 }
