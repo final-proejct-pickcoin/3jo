@@ -1,0 +1,18 @@
+# 1. Gradle과 JDK가 포함된 베이스 이미지 사용
+FROM gradle:7.5-jdk17
+
+# 2. 컨테이너 내 작업 디렉토리 설정
+USER root
+WORKDIR /home/gradle/app
+
+# 3. 로컬의 모든 소스 코드를 작업 디렉토리로 복사 (빌드는 하지 않음)
+COPY . .
+
+# 4. Gradle 캐시 && 복사된 파일들의 소유자를 gradle 사용자로 변경
+RUN mkdir -p /home/gradle/.gradle && chown -R gradle:gradle /home/gradle
+
+# 5. gradle 사용자로 전환
+USER gradle
+
+# 6. 스프링 부트 포트 노출
+EXPOSE 8080
