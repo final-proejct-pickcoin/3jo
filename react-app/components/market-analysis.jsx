@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Star, Plus, Activity, Globe, BarChart3 } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
 import { TradingChart } from "@/components/trading-chart"
+import {bookmarked,toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
 
 const marketData = [
   { symbol: "BTC", name: "Bitcoin", price: 43000, change: 2.5, volume: "28.5B", marketCap: "840B", rank: 1 },
@@ -75,21 +76,22 @@ export const MarketAnalysis = () => {
   useEffect(() => { subscribe(marketData.map(coin => coin.symbol)) }, [subscribe])
 
   // 관심 코인 추가 표시용
-  const [bookmarked,setBookmarked] = useState({})
+  //const [bookmarked,setBookmarked] = useState({})
 
-  // 관심 코인 추가 표시용 토글
-  const toggle_Bookmark=(symbol)=>{
-      const is_bookmarked = bookmarked[symbol];
+  // // 관심 코인 추가 표시용 토글
+  // const toggle_Bookmark=(symbol)=>{
+  //     const is_bookmarked = bookmarked[symbol];
     
-      setBookmarked((prev)=>({
-        ...prev,
-      [symbol]: !is_bookmarked
-      }
-    ))
+  //     setBookmarked((prev)=>({
+  //       ...prev,
+  //     [symbol]: !is_bookmarked
+  //     }
+  //   ))
 
-    alert(`${symbol} ${is_bookmarked? '코인 북마크 해제됨':'코인 북마크 추가됨'}`)     
-    }
+  //   alert(`${symbol} ${is_bookmarked? '코인 북마크 해제됨':'코인 북마크 추가됨'}`)     
+  //   }
 
+    const {bookmarked,toggle_Bookmark}=useBookmark();
     
 
   return (
@@ -297,8 +299,9 @@ export const MarketAnalysis = () => {
                           <p>시가총액: {formatNumber(coin.marketCap)}</p>
                         </div>
                         <div className="flex gap-2">
+                       
                           <Button size="sm" variant="outline" onClick={()=> toggle_Bookmark(coin.symbol)}>
-                            {/* 클릭 통해 관심코인 추가시 노란별 변경/클릭시 해제와 빈 별 */}
+                             {/* 클릭 통해 관심코인 추가시 노란별 변경/클릭시 해제와 빈 별  */}
                             <Star className="h-3 w-3" fill={bookmarked[coin.symbol]? "yellow":"none"} />
                             </Button>
                           <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button>

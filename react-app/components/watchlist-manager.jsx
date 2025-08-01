@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Search, Bell, Mic, MicOff } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
+//import {toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
+import { useBookmark } from "@/components/bookmark-provider.jsx"
 
 const watchlistData = [
   {
@@ -47,11 +49,11 @@ const watchlistData = [
 
 const availableCoins = [
   { symbol: "LINK", name: "Chainlink", price: 15.2 },
-  { symbol: "UNI", name: "Uniswap", price: 6.8 },
-  { symbol: "MATIC", name: "Polygon", price: 0.92 },
-  { symbol: "AVAX", name: "Avalanche", price: 38.5 },
-  { symbol: "SOL", name: "Solana", price: 98.5 },
-  { symbol: "DOGE", name: "Dogecoin", price: 0.08 },
+  // { symbol: "UNI", name: "Uniswap", price: 6.8 },
+  // { symbol: "MATIC", name: "Polygon", price: 0.92 },
+  // { symbol: "AVAX", name: "Avalanche", price: 38.5 },
+  // { symbol: "SOL", name: "Solana", price: 98.5 },
+  // { symbol: "DOGE", name: "Dogecoin", price: 0.08 },
 ]
 
 
@@ -61,16 +63,22 @@ const formatPrice = (price, currency, krwRate) =>
     : `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
 export const WatchlistManager = () => {
+  
   const { toast } = useToast()
   const { subscribe, unsubscribe, marketData } = useWebSocket()
   const [searchTerm, setSearchTerm] = useState("")
-  const [watchlist, setWatchlist] = useState(watchlistData)
+
+  const { bookmarked,toggle_Bookmark } = useBookmark()
+  // const [watchlist, setWatchlist] = useState(watchlistData)
+const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarked[coin.symbol])
+
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [voiceCommand, setVoiceCommand] = useState("")
   const [showNotificationDialog, setShowNotificationDialog] = useState(false)
   const [alertDialogOpen, setAlertDialogOpen] = useState({})
   const [currency, setCurrency] = useState("KRW")
   const [krwRate, setKrwRate] = useState(0)
+  
 
   useEffect(() => { getKrwRate().then(setKrwRate) }, [])
   useEffect(() => {
@@ -129,6 +137,12 @@ export const WatchlistManager = () => {
         coin.symbol.toLowerCase().includes(searchTerm.toLowerCase())) &&
       !watchlist.find((w) => w.symbol === coin.symbol),
   )
+  
+
+  const bookmarkedcoins=availableCoins.filter(
+    (coin)=>bookmarked[coin.symbol]
+  );
+
 
   return (
     <>
@@ -397,9 +411,16 @@ export const WatchlistManager = () => {
                         ? `₩${(coin.price * krwRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : `$${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                     </span>
-                    <Button size="sm" variant="outline" onClick={() => addToWatchlist(coin)}>
+                    {/* <Button size="sm" variant="outline" onClick={() => addToWatchlist(coin)}>
                       <Plus className="h-3 w-3" />
-                    </Button>
+                    </Button> */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggle_Bookmark(coin.symbol)}
+                      >
+                        <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
+                      </Button>
                   </div>
                 </div>
               ))}

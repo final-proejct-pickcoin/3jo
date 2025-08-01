@@ -1,22 +1,44 @@
-"useclient"
+"use client"
 
-import { Children, useState } from "react";
 import { createContext, useContext, useState } from "react";
 
 
 //context 생성
-const bookmark_context = createContext();
+const BookmarkContext = createContext()
 
 
 //provider 컴포넌트
-export const bookmark_provider=(()=>{
-    const [bookmarked,setBookmarked]=useState({});
+export const BookmarkProvider=({children})=>{
+    const coin_data={
+        BTC : false,
+        ETH : false,
+        BNB : false,
+        XRP : false,
+        ADA : false,
+        SOL : false,
+        DOGE : false,
+        MATIC : false,
+        DOT : false,
+        LINK : false
+
+    }
+
+    const [bookmarked,setBookmarked]=useState(coin_data);
+
+
+    const toggle_Bookmark =(symbol)=>{
+        setBookmarked((prev)=>({
+            ...prev,
+            [symbol]:!prev[symbol],
+        }))
+
+    }
 
     return(
-        <bookmark_context.Provider>={{bookmarked,setBookmarked}}
-        {Children}
-        </bookmark_context.Provider>
+        <BookmarkContext.Provider value={{bookmarked,toggle_Bookmark}}>
+        {children}
+        </BookmarkContext.Provider>
     )
-})
+}
 
-export const useBookmark = () => useContext(bookmark_context);
+export const useBookmark = () => useContext(BookmarkContext);

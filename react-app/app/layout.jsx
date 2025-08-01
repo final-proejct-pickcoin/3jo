@@ -4,6 +4,7 @@ import { WebSocketProvider } from "@/components/websocket-provider"
 import { OnboardingProvider } from "@/components/onboarding-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import { BookmarkProvider } from "@/components/bookmark-provider"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -35,10 +36,10 @@ const RootLayout = ({ children }) => (
         <AuthProvider>
           <WebSocketProvider>
             <OnboardingProvider>
-              <bookmark_provider>
+              <BookmarkProvider>
               {children}
               <Toaster />
-              </bookmark_provider>
+              </BookmarkProvider>
             </OnboardingProvider>
           </WebSocketProvider>
         </AuthProvider>
