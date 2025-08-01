@@ -190,9 +190,9 @@ export default function SupportManagement({
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
     className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "1:1 \uBB38\uC758 \uAD00\uB9AC"), /*#__PURE__*/React.createElement("p", {
+  }, "1:1 문의 관리"), /*#__PURE__*/React.createElement("p", {
     className: `${isDarkMode ? "text-gray-300" : "text-gray-600"} mt-1`
-  }, "\uC0AC\uC6A9\uC790 \uBB38\uC758\uC0AC\uD56D\uC744 \uAD00\uB9AC\uD558\uACE0 \uC751\uB2F5\uD569\uB2C8\uB2E4"))), /*#__PURE__*/React.createElement("div", {
+  }, "사용자 문의사항에 실시간으로 대응할 수 있습니다."))), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-4 gap-6"
   }, /*#__PURE__*/React.createElement(Card, {
     className: isDarkMode ? "bg-gray-800 border-gray-700" : ""
@@ -202,7 +202,7 @@ export default function SupportManagement({
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC2E0\uADDC \uBB38\uC758"), /*#__PURE__*/React.createElement("p", {
+  }, "신규 문의"), /*#__PURE__*/React.createElement("p", {
     className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
   }, tickets.filter(t => t.status === "신규").length)), /*#__PURE__*/React.createElement("div", {
     className: "w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center"
@@ -216,7 +216,7 @@ export default function SupportManagement({
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC9C4\uD589\uC911"), /*#__PURE__*/React.createElement("p", {
+  }, "진행중"), /*#__PURE__*/React.createElement("p", {
     className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
   }, tickets.filter(t => t.status === "진행중").length)), /*#__PURE__*/React.createElement("div", {
     className: "w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center"
@@ -230,7 +230,7 @@ export default function SupportManagement({
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC644\uB8CC"), /*#__PURE__*/React.createElement("p", {
+  }, "완료"), /*#__PURE__*/React.createElement("p", {
     className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
   }, tickets.filter(t => t.status === "완료").length)), /*#__PURE__*/React.createElement("div", {
     className: "w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center"
@@ -244,7 +244,7 @@ export default function SupportManagement({
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC804\uCCB4 \uBB38\uC758"), /*#__PURE__*/React.createElement("p", {
+  }, "접수 문의"), /*#__PURE__*/React.createElement("p", {
     className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
   }, tickets.length)), /*#__PURE__*/React.createElement("div", {
     className: "w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"
@@ -256,16 +256,16 @@ export default function SupportManagement({
     className: "flex items-center justify-between"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(CardTitle, {
     className: isDarkMode ? "text-white" : "text-gray-900"
-  }, "\uBB38\uC758 \uBAA9\uB85D"), /*#__PURE__*/React.createElement(CardDescription, {
+  }, "문의 목록"), /*#__PURE__*/React.createElement(CardDescription, {
     className: isDarkMode ? "text-gray-400" : "text-gray-600"
-  }, "\uCD1D ", filteredTickets.length, "\uAC1C\uC758 \uBB38\uC758")), /*#__PURE__*/React.createElement("div", {
+  }, "총 ", filteredTickets.length, "개의 문의")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center space-x-2"
   }, /*#__PURE__*/React.createElement(Search, {
     className: "h-4 w-4 text-gray-400"
   }), /*#__PURE__*/React.createElement(Input, {
-    placeholder: "\uBB38\uC758 \uAC80\uC0C9...",
+    placeholder: "문의 검색...",
     value: searchTerm,
     onChange: e => setSearchTerm(e.target.value),
     className: "w-64"
@@ -275,51 +275,51 @@ export default function SupportManagement({
   }, /*#__PURE__*/React.createElement(SelectTrigger, {
     className: "w-32"
   }, /*#__PURE__*/React.createElement(SelectValue, {
-    placeholder: "\uC0C1\uD0DC"
+    placeholder: "상태"
   })), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
     value: "all"
-  }, "\uC804\uCCB4"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC2E0\uADDC"
-  }, "\uC2E0\uADDC"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC9C4\uD589\uC911"
-  }, "\uC9C4\uD589\uC911"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB300\uAE30"
-  }, "\uB300\uAE30"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC644\uB8CC"
-  }, "\uC644\uB8CC"))), /*#__PURE__*/React.createElement(Select, {
+  }, "전체"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "신규"
+  }, "신규"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "진행중"
+  }, "진행중"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "완료"
+  }, "완료"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "삭제"
+  }, "삭제"))), /*#__PURE__*/React.createElement(Select, {
     value: priorityFilter,
     onValueChange: setPriorityFilter
   }, /*#__PURE__*/React.createElement(SelectTrigger, {
     className: "w-32"
   }, /*#__PURE__*/React.createElement(SelectValue, {
-    placeholder: "\uC6B0\uC120\uC21C\uC704"
+    placeholder: "우선순위"
   })), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
     value: "all"
-  }, "\uC804\uCCB4"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uAE34\uAE09"
-  }, "\uAE34\uAE09"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB192\uC74C"
-  }, "\uB192\uC74C"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uBCF4\uD1B5"
-  }, "\uBCF4\uD1B5"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB0AE\uC74C"
-  }, "\uB0AE\uC74C")))))), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(Table, null, /*#__PURE__*/React.createElement(TableHeader, null, /*#__PURE__*/React.createElement(TableRow, null, /*#__PURE__*/React.createElement(TableHead, {
+  }, "전체"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "낮음"
+  }, "낮음"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "보통"
+  }, "보통"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "높음"
+  }, "높음"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "매우높음"
+  }, "매우높음")))))), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(Table, null, /*#__PURE__*/React.createElement(TableHeader, null, /*#__PURE__*/React.createElement(TableRow, null, /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
   }, "ID"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0AC\uC6A9\uC790"), /*#__PURE__*/React.createElement(TableHead, {
+  }, "사용자"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC81C\uBAA9"), /*#__PURE__*/React.createElement(TableHead, {
+  }, "제목"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uCE74\uD14C\uACE0\uB9AC"), /*#__PURE__*/React.createElement(TableHead, {
+  }, "카테고리"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC6B0\uC120\uC21C\uC704"), /*#__PURE__*/React.createElement(TableHead, {
+  }, "우선순위"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0C1\uD0DC"), /*#__PURE__*/React.createElement(TableHead, {
+  }, "상태"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0DD\uC131\uC77C"), /*#__PURE__*/React.createElement(TableHead, {
+  }, "답변일"), /*#__PURE__*/React.createElement(TableHead, {
     className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC561\uC158"))), /*#__PURE__*/React.createElement(TableBody, null, filteredTickets.map(ticket => /*#__PURE__*/React.createElement(TableRow, {
+  }, "설명"))), /*#__PURE__*/React.createElement(TableBody, null, filteredTickets.map(ticket => /*#__PURE__*/React.createElement(TableRow, {
     key: ticket.id,
     className: "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
   }, /*#__PURE__*/React.createElement(TableCell, {
@@ -338,14 +338,14 @@ export default function SupportManagement({
   }, /*#__PURE__*/React.createElement(SelectTrigger, {
     className: "w-20"
   }, /*#__PURE__*/React.createElement(SelectValue, null)), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uAE34\uAE09"
-  }, "\uAE34\uAE09"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB192\uC74C"
-  }, "\uB192\uC74C"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uBCF4\uD1B5"
-  }, "\uBCF4\uD1B5"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB0AE\uC74C"
-  }, "\uB0AE\uC74C")))), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement("div", {
+    value: "낮음"
+  }, "낮음"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "보통"
+  }, "보통"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "높음"
+  }, "높음"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "매우높음"
+  }, "매우높음")))), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement("div", {
     className: "flex items-center"
   }, getStatusIcon(ticket.status), /*#__PURE__*/React.createElement(Badge, {
     variant: getStatusColor(ticket.status),
@@ -363,26 +363,26 @@ export default function SupportManagement({
     onClick: () => handleTicketClick(ticket)
   }, /*#__PURE__*/React.createElement(Eye, {
     className: "h-4 w-4 mr-2"
-  }), "\uC0C1\uC138 \uBCF4\uAE30"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
+  }), "상세 보기"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
     onClick: () => handleStatusChange(ticket.id, "진행중")
   }, /*#__PURE__*/React.createElement(Clock, {
     className: "h-4 w-4 mr-2"
-  }), "\uC9C4\uD589\uC911\uC73C\uB85C \uBCC0\uACBD"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
+  }), "진행중으로 변경"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
     onClick: () => handleStatusChange(ticket.id, "완료")
   }, /*#__PURE__*/React.createElement(CheckCircle, {
     className: "h-4 w-4 mr-2"
-  }), "\uC644\uB8CC\uB85C \uBCC0\uACBD"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
+  }), "완료로 변경"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
     onClick: () => handleStatusChange(ticket.id, "대기")
   }, /*#__PURE__*/React.createElement(Archive, {
     className: "h-4 w-4 mr-2"
-  }), "\uB300\uAE30\uB85C \uBCC0\uACBD")))))))))), /*#__PURE__*/React.createElement(Dialog, {
+  }), "대기로 변경")))))))))), /*#__PURE__*/React.createElement(Dialog, {
     open: isTicketDialogOpen,
     onOpenChange: setIsTicketDialogOpen
   }, /*#__PURE__*/React.createElement(DialogContent, {
     className: `sm:max-w-[700px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`
   }, /*#__PURE__*/React.createElement(DialogHeader, null, /*#__PURE__*/React.createElement(DialogTitle, {
     className: isDarkMode ? "text-white" : ""
-  }, "\uBB38\uC758 \uC0C1\uC138 - #", selectedTicket?.id), /*#__PURE__*/React.createElement(DialogDescription, {
+  }, "문의 상세 - #", selectedTicket?.id), /*#__PURE__*/React.createElement(DialogDescription, {
     className: isDarkMode ? "text-gray-400" : ""
   }, selectedTicket?.subject)), selectedTicket && /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
@@ -390,49 +390,49 @@ export default function SupportManagement({
     className: `grid grid-cols-2 gap-4 p-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-50"} rounded-lg`
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC0AC\uC6A9\uC790"), /*#__PURE__*/React.createElement("p", {
+  }, "사용자"), /*#__PURE__*/React.createElement("p", {
     className: isDarkMode ? "text-gray-200" : "text-gray-900"
   }, selectedTicket.user)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC774\uBA54\uC77C"), /*#__PURE__*/React.createElement("p", {
+  }, "이메일"), /*#__PURE__*/React.createElement("p", {
     className: isDarkMode ? "text-gray-200" : "text-gray-900"
   }, selectedTicket.email)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uCE74\uD14C\uACE0\uB9AC"), /*#__PURE__*/React.createElement(Badge, {
+  }, "카테고리"), /*#__PURE__*/React.createElement(Badge, {
     variant: "outline"
   }, selectedTicket.category)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC6B0\uC120\uC21C\uC704"), /*#__PURE__*/React.createElement(Select, {
+  }, "우선순위"), /*#__PURE__*/React.createElement(Select, {
     value: selectedTicket.priority,
     onValueChange: value => handlePriorityChange(selectedTicket.id, value)
   }, /*#__PURE__*/React.createElement(SelectTrigger, {
     className: "w-32"
   }, /*#__PURE__*/React.createElement(SelectValue, null)), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uAE34\uAE09"
-  }, "\uAE34\uAE09"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB192\uC74C"
-  }, "\uB192\uC74C"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uBCF4\uD1B5"
-  }, "\uBCF4\uD1B5"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB0AE\uC74C"
-  }, "\uB0AE\uC74C")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    value: "긴급"
+  }, "긴급"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "보통"
+  }, "보통"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "낮음"
+  }, "낮음"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "해제"
+  }, "해제")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC0C1\uD0DC"), /*#__PURE__*/React.createElement(Select, {
+  }, "상태"), /*#__PURE__*/React.createElement(Select, {
     value: selectedTicket.status,
     onValueChange: value => handleStatusChange(selectedTicket.id, value)
   }, /*#__PURE__*/React.createElement(SelectTrigger, {
     className: "w-32"
   }, /*#__PURE__*/React.createElement(SelectValue, null)), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC2E0\uADDC"
-  }, "\uC2E0\uADDC"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC9C4\uD589\uC911"
-  }, "\uC9C4\uD589\uC911"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB300\uAE30"
-  }, "\uB300\uAE30"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC644\uB8CC"
-  }, "\uC644\uB8CC")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    value: "신규"
+  }, "신규"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "진행중"
+  }, "진행중"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "완료"
+  }, "완료"), /*#__PURE__*/React.createElement(SelectItem, {
+    value: "해제"
+  }, "해제")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC0DD\uC131\uC77C"), /*#__PURE__*/React.createElement("p", {
+  }, "작성일"), /*#__PURE__*/React.createElement("p", {
     className: isDarkMode ? "text-gray-200" : "text-gray-900"
   }, selectedTicket.createdAt))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-4 max-h-96 overflow-y-auto"
@@ -454,7 +454,7 @@ export default function SupportManagement({
   }, message.message))))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-3"
   }, /*#__PURE__*/React.createElement(Textarea, {
-    placeholder: "\uB2F5\uBCC0\uC744 \uC785\uB825\uD558\uC138\uC694...",
+    placeholder: "답변을 입력하세요...",
     value: replyMessage,
     onChange: e => setReplyMessage(e.target.value),
     rows: 3,
@@ -466,5 +466,5 @@ export default function SupportManagement({
     disabled: !replyMessage.trim()
   }, /*#__PURE__*/React.createElement(Send, {
     className: "h-4 w-4 mr-2"
-  }), "\uB2F5\uBCC0 \uC804\uC1A1")))))));
+    }), "답변 전송")))))))
 }

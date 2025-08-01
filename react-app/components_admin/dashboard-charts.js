@@ -148,7 +148,7 @@ export default function DashboardCharts() {
     className: "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6"
   }, /*#__PURE__*/React.createElement(Card, {
     className: "xl:col-span-1"
-  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uAC70\uB798\uC30D\uBCC4 \uAC70\uB798\uB7C9 \uBD84\uD3EC"), /*#__PURE__*/React.createElement(CardDescription, null, "24\uC2DC\uAC04 \uAE30\uC900 \uAC70\uB798\uB7C9 \uBE44\uC728")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "거래쌍별 거래량 분포"), /*#__PURE__*/React.createElement(CardDescription, null, "24시간 기준 거래쌍별 거래량 비율")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 300
   }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
@@ -170,7 +170,7 @@ export default function DashboardCharts() {
     formatter: value => [`${value}%`, "비율"]
   }))))), /*#__PURE__*/React.createElement(Card, {
     className: "xl:col-span-2"
-  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC77C\uBCC4 \uAC70\uB798\uB7C9 \uCD94\uC774"), /*#__PURE__*/React.createElement(CardDescription, null, "\uCD5C\uADFC 7\uC77C\uAC04 \uAC70\uB798\uB7C9 \uBC0F \uC218\uC775 \uD604\uD669")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "일별 거래량 추이"), /*#__PURE__*/React.createElement(CardDescription, null, "최근 7일간 거래량 및 사용자 현황")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 300
   }, /*#__PURE__*/React.createElement(AreaChart, {
@@ -195,7 +195,7 @@ export default function DashboardCharts() {
     stroke: "#3b82f6",
     fill: "#3b82f6",
     fillOpacity: 0.6
-  }))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC0AC\uC6A9\uC790 \uC0C1\uD0DC \uBD84\uD3EC"), /*#__PURE__*/React.createElement(CardDescription, null, "\uC804\uCCB4 \uC0AC\uC6A9\uC790 \uD604\uD669")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
+  }))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "사용자 성향 분석"), /*#__PURE__*/React.createElement(CardDescription, null, "전반 사용자 현황")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
     className: "space-y-4"
   }, userStatusData.map((item, index) => /*#__PURE__*/React.createElement("div", {
     key: index,
@@ -232,7 +232,7 @@ export default function DashboardCharts() {
     fill: entry.color
   }))), /*#__PURE__*/React.createElement(Tooltip, {
     formatter: value => [value.toLocaleString(), "사용자"]
-  }))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC2DC\uAC04\uBCC4 \uD65C\uB3D9\uB7C9"), /*#__PURE__*/React.createElement(CardDescription, null, "24\uC2DC\uAC04 \uC0AC\uC6A9\uC790 \uD65C\uB3D9 \uD328\uD134")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "시간대별 활동 분석"), /*#__PURE__*/React.createElement(CardDescription, null, "24시간 기준 사용자 활동 패턴")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 300
   }, /*#__PURE__*/React.createElement(BarChart, {
@@ -247,7 +247,7 @@ export default function DashboardCharts() {
     dataKey: "activity",
     fill: "#f97316",
     radius: [4, 4, 0, 0]
-  }))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC218\uC775\uC6D0\uBCC4 \uBD84\uC11D"), /*#__PURE__*/React.createElement(CardDescription, null, "\uC6D4\uBCC4 \uC218\uC775 \uAD6C\uC131 \uD604\uD669")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
+  }))))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "수익원별 분포"), /*#__PURE__*/React.createElement(CardDescription, null, "각 수익원별 비율")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(ResponsiveContainer, {
     width: "100%",
     height: 300
   }, /*#__PURE__*/React.createElement(BarChart, {
@@ -262,20 +262,20 @@ export default function DashboardCharts() {
     dataKey: "trading",
     stackId: "a",
     fill: "#f97316",
-    name: "\uAC70\uB798 \uC218\uC218\uB8CC"
+    name: "거래 수익"
   }), /*#__PURE__*/React.createElement(Bar, {
     dataKey: "withdrawal",
     stackId: "a",
     fill: "#3b82f6",
-    name: "\uCD9C\uAE08 \uC218\uC218\uB8CC"
+    name: "출금 수수료"
   }), /*#__PURE__*/React.createElement(Bar, {
     dataKey: "listing",
     stackId: "a",
     fill: "#10b981",
-    name: "\uC0C1\uC7A5 \uC218\uC218\uB8CC"
+    name: "상장 수수료"
   }))))), /*#__PURE__*/React.createElement(Card, {
     className: "xl:col-span-3"
-  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "\uC2E4\uC2DC\uAC04 \uC9C0\uD45C"), /*#__PURE__*/React.createElement(CardDescription, null, "\uD604\uC7AC \uC2DC\uC2A4\uD15C \uC0C1\uD0DC \uBC0F \uC8FC\uC694 \uC9C0\uD45C")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement(CardTitle, null, "시스템 성능 지표"), /*#__PURE__*/React.createElement(CardDescription, null, "현재 시스템 상태 및 성능 지표")), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-center p-4 bg-green-50 rounded-lg"
@@ -283,35 +283,35 @@ export default function DashboardCharts() {
     className: "text-2xl font-bold text-green-600"
   }, "99.9%"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm text-gray-600"
-  }, "\uC2DC\uC2A4\uD15C \uAC00\uB3D9\uB960")), /*#__PURE__*/React.createElement("div", {
+  }, "시스템 가동률")), /*#__PURE__*/React.createElement("div", {
     className: "text-center p-4 bg-blue-50 rounded-lg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-blue-600"
   }, "1,247"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm text-gray-600"
-  }, "\uC628\uB77C\uC778 \uC0AC\uC6A9\uC790")), /*#__PURE__*/React.createElement("div", {
+  }, "활성 사용자")), /*#__PURE__*/React.createElement("div", {
     className: "text-center p-4 bg-orange-50 rounded-lg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-orange-600"
   }, "342"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm text-gray-600"
-  }, "\uD65C\uC131 \uAC70\uB798")), /*#__PURE__*/React.createElement("div", {
+  }, "진행 중인 거래")), /*#__PURE__*/React.createElement("div", {
     className: "text-center p-4 bg-purple-50 rounded-lg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-purple-600"
   }, "15ms"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm text-gray-600"
-  }, "\uD3C9\uADE0 \uC751\uB2F5\uC2DC\uAC04")), /*#__PURE__*/React.createElement("div", {
+  }, "평균 응답시간")), /*#__PURE__*/React.createElement("div", {
     className: "text-center p-4 bg-red-50 rounded-lg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-red-600"
   }, "3"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm text-gray-600"
-  }, "\uB300\uAE30 \uC911\uC778 \uBB38\uC758")), /*#__PURE__*/React.createElement("div", {
+  }, "대기 중인 요청")), /*#__PURE__*/React.createElement("div", {
     className: "text-center p-4 bg-yellow-50 rounded-lg"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-2xl font-bold text-yellow-600"
   }, "$2.4M"), /*#__PURE__*/React.createElement("div", {
     className: "text-sm text-gray-600"
-  }, "\uC77C\uC77C \uAC70\uB798\uB7C9"))))));
+  }, "일일 거래량"))))));
 }

@@ -14,6 +14,7 @@ from typing import Dict
 from json import dumps
 from enums.Role import Role
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 
 load_dotenv()
 
@@ -158,8 +159,8 @@ async def register(email: str = Form(...), password: str = Form(...), name: str 
         hashed_pw = pwd_context.hash(password)
 
         # 사용자 등록
-        insert_sql = "INSERT INTO users(email, password, name, role, is_verified) VALUES(%s, %s, %s, %s, %s)"
-        user_data = (email, hashed_pw, name, Role.ADMIN.value, True)
+        insert_sql = "INSERT INTO users(email, password, name, role, is_verified, created_at) VALUES(%s, %s, %s, %s, %s, %s)"
+        user_data = (email, hashed_pw, name, Role.ADMIN.value, True, datetime.now())
         cursor.execute(insert_sql, user_data)
         conn.commit()
     except Exception as e:
