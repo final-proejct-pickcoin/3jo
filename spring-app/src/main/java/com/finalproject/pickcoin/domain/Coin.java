@@ -18,4 +18,6 @@ public class Coin {
     private String symbol;
     @Column(nullable = false)
     private String coin_name;
+    @Column(nullable = false)
+    private String market;
 }
