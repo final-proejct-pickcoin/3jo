@@ -210,7 +210,6 @@ async def login(email: str = Form(...), password: str = Form(...)):
                 "token_type": "bearer"
                 
             })
-
         
             # 토큰을 응답으로 전달 ( JSON)
             return response
@@ -223,6 +222,43 @@ async def login(email: str = Form(...), password: str = Form(...)):
         return HTMLResponse("서버 오류가 발생했습니다.", status_code=500)
     finally:
         conn.close()
+
+
+# 비밀번호 변경
+@app.post("/admin/change-pwd")
+async def change_password(email: str = Form(...), currentPassword: str = Form(...), newPassword: str = Form(...)):
+    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
+    cursor = conn.cursor()
+
+    try:
+        # 현재 비밀번호 확인(해시된 패스워드 가져오기)
+        cursor.execute("SELECT password FROM users WHERE email = %s", (email,))
+        row = cursor.fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"error": "사용자를 찾을 수 없습니다."})
+        hashed_pw = row[0]
+
+        # 비밀번호 확인(입력된 비밀번호와 해시 비교)
+        if not pwd_context.verify(currentPassword, hashed_pw):
+            return JSONResponse(status_code=401, content={"error": "현재 비밀번호가 올바르지 않습니다."})
+
+        # 비밀번호 해싱
+        new_hashed_pw = pwd_context.hash(newPassword)
+
+        # 비밀번호 업데이트
+        update_sql = "UPDATE users SET password = %s WHERE email = %s"
+        cursor.execute(update_sql, (new_hashed_pw, email))
+        conn.commit()
+
+        return JSONResponse(content={"msg": "비밀번호가 변경되었습니다."})
+    
+    except Exception as e:
+        print(f"비밀번호 변경 실패 {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+    finally:
+        conn.close()
+
 
 # 로그인된 유저들 가져오기
 @app.get("/logged-in-users")
