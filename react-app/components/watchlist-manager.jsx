@@ -49,11 +49,23 @@ const watchlistData = [
 
 const availableCoins = [
   { symbol: "LINK", name: "Chainlink", price: 15.2 },
-  // { symbol: "UNI", name: "Uniswap", price: 6.8 },
-  // { symbol: "MATIC", name: "Polygon", price: 0.92 },
-  // { symbol: "AVAX", name: "Avalanche", price: 38.5 },
-  // { symbol: "SOL", name: "Solana", price: 98.5 },
-  // { symbol: "DOGE", name: "Dogecoin", price: 0.08 },
+  { symbol: "UNI", name: "Uniswap", price: 6.8 },
+  { symbol: "MATIC", name: "Polygon", price: 0.92 },
+  { symbol: "AVAX", name: "Avalanche", price: 38.5 },
+  { symbol: "SOL", name: "Solana", price: 98.5 },
+  { symbol: "DOGE", name: "Dogecoin", price: 0.08 },
+  { symbol: "DOGEJA", name: "Dogejacoin", price: 14.3 },
+  { symbol: "D1", name: "Done", price: 14.3 },
+  { symbol: "D2", name: "Dtwo", price: 14.3 },
+  { symbol: "D3", name: "Dtree", price: 14.3 },
+  { symbol: "D4", name: "Dfour", price: 14.3 },
+  { symbol: "D5", name: "Dfive", price: 14.3 },
+  { symbol: "D6", name: "Dsix", price: 14.3 },
+  { symbol: "D7", name: "Dseven", price: 14.3 },
+  { symbol: "D8", name: "Deight", price: 14.3 },
+  { symbol: "D9", name: "Dnine", price: 14.3 },
+  { symbol: "D10", name: "Dten", price: 14.3 },
+
 ]
 
 
@@ -227,8 +239,9 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
                                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                               )}
                               <span className={`text-xs ${currentChange > 0 ? "text-green-500" : "text-red-500"}`}> 
-                                {currentChange > 0 ? "+" : ""}
-                                {currentChange.toFixed(1)}%
+                              {Number.isFinite(currentChange)
+                                ? `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(1)}%`
+                                : "-"}
                               </span>
                             </div>
                           </div>
@@ -302,7 +315,7 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
                           </div>
                         </div>
                       </div>
-                      {coin.alerts.length > 0 && (
+                      {Array.isArray(coin.alerts) && coin.alerts.length >= 1 && (
                         <div className="flex gap-2 mt-1">
                           {coin.alerts.map((alert, index) => (
                             <Badge
@@ -310,7 +323,7 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
                               variant="outline"
                               className="flex items-center justify-center text-[11px] rounded-full px-3 w-32 h-9 min-w-[110px] max-w-[180px]"
                               style={{ borderRadius: '9999px' }}
-                            >
+                            >{alert}
                               <button
                                 type="button"
                                 className="mr-2 text-muted-foreground hover:text-destructive flex-shrink-0"
@@ -393,7 +406,7 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
             )}
 
             <div className="space-y-2">
-              {filteredCoins.map((coin) => (
+              {filteredCoins.slice(0,7).map((coin) => (
                 <div key={coin.symbol} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
@@ -418,6 +431,7 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
                         size="sm"
                         variant="outline"
                         onClick={() => toggle_Bookmark(coin.symbol)}
+                        onMouseUp={() => toggle_Bookmark(coin.symbol)}
                       >
                         <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
                       </Button>
