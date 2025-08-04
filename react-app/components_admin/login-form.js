@@ -9,6 +9,8 @@ import { Label } from "@/components_admin/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import axios from "axios";
+import SignUpModal from "@/components_admin/ui/signup-modal";
+
 export default function LoginForm({
   onLogin
 }) {
@@ -18,6 +20,9 @@ export default function LoginForm({
     email: "",
     password: ""
   });
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isOpenSignUp, setIsOpenSignUp] = useState(false);
   
   const [token, setToken] = useState(null);
   const [error, setError] = useState("");
@@ -62,6 +67,7 @@ export default function LoginForm({
         setToken(response.data.access_token);    // 상태 업데이트 추가
         
         onLogin();
+        window.location.reload(); // 페이지 새로고침
         setError(null);
       }else if(response.data.role === "USER"){
         setError("관리자 계정이 아닙니다.");
@@ -117,13 +123,15 @@ export default function LoginForm({
               </div>
             </div>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            <Button type="submit" className="w-full h-11 ...">로그인</Button>
-            
+            <Button type="submit" className="w-full h-11 ...">로그인</Button>            
           </form>
         ) : (
-          <MainDashboardComponent onLogout={handleLogout} />
+          <MainDashboardComponent onLogout={handleLogout} />          
         )}
-      </CardContent>
+        <hr/>
+        <Button className="w-full h-11 ..." onClick={() => setModalOpen(true)}>회원가입</Button>
+        <SignUpModal isOpenSignUp={modalOpen} onClose={() => setModalOpen(false)} />
+      </CardContent>      
     </Card>
   </div>
 );
