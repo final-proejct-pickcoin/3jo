@@ -8,12 +8,12 @@ import lombok.Data;
 
 @Data
 @Entity
-public class Wallert {
+public class Wallet {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer wallert_id; // 월렛 ID
     private Integer user_id; // 사용자 ID
     private Integer asset_id;
-
+    private Double amount;
 }

@@ -2,8 +2,8 @@ package com.finalproject.pickcoin.domain;
 
 import java.util.Date;
 
-import com.finalproject.pickcoin.enums.EntityType;
-import com.finalproject.pickcoin.enums.LogType;
+
+import com.finalproject.pickcoin.enums.PointType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,18 +17,17 @@ import lombok.Data;
 
 @Data
 @Entity(name = "admin_log")
-public class AdminLog {
+public class WalletLog {
     
     @Id
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Integer log_id; // 로그 ID
-    private Integer admin_id; // 관리자 ID
-    private LogType action; // 수행한 작업 (예: "CREATE", "UPDATE", "DELETE") enum 해야함
+    private Integer wallet_id; // 관리자 ID
+    private Integer tx_id;    
     @Enumerated(EnumType.STRING)
-    private EntityType entityType; // 엔티티 타입 (예: "User", "Post", "Comment") enum 해야함
-    private Integer entity_id; // 엔티티 ID
-    private String detail; // text
-    
+    private PointType change_type; // 엔티티 타입 (예: "User", "Post", "Comment") enum 해야함
+    private Integer entity_id; // 엔티티 ID    
+    private Double balance;
     @Column(name="created_at", updatable = false)
     @Temporal(TemporalType.TIMESTAMP)    
     private Date createdAt; // 로그 생성 시간

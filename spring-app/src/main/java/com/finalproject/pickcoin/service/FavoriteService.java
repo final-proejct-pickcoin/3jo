@@ -1,5 +1,5 @@
 package com.finalproject.pickcoin.service;
 
-public interface CoinService {
+public class FavoriteService {
     
 }
