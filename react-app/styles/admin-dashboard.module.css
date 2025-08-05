@@ -1,0 +1,40 @@
+/* Admin Dashboard Styles */
+.adminContainer {
+  min-height: 100vh;
+  transition: background-color 0.2s ease-in-out;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.adminContainer.dark {
+  background-color: rgb(17 24 39);
+}
+
+.adminContainer.light {
+  background-color: rgb(249 250 251);
+}
+
+.mainContent {
+  padding: 1.5rem;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.tabContainer {
+  margin-top: 1.5rem;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.loadingContainer {
+  background-color: white;
+  width: 100%;
+  height: 100vh;
+}
+
+/* 메모리 효율적인 box-sizing */
+.adminContainer *,
+.adminContainer *::before,
+.adminContainer *::after {
+  box-sizing: border-box;
+}

@@ -1,105 +1,94 @@
+import { useState, useCallback } from "react";
 import axios from "axios";
-import React, { useState } from "react";
+
+const API_BASE_URL = "http://localhost:8000/admin";
+
+// 스타일 상수
+const modalStyles = {
+  overlay: "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50",
+  container: "bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md shadow-lg",
+  title: "text-xl font-bold mb-4",
+  form: "space-y-4",
+  input: "w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500",
+  buttonContainer: "flex justify-end space-x-2",
+  cancelButton: "px-4 py-2 text-sm bg-gray-300 hover:bg-gray-400 rounded transition-colors",
+  submitButton: "px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors disabled:opacity-50"
+};
 
 export default function SignUpModal({ isOpenSignUp, onClose }) {
-  if (!isOpenSignUp) return null;
-
   const [form, setForm] = useState({
     email: "",
     password: "",
     confirmPassword: "",
     name: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const formData = new FormData();
-  formData.append("email", form.email);
-  formData.append("password", form.password);
-  formData.append("name", form.name);
+  // Early return for closed modal
+  if (!isOpenSignUp) return null;
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
+  const createFormData = useCallback((formData) => {
+    const data = new FormData();
+    data.append("email", formData.email);
+    data.append("password", formData.password);
+    data.append("name", formData.name);
+    return data;
+  }, []);
 
-  const handleSubmit = (e) => {
+  const handleChange = useCallback((e) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  }, []);
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-
+    
     if (form.password !== form.confirmPassword) {
       alert("비밀번호가 일치하지 않습니다.");
       return;
-    }else{
-        axios.post("http://localhost:8000/admin/register",formData)
-      .then((response) => {
-        console.log("회원가입 성공", response.data);
-        onClose();
-      })
-      .catch((error) => {
-        console.error("회원가입 실패", error);
-      });
     }
 
-    // TODO: 회원가입 API 호출
-    console.log("회원가입 정보", form);
-  };
+    setIsLoading(true);
+    
+    try {
+      const formData = createFormData(form);
+      await axios.post(`${API_BASE_URL}/register`, formData);
+      onClose();
+    } catch (error) {
+      alert("회원가입에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [form, createFormData, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md shadow-lg">
-        <h2 className="text-xl font-bold mb-4">회원가입</h2>
-        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
-          <input
-            type="email"
-            name="email"
-            autoComplete="off"
-            placeholder="이메일"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            required
-        />
-        <input
-            type="text"
-            name="name"
-            autoComplete="off"
-            placeholder="이름"
-            value={form.name}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            required
-        />
-        <input
-            type="password"
-            name="password"
-            autoComplete="new-password"
-            placeholder="비밀번호"
-            value={form.password}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            required
-        />
-        <input
-            type="password"
-            name="confirmPassword"
-            autoComplete="new-password"
-            placeholder="비밀번호 확인"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
-            required
-        />
-          <div className="flex justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm bg-gray-300 rounded"
-            >
+    <div className={modalStyles.overlay}>
+      <div className={modalStyles.container}>
+        <h2 className={modalStyles.title}>회원가입</h2>
+        <form onSubmit={handleSubmit} className={modalStyles.form}>
+          {[
+            { name: "email", type: "email", placeholder: "이메일" },
+            { name: "name", type: "text", placeholder: "이름" },
+            { name: "password", type: "password", placeholder: "비밀번호" },
+            { name: "confirmPassword", type: "password", placeholder: "비밀번호 확인" }
+          ].map(({ name, type, placeholder }) => (
+            <input
+              key={name}
+              type={type}
+              name={name}
+              placeholder={placeholder}
+              value={form[name]}
+              onChange={handleChange}
+              className={modalStyles.input}
+              disabled={isLoading}
+              required
+            />
+          ))}
+          <div className={modalStyles.buttonContainer}>
+            <button type="button" onClick={onClose} className={modalStyles.cancelButton} disabled={isLoading}>
               취소
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded"
-            >
-              가입하기
+            <button type="submit" className={modalStyles.submitButton} disabled={isLoading}>
+              {isLoading ? "가입 중..." : "가입하기"}
             </button>
           </div>
         </form>

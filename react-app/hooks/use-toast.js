@@ -1,145 +1,137 @@
 "use client";
 
-// Inspired by react-hot-toast library
-import * as React from "react";
-const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
-const actionTypes = {
+import { useState, useEffect } from "react";
+
+// 상수 정의
+const TOAST_CONFIG = {
+  LIMIT: 1,
+  REMOVE_DELAY: 1000000
+};
+
+const ACTION_TYPES = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",
   DISMISS_TOAST: "DISMISS_TOAST",
   REMOVE_TOAST: "REMOVE_TOAST"
 };
+
+// 유틸리티
 let count = 0;
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER;
-  return count.toString();
-}
+const genId = () => (++count % Number.MAX_SAFE_INTEGER).toString();
+
+// 상태 관리
 const toastTimeouts = new Map();
-const addToRemoveQueue = toastId => {
-  if (toastTimeouts.has(toastId)) {
-    return;
-  }
+const listeners = [];
+let memoryState = { toasts: [] };
+
+const dispatch = (action) => {
+  memoryState = reducer(memoryState, action);
+  listeners.forEach(listener => listener(memoryState));
+};
+
+const addToRemoveQueue = (toastId) => {
+  if (toastTimeouts.has(toastId)) return;
+  
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId);
-    dispatch({
-      type: "REMOVE_TOAST",
-      toastId: toastId
-    });
-  }, TOAST_REMOVE_DELAY);
+    dispatch({ type: ACTION_TYPES.REMOVE_TOAST, toastId });
+  }, TOAST_CONFIG.REMOVE_DELAY);
+  
   toastTimeouts.set(toastId, timeout);
 };
+// 리듀서 함수
 export const reducer = (state, action) => {
-  switch (action.type) {
-    case "ADD_TOAST":
+  const { type, toastId } = action;
+  
+  switch (type) {
+    case ACTION_TYPES.ADD_TOAST:
       return {
         ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT)
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_CONFIG.LIMIT)
       };
-    case "UPDATE_TOAST":
+      
+    case ACTION_TYPES.UPDATE_TOAST:
       return {
         ...state,
-        toasts: state.toasts.map(t => t.id === action.toast.id ? {
-          ...t,
-          ...action.toast
-        } : t)
+        toasts: state.toasts.map(toast => 
+          toast.id === action.toast.id ? { ...toast, ...action.toast } : toast
+        )
       };
-    case "DISMISS_TOAST":
-      {
-        const {
-          toastId
-        } = action;
-
-        // ! Side effects ! - This could be extracted into a dismissToast() action,
-        // but I'll keep it here for simplicity
-        if (toastId) {
-          addToRemoveQueue(toastId);
-        } else {
-          state.toasts.forEach(toast => {
-            addToRemoveQueue(toast.id);
-          });
-        }
-        return {
-          ...state,
-          toasts: state.toasts.map(t => t.id === toastId || toastId === undefined ? {
-            ...t,
-            open: false
-          } : t)
-        };
+      
+    case ACTION_TYPES.DISMISS_TOAST: {
+      // 제거 큐에 추가
+      if (toastId) {
+        addToRemoveQueue(toastId);
+      } else {
+        state.toasts.forEach(toast => addToRemoveQueue(toast.id));
       }
-    case "REMOVE_TOAST":
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: []
-        };
-      }
+      
       return {
         ...state,
-        toasts: state.toasts.filter(t => t.id !== action.toastId)
+        toasts: state.toasts.map(toast => 
+          toastId === undefined || toast.id === toastId
+            ? { ...toast, open: false } 
+            : toast
+        )
       };
+    }
+    
+    case ACTION_TYPES.REMOVE_TOAST:
+      return toastId === undefined
+        ? { ...state, toasts: [] }
+        : { ...state, toasts: state.toasts.filter(toast => toast.id !== toastId) };
+        
+    default:
+      return state;
   }
 };
-const listeners = [];
-let memoryState = {
-  toasts: []
-};
-function dispatch(action) {
-  memoryState = reducer(memoryState, action);
-  listeners.forEach(listener => {
-    listener(memoryState);
-  });
-}
-function toast({
-  ...props
-}) {
+
+// 토스트 생성 함수
+const toast = (props) => {
   const id = genId();
-  const update = props => dispatch({
-    type: "UPDATE_TOAST",
-    toast: {
-      ...props,
-      id
-    }
+  
+  // 공통 dispatch 헬퍼
+  const createAction = (type, payload = {}) => ({
+    type,
+    ...(type === ACTION_TYPES.UPDATE_TOAST && { toast: { ...payload, id } }),
+    ...(type === ACTION_TYPES.DISMISS_TOAST && { toastId: id }),
+    ...payload
   });
-  const dismiss = () => dispatch({
-    type: "DISMISS_TOAST",
-    toastId: id
-  });
+  
+  const update = (updateProps) => dispatch(createAction(ACTION_TYPES.UPDATE_TOAST, updateProps));
+  const dismiss = () => dispatch(createAction(ACTION_TYPES.DISMISS_TOAST));
+  
   dispatch({
-    type: "ADD_TOAST",
+    type: ACTION_TYPES.ADD_TOAST,
     toast: {
       ...props,
       id,
       open: true,
-      onOpenChange: open => {
-        if (!open) dismiss();
-      }
+      onOpenChange: (open) => !open && dismiss()
     }
   });
-  return {
-    id: id,
-    dismiss,
-    update
-  };
-}
-function useToast() {
-  const [state, setState] = React.useState(memoryState);
-  React.useEffect(() => {
+  
+  return { id, dismiss, update };
+};
+
+// 커스텀 훅
+const useToast = () => {
+  const [state, setState] = useState(memoryState);
+  
+  useEffect(() => {
     listeners.push(setState);
     return () => {
       const index = listeners.indexOf(setState);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
+      if (index > -1) listeners.splice(index, 1);
     };
-  }, [state]);
-  return {
-    ...state,
-    toast,
-    dismiss: toastId => dispatch({
-      type: "DISMISS_TOAST",
-      toastId
-    })
-  };
-}
+  }, []);
+  
+  const dismiss = (toastId) => dispatch({
+    type: ACTION_TYPES.DISMISS_TOAST,
+    toastId
+  });
+  
+  return { ...state, toast, dismiss };
+};
+
 export { useToast, toast };

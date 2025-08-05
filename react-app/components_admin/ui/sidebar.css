@@ -1,0 +1,68 @@
+/* Sidebar CSS 변수 및 기본 스타일 */
+:root {
+  --sidebar-width: 16rem;
+  --sidebar-width-mobile: 18rem;
+  --sidebar-width-icon: 3rem;
+}
+
+/* 사이드바 기본 애니메이션 */
+.sidebar-transition {
+  transition: width 200ms ease-linear;
+}
+
+.sidebar-content-transition {
+  transition: left 200ms ease-linear, right 200ms ease-linear, width 200ms ease-linear;
+}
+
+/* 사이드바 상태별 스타일 */
+.sidebar-collapsed {
+  width: var(--sidebar-width-icon);
+}
+
+.sidebar-expanded {
+  width: var(--sidebar-width);
+}
+
+/* 모바일 사이드바 스타일 */
+.sidebar-mobile {
+  width: var(--sidebar-width-mobile);
+}
+
+/* 플로팅 사이드바 스타일 */
+.sidebar-floating {
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--sidebar-border));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* 사이드바 그룹 스타일 */
+.sidebar-group {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  padding: 0.5rem;
+}
+
+/* 사이드바 메뉴 스타일 */
+.sidebar-menu {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .sidebar-desktop {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .sidebar-mobile-sheet {
+    display: none;
+  }
+}

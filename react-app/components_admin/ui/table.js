@@ -1,70 +1,57 @@
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-import * as React from "react";
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
-const Table = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("div", {
-  className: "relative w-full overflow-auto"
-}, /*#__PURE__*/React.createElement("table", _extends({
-  ref: ref,
-  className: cn("w-full caption-bottom text-sm", className)
-}, props))));
+
+// 스타일 상수
+const tableStyles = {
+  container: "relative w-full overflow-auto",
+  table: "w-full caption-bottom text-sm",
+  header: "[&_tr]:border-b",
+  body: "[&_tr:last-child]:border-0",
+  footer: "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+  row: "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+  head: "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+  cell: "p-4 align-middle [&:has([role=checkbox])]:pr-0",
+  caption: "mt-4 text-sm text-muted-foreground"
+};
+
+export const Table = forwardRef(({ className, ...props }, ref) => (
+  <div className={tableStyles.container}>
+    <table ref={ref} className={cn(tableStyles.table, className)} {...props} />
+  </div>
+));
 Table.displayName = "Table";
-const TableHeader = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("thead", _extends({
-  ref: ref,
-  className: cn("[&_tr]:border-b", className)
-}, props)));
+
+export const TableHeader = forwardRef(({ className, ...props }, ref) => (
+  <thead ref={ref} className={cn(tableStyles.header, className)} {...props} />
+));
 TableHeader.displayName = "TableHeader";
-const TableBody = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("tbody", _extends({
-  ref: ref,
-  className: cn("[&_tr:last-child]:border-0", className)
-}, props)));
+
+export const TableBody = forwardRef(({ className, ...props }, ref) => (
+  <tbody ref={ref} className={cn(tableStyles.body, className)} {...props} />
+));
 TableBody.displayName = "TableBody";
-const TableFooter = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("tfoot", _extends({
-  ref: ref,
-  className: cn("border-t bg-muted/50 font-medium [&>tr]:last:border-b-0", className)
-}, props)));
+
+export const TableFooter = forwardRef(({ className, ...props }, ref) => (
+  <tfoot ref={ref} className={cn(tableStyles.footer, className)} {...props} />
+));
 TableFooter.displayName = "TableFooter";
-const TableRow = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("tr", _extends({
-  ref: ref,
-  className: cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)
-}, props)));
+
+export const TableRow = forwardRef(({ className, ...props }, ref) => (
+  <tr ref={ref} className={cn(tableStyles.row, className)} {...props} />
+));
 TableRow.displayName = "TableRow";
-const TableHead = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("th", _extends({
-  ref: ref,
-  className: cn("h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0", className)
-}, props)));
+
+export const TableHead = forwardRef(({ className, ...props }, ref) => (
+  <th ref={ref} className={cn(tableStyles.head, className)} {...props} />
+));
 TableHead.displayName = "TableHead";
-const TableCell = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("td", _extends({
-  ref: ref,
-  className: cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)
-}, props)));
+
+export const TableCell = forwardRef(({ className, ...props }, ref) => (
+  <td ref={ref} className={cn(tableStyles.cell, className)} {...props} />
+));
 TableCell.displayName = "TableCell";
-const TableCaption = /*#__PURE__*/React.forwardRef(({
-  className,
-  ...props
-}, ref) => /*#__PURE__*/React.createElement("caption", _extends({
-  ref: ref,
-  className: cn("mt-4 text-sm text-muted-foreground", className)
-}, props)));
+
+export const TableCaption = forwardRef(({ className, ...props }, ref) => (
+  <caption ref={ref} className={cn(tableStyles.caption, className)} {...props} />
+));
 TableCaption.displayName = "TableCaption";
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };

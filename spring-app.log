@@ -1,0 +1,206 @@
+spring-app  | 
+spring-app  |   .   ____          _            __ _ _
+spring-app  |  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+spring-app  | ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+spring-app  |  \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+spring-app  |   '  |____| .__|_| |_|_| |_\__, | / / / /
+spring-app  |  =========|_|==============|___/=/_/_/_/
+spring-app  | 
+spring-app  |  :: Spring Boot ::                (v3.4.8)
+spring-app  | 
+spring-app  | 2025-08-05T07:03:05.788Z  INFO 1 --- [           main] c.finalproject.pickcoin.MainApplication  : Starting MainApplication v0.0.1-SNAPSHOT using Java 17.0.2 with PID 1 (/app/app.war started by root in /app)
+spring-app  | 2025-08-05T07:03:05.791Z  INFO 1 --- [           main] c.finalproject.pickcoin.MainApplication  : The following 1 profile is active: "default"
+spring-app  | 2025-08-05T07:03:06.506Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+spring-app  | 2025-08-05T07:03:06.507Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Elasticsearch repositories in DEFAULT mode.
+spring-app  | 2025-08-05T07:03:06.538Z  INFO 1 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Elasticsearch - Could not safely identify store assignment for repository candidate interface com.finalproject.pickcoin.repository.CoinRepository; If you want this repository to be a Elasticsearch repository, consider annotating your entities with one of these annotations: org.springframework.data.elasticsearch.annotations.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.elasticsearch.repository.ElasticsearchRepository
+spring-app  | 2025-08-05T07:03:06.541Z  INFO 1 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Elasticsearch - Could not safely identify store assignment for repository candidate interface com.finalproject.pickcoin.repository.UsersRepository; If you want this repository to be a Elasticsearch repository, consider annotating your entities with one of these annotations: org.springframework.data.elasticsearch.annotations.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.elasticsearch.repository.ElasticsearchRepository
+spring-app  | 2025-08-05T07:03:06.541Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 28 ms. Found 0 Elasticsearch repository interfaces.
+spring-app  | 2025-08-05T07:03:06.547Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+spring-app  | 2025-08-05T07:03:06.548Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Reactive Elasticsearch repositories in DEFAULT mode.
+spring-app  | 2025-08-05T07:03:06.553Z  INFO 1 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Reactive Elasticsearch - Could not safely identify store assignment for repository candidate interface com.finalproject.pickcoin.repository.CoinRepository; If you want this repository to be a Reactive Elasticsearch repository, consider annotating your entities with one of these annotations: org.springframework.data.elasticsearch.annotations.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.elasticsearch.repository.ReactiveElasticsearchRepository
+spring-app  | 2025-08-05T07:03:06.554Z  INFO 1 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Reactive Elasticsearch - Could not safely identify store assignment for repository candidate interface com.finalproject.pickcoin.repository.UsersRepository; If you want this repository to be a Reactive Elasticsearch repository, consider annotating your entities with one of these annotations: org.springframework.data.elasticsearch.annotations.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.elasticsearch.repository.ReactiveElasticsearchRepository
+spring-app  | 2025-08-05T07:03:06.554Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 4 ms. Found 0 Reactive Elasticsearch repository interfaces.
+spring-app  | 2025-08-05T07:03:06.560Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+spring-app  | 2025-08-05T07:03:06.561Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+spring-app  | 2025-08-05T07:03:06.647Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 81 ms. Found 2 JPA repository interfaces.
+spring-app  | 2025-08-05T07:03:06.659Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+spring-app  | 2025-08-05T07:03:06.660Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+spring-app  | 2025-08-05T07:03:06.666Z  INFO 1 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.finalproject.pickcoin.repository.CoinRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+spring-app  | 2025-08-05T07:03:06.667Z  INFO 1 --- [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.finalproject.pickcoin.repository.UsersRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+spring-app  | 2025-08-05T07:03:06.667Z  INFO 1 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 2 ms. Found 0 Redis repository interfaces.
+spring-app  | 2025-08-05T07:03:06.761Z  WARN 1 --- [           main] o.m.s.mapper.ClassPathMapperScanner      : No MyBatis mapper was found in '[com.finalproject.pickcoin]' package. Please check your configuration.
+spring-app  | 2025-08-05T07:03:07.193Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+spring-app  | 2025-08-05T07:03:07.211Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+spring-app  | 2025-08-05T07:03:07.211Z  INFO 1 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.43]
+spring-app  | 2025-08-05T07:03:09.178Z  INFO 1 --- [           main] org.apache.jasper.servlet.TldScanner     : At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+spring-app  | 2025-08-05T07:03:09.447Z  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+spring-app  | 2025-08-05T07:03:09.448Z  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3607 ms
+spring-app  | 2025-08-05T07:03:09.720Z  INFO 1 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+spring-app  | 2025-08-05T07:03:09.810Z  INFO 1 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.22.Final
+spring-app  | 2025-08-05T07:03:09.863Z  INFO 1 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+spring-app  | 2025-08-05T07:03:10.311Z  INFO 1 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+spring-app  | 2025-08-05T07:03:10.334Z  INFO 1 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+spring-app  | 2025-08-05T07:03:11.427Z  WARN 1 --- [           main] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 0, SQLState: 08S01
+spring-app  | 2025-08-05T07:03:11.427Z ERROR 1 --- [           main] o.h.engine.jdbc.spi.SqlExceptionHelper   : Communications link failure
+spring-app  | 
+spring-app  | The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.
+spring-app  | 2025-08-05T07:03:11.428Z  WARN 1 --- [           main] o.h.e.j.e.i.JdbcEnvironmentInitiator     : HHH000342: Could not obtain connection to query metadata
+spring-app  | 
+spring-app  | org.hibernate.exception.JDBCConnectionException: unable to obtain isolated JDBC connection [Communications link failure
+spring-app  | 
+spring-app  | The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.] [n/a]
+spring-app  | 	at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:100) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:58) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:94) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcIsolationDelegate.delegateWork(JdbcIsolationDelegate.java:116) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.getJdbcEnvironmentUsingJdbcMetadata(JdbcEnvironmentInitiator.java:336) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:129) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:81) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:130) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:263) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:238) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:215) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.relational.Database.<init>(Database.java:45) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.getDatabase(InFlightMetadataCollectorImpl.java:226) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.<init>(InFlightMetadataCollectorImpl.java:194) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:171) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.metadata(EntityManagerFactoryBuilderImpl.java:1442) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1513) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:400) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1873) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1822) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:970) ~[spring-context-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627) ~[spring-context-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at com.finalproject.pickcoin.MainApplication.main(MainApplication.java:12) ~[!/:0.0.1-SNAPSHOT]
+spring-app  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+spring-app  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
+spring-app  | 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
+spring-app  | 	at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
+spring-app  | 	at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:102) ~[app.war:0.0.1-SNAPSHOT]
+spring-app  | 	at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:64) ~[app.war:0.0.1-SNAPSHOT]
+spring-app  | 	at org.springframework.boot.loader.launch.WarLauncher.main(WarLauncher.java:53) ~[app.war:0.0.1-SNAPSHOT]
+spring-app  | Caused by: com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+spring-app  | 
+spring-app  | The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.
+spring-app  | 	at com.mysql.cj.jdbc.exceptions.SQLError.createCommunicationsException(SQLError.java:165) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:55) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.ConnectionImpl.createNewIO(ConnectionImpl.java:861) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.ConnectionImpl.<init>(ConnectionImpl.java:449) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.ConnectionImpl.getInstance(ConnectionImpl.java:234) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:180) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:137) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at com.zaxxer.hikari.pool.PoolBase.newConnection(PoolBase.java:360) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at com.zaxxer.hikari.pool.PoolBase.newPoolEntry(PoolBase.java:202) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at com.zaxxer.hikari.pool.HikariPool.createPoolEntry(HikariPool.java:461) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at com.zaxxer.hikari.pool.HikariPool.checkFailFast(HikariPool.java:550) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:98) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111) ~[HikariCP-5.1.0.jar!/:na]
+spring-app  | 	at org.hibernate.engine.jdbc.connections.internal.DatasourceConnectionProviderImpl.getConnection(DatasourceConnectionProviderImpl.java:126) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$ConnectionProviderJdbcConnectionAccess.obtainConnection(JdbcEnvironmentInitiator.java:483) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcIsolationDelegate.delegateWork(JdbcIsolationDelegate.java:61) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	... 42 common frames omitted
+spring-app  | Caused by: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+spring-app  | 
+spring-app  | The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.
+spring-app  | 	at java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method) ~[na:na]
+spring-app  | 	at java.base/jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:77) ~[na:na]
+spring-app  | 	at java.base/jdk.internal.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45) ~[na:na]
+spring-app  | 	at java.base/java.lang.reflect.Constructor.newInstanceWithCaller(Constructor.java:499) ~[na:na]
+spring-app  | 	at java.base/java.lang.reflect.Constructor.newInstance(Constructor.java:480) ~[na:na]
+spring-app  | 	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:52) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:95) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:140) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:156) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.protocol.a.NativeSocketConnection.connect(NativeSocketConnection.java:79) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.NativeSession.connect(NativeSession.java:139) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.ConnectionImpl.connectOneTryOnly(ConnectionImpl.java:980) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.jdbc.ConnectionImpl.createNewIO(ConnectionImpl.java:851) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	... 55 common frames omitted
+spring-app  | Caused by: java.net.ConnectException: Connection refused
+spring-app  | 	at java.base/sun.nio.ch.Net.pollConnect(Native Method) ~[na:na]
+spring-app  | 	at java.base/sun.nio.ch.Net.pollConnectNow(Net.java:672) ~[na:na]
+spring-app  | 	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542) ~[na:na]
+spring-app  | 	at java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:597) ~[na:na]
+spring-app  | 	at java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327) ~[na:na]
+spring-app  | 	at java.base/java.net.Socket.connect(Socket.java:633) ~[na:na]
+spring-app  | 	at com.mysql.cj.protocol.StandardSocketFactory.connect(StandardSocketFactory.java:144) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	at com.mysql.cj.protocol.a.NativeSocketConnection.connect(NativeSocketConnection.java:53) ~[mysql-connector-j-8.4.0.jar!/:8.4.0]
+spring-app  | 	... 58 common frames omitted
+spring-app  | 
+spring-app  | 2025-08-05T07:03:11.440Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+spring-app  | 2025-08-05T07:03:11.441Z  WARN 1 --- [           main] org.hibernate.orm.deprecation            : HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+spring-app  | 2025-08-05T07:03:11.449Z  INFO 1 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+spring-app  | 	Database JDBC URL [Connecting through datasource 'HikariDataSource (null)']
+spring-app  | 	Database driver: undefined/unknown
+spring-app  | 	Database version: 8.0
+spring-app  | 	Autocommit mode: undefined/unknown
+spring-app  | 	Isolation level: undefined/unknown
+spring-app  | 	Minimum pool size: undefined/unknown
+spring-app  | 	Maximum pool size: undefined/unknown
+spring-app  | 2025-08-05T07:03:11.600Z ERROR 1 --- [           main] j.LocalContainerEntityManagerFactoryBean : Failed to initialize JPA EntityManagerFactory: Entity classes [com.finalproject.pickcoin.domain.Coin] and [com.finalproject.pickcoin.entity.Coin] share the entity name 'Coin' (entity names must be distinct)
+spring-app  | 2025-08-05T07:03:11.601Z  WARN 1 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Entity classes [com.finalproject.pickcoin.domain.Coin] and [com.finalproject.pickcoin.entity.Coin] share the entity name 'Coin' (entity names must be distinct)
+spring-app  | 2025-08-05T07:03:11.604Z  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+spring-app  | 2025-08-05T07:03:11.616Z  INFO 1 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+spring-app  | 
+spring-app  | Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+spring-app  | 2025-08-05T07:03:11.632Z ERROR 1 --- [           main] o.s.boot.SpringApplication               : Application run failed
+spring-app  | 
+spring-app  | org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Entity classes [com.finalproject.pickcoin.domain.Coin] and [com.finalproject.pickcoin.entity.Coin] share the entity name 'Coin' (entity names must be distinct)
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1826) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:970) ~[spring-context-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627) ~[spring-context-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350) ~[spring-boot-3.4.8.jar!/:3.4.8]
+spring-app  | 	at com.finalproject.pickcoin.MainApplication.main(MainApplication.java:12) ~[!/:0.0.1-SNAPSHOT]
+spring-app  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+spring-app  | 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
+spring-app  | 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
+spring-app  | 	at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
+spring-app  | 	at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:102) ~[app.war:0.0.1-SNAPSHOT]
+spring-app  | 	at org.springframework.boot.loader.launch.Launcher.launch(Launcher.java:64) ~[app.war:0.0.1-SNAPSHOT]
+spring-app  | 	at org.springframework.boot.loader.launch.WarLauncher.main(WarLauncher.java:53) ~[app.war:0.0.1-SNAPSHOT]
+spring-app  | Caused by: org.hibernate.DuplicateMappingException: Entity classes [com.finalproject.pickcoin.domain.Coin] and [com.finalproject.pickcoin.entity.Coin] share the entity name 'Coin' (entity names must be distinct)
+spring-app  | 	at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.addEntityBinding(InFlightMetadataCollectorImpl.java:360) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.internal.EntityBinder.bindEntityClass(EntityBinder.java:262) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.internal.AnnotationBinder.bindClass(AnnotationBinder.java:404) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.source.internal.annotations.AnnotationMetadataSourceProcessorImpl.processEntityHierarchies(AnnotationMetadataSourceProcessorImpl.java:266) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.process.spi.MetadataBuildingProcess$1.processEntityHierarchies(MetadataBuildingProcess.java:281) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:324) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.metadata(EntityManagerFactoryBuilderImpl.java:1442) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1513) ~[hibernate-core-6.6.22.Final.jar!/:6.6.22.Final]
+spring-app  | 	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:400) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366) ~[spring-orm-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1873) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1822) ~[spring-beans-6.2.9.jar!/:6.2.9]
+spring-app  | 	... 22 common frames omitted
+spring-app  | 

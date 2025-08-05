@@ -1,5 +1,21 @@
 package com.finalproject.pickcoin.controller;
 
+import com.finalproject.pickcoin.entity.Coin;
+import com.finalproject.pickcoin.repository.CoinRepository;
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/coins")
 public class CoinController {
-    // 파이썬에서 관리하면 안쓸수도 있음
+    private final CoinRepository coinRepository;
+
+    public CoinController(CoinRepository coinRepository) {
+        this.coinRepository = coinRepository;
+    }
+
+    @GetMapping("/list")
+    public List<Coin> getCoinList() {
+        return coinRepository.findAll();
+    }
 }

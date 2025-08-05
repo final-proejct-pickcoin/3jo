@@ -1,133 +1,135 @@
 "use client";
 
-import React from "react";
+import { forwardRef, memo } from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DROPDOWN_MENU_STYLES } from "./dropdown-menu-styles";
 
+// 기본 컴포넌트들
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
-const DropdownMenuSubTrigger = React.forwardRef(({ className, inset, children, ...props }, ref) => (
+// 공통 inset 처리 함수
+const getInsetClassName = (baseStyle, inset, className) => 
+  cn(baseStyle, inset && DROPDOWN_MENU_STYLES.inset, className);
+
+// 메모화된 SubTrigger 컴포넌트
+const DropdownMenuSubTrigger = memo(forwardRef(({ className, inset, children, ...props }, ref) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
-    className={cn(
-      "flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-      inset && "pl-8",
-      className
-    )}
+    className={getInsetClassName(DROPDOWN_MENU_STYLES.subTrigger, inset, className)}
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto" />
+    <ChevronRight className={DROPDOWN_MENU_STYLES.chevronIcon} />
   </DropdownMenuPrimitive.SubTrigger>
-));
-DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
+)));
+DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
 
-const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) => (
+// 메모화된 SubContent 컴포넌트
+const DropdownMenuSubContent = memo(forwardRef(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
+    className={cn(DROPDOWN_MENU_STYLES.subContent, className)}
     {...props}
   />
-));
-DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
+)));
+DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
 
-const DropdownMenuContent = React.forwardRef(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPortal>
+// 메모화된 Content 컴포넌트 (Portal 자동 포함)
+const DropdownMenuContent = memo(forwardRef(({ className, sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
+      className={cn(DROPDOWN_MENU_STYLES.content, className)}
       {...props}
     />
-  </DropdownMenuPortal>
-));
-DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
+  </DropdownMenuPrimitive.Portal>
+)));
+DropdownMenuContent.displayName = "DropdownMenuContent";
 
-const DropdownMenuItem = React.forwardRef(({ className, inset, ...props }, ref) => (
+// 메모화된 Item 컴포넌트
+const DropdownMenuItem = memo(forwardRef(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-      inset && "pl-8",
-      className
-    )}
+    className={getInsetClassName(DROPDOWN_MENU_STYLES.item, inset, className)}
     {...props}
   />
-));
-DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
+)));
+DropdownMenuItem.displayName = "DropdownMenuItem";
 
-const DropdownMenuCheckboxItem = React.forwardRef(({ className, children, checked, ...props }, ref) => (
-  <DropdownMenuPrimitive.CheckboxItem
+// 공통 인디케이터 아이템 컴포넌트
+const IndicatorItem = memo(({ Primitive, className, children, icon: Icon, iconClassName, ...props }, ref) => (
+  <Primitive ref={ref} className={cn(className)} {...props}>
+    <span className={DROPDOWN_MENU_STYLES.indicator}>
+      <DropdownMenuPrimitive.ItemIndicator>
+        <Icon className={iconClassName} />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </span>
+    {children}
+  </Primitive>
+));
+
+// 메모화된 CheckboxItem 컴포넌트
+const DropdownMenuCheckboxItem = memo(forwardRef(({ className, children, checked, ...props }, ref) => (
+  <IndicatorItem
     ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
+    Primitive={DropdownMenuPrimitive.CheckboxItem}
+    className={cn(DROPDOWN_MENU_STYLES.checkboxItem, className)}
     checked={checked}
+    icon={Check}
+    iconClassName={DROPDOWN_MENU_STYLES.checkIcon}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
     {children}
-  </DropdownMenuPrimitive.CheckboxItem>
-));
-DropdownMenuCheckboxItem.displayName = DropdownMenuPrimitive.CheckboxItem.displayName;
+  </IndicatorItem>
+)));
+DropdownMenuCheckboxItem.displayName = "DropdownMenuCheckboxItem";
 
-const DropdownMenuRadioItem = React.forwardRef(({ className, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.RadioItem
+// 메모화된 RadioItem 컴포넌트
+const DropdownMenuRadioItem = memo(forwardRef(({ className, children, ...props }, ref) => (
+  <IndicatorItem
     ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
+    Primitive={DropdownMenuPrimitive.RadioItem}
+    className={cn(DROPDOWN_MENU_STYLES.radioItem, className)}
+    icon={Circle}
+    iconClassName={DROPDOWN_MENU_STYLES.radioIcon}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
     {children}
-  </DropdownMenuPrimitive.RadioItem>
-));
-DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
+  </IndicatorItem>
+)));
+DropdownMenuRadioItem.displayName = "DropdownMenuRadioItem";
 
-const DropdownMenuLabel = React.forwardRef(({ className, inset, ...props }, ref) => (
+// 메모화된 Label 컴포넌트
+const DropdownMenuLabel = memo(forwardRef(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-sm font-semibold", inset && "pl-8", className)}
+    className={getInsetClassName(DROPDOWN_MENU_STYLES.label, inset, className)}
     {...props}
   />
-));
-DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
+)));
+DropdownMenuLabel.displayName = "DropdownMenuLabel";
 
-const DropdownMenuSeparator = React.forwardRef(({ className, ...props }, ref) => (
+// 메모화된 Separator 컴포넌트
+const DropdownMenuSeparator = memo(forwardRef(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    className={cn(DROPDOWN_MENU_STYLES.separator, className)}
     {...props}
   />
-));
-DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
+)));
+DropdownMenuSeparator.displayName = "DropdownMenuSeparator";
 
-const DropdownMenuShortcut = ({ className, ...props }) => (
-  <span className={cn("ml-auto text-xs tracking-widest opacity-60", className)} {...props} />
-);
+// 메모화된 Shortcut 컴포넌트
+const DropdownMenuShortcut = memo(({ className, ...props }) => (
+  <span className={cn(DROPDOWN_MENU_STYLES.shortcut, className)} {...props} />
+));
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 export {
@@ -141,7 +143,6 @@ export {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuGroup,
-  DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,

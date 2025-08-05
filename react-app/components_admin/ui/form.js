@@ -1,26 +1,24 @@
 "use client";
 
-import React from "react";
+import { createContext, useContext, useId, forwardRef, memo } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { Controller, FormProvider, useFormContext } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components_admin/ui/label";
 
 const Form = FormProvider;
+const FormFieldContext = createContext({});
+const FormItemContext = createContext({});
 
-const FormFieldContext = React.createContext({});
-
-const FormField = (props) => {
-  return (
-    <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
-    </FormFieldContext.Provider>
-  );
-};
+const FormField = memo(({ name, ...props }) => (
+  <FormFieldContext.Provider value={{ name }}>
+    <Controller name={name} {...props} />
+  </FormFieldContext.Provider>
+));
 
 const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext);
-  const itemContext = React.useContext(FormItemContext);
+  const fieldContext = useContext(FormFieldContext);
+  const itemContext = useContext(FormItemContext);
   const { getFieldState, formState } = useFormContext();
 
   if (!fieldContext) {
@@ -40,19 +38,16 @@ const useFormField = () => {
   };
 };
 
-const FormItemContext = React.createContext({});
-
-const FormItem = React.forwardRef(({ className, ...props }, ref) => {
-  const id = React.useId();
+const FormItem = memo(forwardRef(({ className, ...props }, ref) => {
+  const id = useId();
   return (
     <FormItemContext.Provider value={{ id }}>
       <div ref={ref} className={cn("space-y-2", className)} {...props} />
     </FormItemContext.Provider>
   );
-});
-FormItem.displayName = "FormItem";
+}));
 
-const FormLabel = React.forwardRef(({ className, ...props }, ref) => {
+const FormLabel = memo(forwardRef(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField();
   return (
     <Label
@@ -62,38 +57,33 @@ const FormLabel = React.forwardRef(({ className, ...props }, ref) => {
       {...props}
     />
   );
-});
-FormLabel.displayName = "FormLabel";
+}));
 
-const FormControl = React.forwardRef(({ ...props }, ref) => {
+const FormControl = memo(forwardRef(({ ...props }, ref) => {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
   return (
     <Slot
       ref={ref}
       id={formItemId}
-      aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+      aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
       aria-invalid={!!error}
       {...props}
     />
   );
-});
-FormControl.displayName = "FormControl";
+}));
 
-const FormDescription = React.forwardRef(({ className, ...props }, ref) => {
+const FormDescription = memo(forwardRef(({ className, ...props }, ref) => {
   const { formDescriptionId } = useFormField();
   return (
     <p ref={ref} id={formDescriptionId} className={cn("text-sm text-muted-foreground", className)} {...props} />
   );
-});
-FormDescription.displayName = "FormDescription";
+}));
 
-const FormMessage = React.forwardRef(({ className, children, ...props }, ref) => {
+const FormMessage = memo(forwardRef(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField();
   const body = error ? String(error?.message) : children;
 
-  if (!body) {
-    return null;
-  }
+  if (!body) return null;
 
   return (
     <p
@@ -105,16 +95,6 @@ const FormMessage = React.forwardRef(({ className, children, ...props }, ref) =>
       {body}
     </p>
   );
-});
-FormMessage.displayName = "FormMessage";
+}));
 
-export {
-  useFormField,
-  Form,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormDescription,
-  FormMessage,
-  FormField,
-};
+export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };
