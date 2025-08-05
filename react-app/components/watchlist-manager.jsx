@@ -323,7 +323,7 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
                               variant="outline"
                               className="flex items-center justify-center text-[11px] rounded-full px-3 w-32 h-9 min-w-[110px] max-w-[180px]"
                               style={{ borderRadius: '9999px' }}
-                            >{alert}
+                            >{`${alert.type}${alert.condition}${alert.value}`}
                               <button
                                 type="button"
                                 className="mr-2 text-muted-foreground hover:text-destructive flex-shrink-0"
@@ -427,14 +427,24 @@ const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarke
                     {/* <Button size="sm" variant="outline" onClick={() => addToWatchlist(coin)}>
                       <Plus className="h-3 w-3" />
                     </Button> */}
+                    {filteredCoins.length === 1 ? (
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => toggle_Bookmark(coin.symbol)}
-                        onMouseUp={() => toggle_Bookmark(coin.symbol)}
+                        onClick={() => {toggle_Bookmark(coin.symbol);setSearchTerm("");}}
                       >
                         <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
                       </Button>
+                      ):
+                      (
+                        <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggle_Bookmark(coin.symbol)}
+                      >
+                        <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
+                      </Button>
+                      )}
                   </div>
                 </div>
               ))}

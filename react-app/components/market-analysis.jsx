@@ -21,6 +21,10 @@ const marketData = [
   { symbol: "MATIC", name: "Polygon", price: 0.92, change: -2.1, volume: "450M", marketCap: "8.5B", rank: 8 },
   { symbol: "DOT", name: "Polkadot", price: 7.2, change: -3.1, volume: "320M", marketCap: "9.2B", rank: 9 },
   { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 10 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 11 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 12 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 13 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 14 },
 ]
 
 const trendingCoins = [
@@ -74,25 +78,7 @@ export const MarketAnalysis = () => {
   const volumeKRW = volumeUSD * 1e8 * exchangeRate
   const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
   useEffect(() => { subscribe(marketData.map(coin => coin.symbol)) }, [subscribe])
-
-  // 관심 코인 추가 표시용
-  //const [bookmarked,setBookmarked] = useState({})
-
-  // // 관심 코인 추가 표시용 토글
-  // const toggle_Bookmark=(symbol)=>{
-  //     const is_bookmarked = bookmarked[symbol];
-    
-  //     setBookmarked((prev)=>({
-  //       ...prev,
-  //     [symbol]: !is_bookmarked
-  //     }
-  //   ))
-
-  //   alert(`${symbol} ${is_bookmarked? '코인 북마크 해제됨':'코인 북마크 추가됨'}`)     
-  //   }
-
-    const {bookmarked,toggle_Bookmark}=useBookmark();
-    
+    const {bookmarked,toggle_Bookmark}=useBookmark();    
 
   return (
     <div className="space-y-6">
@@ -271,7 +257,7 @@ export const MarketAnalysis = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {marketData.map((coin) => {
+                {marketData.slice(0,10).map((coin) => {
                   const livePrice = liveData[coin.symbol]?.price || coin.price
                   const liveChange = liveData[coin.symbol]?.change24h || coin.change
                   return (
@@ -304,7 +290,7 @@ export const MarketAnalysis = () => {
                              {/* 클릭 통해 관심코인 추가시 노란별 변경/클릭시 해제와 빈 별  */}
                             <Star className="h-3 w-3" fill={bookmarked[coin.symbol]? "yellow":"none"} />
                             </Button>
-                          <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button>
+                          {/* <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button> */}
                         </div>
                       </div>
                     </div>
@@ -359,7 +345,7 @@ export const MarketAnalysis = () => {
                     <div key={sector.name} className="flex items-center justify-between">
                       <span className="font-medium">{sector.name}</span>
                       <span className={`font-semibold ${sector.color}`}>
-                        {sector.change > 0 ? "+" : ""}
+                        {/* {sector.change > 0 ? "+" : ""} */}
                         {sector.change}%
                       </span>
                     </div>
