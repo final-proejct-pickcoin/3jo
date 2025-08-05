@@ -1,0 +1,118 @@
+##### 배포할 때는 fastapi, react, spring 모두 volumes 제거 / react에서 NODE_ENV=production으로 변경
+services:
+  fastapi-app:
+    build: ./fastapi-app
+    volumes:
+      - ./fastapi-app:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    # 환경변수에 DB 접속 정보 지정(아래 예시 참고)
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=pickcoin
+      - MYSQL_PASSWORD=final3
+      - MYSQL_DATABASE=coindb
+    depends_on:
+      - mysql
+      - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  mysql:
+    image: mysql:8.0
+    restart: always
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin1234
+      MYSQL_DATABASE: coindb
+      MYSQL_USER: pickcoin
+      MYSQL_PASSWORD: final3
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always 
+  spring-app:
+    build:
+      #이미지빌드 할 폴더위치 설정
+      context: ./spring-app
+      #도커파일 설정
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./spring-app:/home/gradle/app
+    container_name: spring-app
+    ports:
+      - "8080:8080"
+    environment:
+      #Docker에게 volume으로 연결된 폴더의 변경 사항을 적극적으로 감시명령 (dev-tools의존성)
+      - SPRING_DEVTOOLS_WATCH_ADDITIONAL_PATHS=/home/gradle/app
+      - SPRING_PROFILES_ACTIVE=default
+      - SPRING_MAIL_HOST=smtp.gmail.com
+      - SPRING_MAIL_PORT=587
+      - SPRING_MAIL_USERNAME=jeesoo1899@gmail.com
+      - SPRING_MAIL_PASSWORD=yqpmfomkytgtokpm
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+      # 아래 base_url은 배포시 수정
+      - APP_BASE_URL=http://localhost:8080
+    depends_on:
+      - mysql
+      - redis
+    command: ./gradlew bootRun
+  react-app:
+
+    build: ./react-app
+    volumes:
+      - ./react-app:/app
+      - /app/node_modules
+    container_name: react-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - FAST_REFRESH=true
+    depends_on:
+      - fastapi-app
+      - spring-app
+    command: ["pnpm", "dev"]
+
+
+
+  # elastic:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.txt
+  #   ports:
+  #     - 9200:9200
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #     - xpack.security.http.ssl.enabled=false
+  #     - xpack.security.enrollment.enabled=true
+
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:7.10.2
+  #   ports:
+  #     - 5044:5044
+  #   environment:
+  #     - ELASTICSERACH_HOSTS=http://elastic:9200
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.17.4
+  #   ports:
+  #     - 5601:5601
+  #   environment:
+  #     - ELASTICSERACH_HOSTS=http://elastic:9200
+  

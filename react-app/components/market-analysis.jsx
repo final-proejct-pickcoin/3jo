@@ -70,6 +70,16 @@ export const MarketAnalysis = () => {
   const { subscribe, marketData: liveData } = useWebSocket()
   const [selectedTimeframe, setSelectedTimeframe] = useState("24h")
   const [currency, setCurrency] = useState("KRW")
+
+  const [marketNews, setMarketNews] = useState([])
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/news") // FastAPI 서버 주소
+      .then(res => res.json())
+      .then(data => setMarketNews(data))
+      .catch(err => console.error(err))
+  }, [])
+
   const exchangeRate = 1391
   const totalMarketCapUSD = 16800
   const totalMarketCapKRW = totalMarketCapUSD * 1e8 * exchangeRate
@@ -356,45 +366,38 @@ export const MarketAnalysis = () => {
           </div>
         </TabsContent>
 
+
+        {/* 뉴스 */}
         <TabsContent value="news">
-          <Card>
-            <CardHeader>
-              <CardTitle>📰 시장 뉴스</CardTitle>
-              <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* 비트코인 ETF 승인 */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">비트코인 ETF 승인, 시장 랠리 촉진</h3>
-                    <Badge className="bg-green-100 text-green-700">강세</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">기관 자금이 대거 유입되며 비트코인이 최근 한 달 최고가를 돌파했습니다.</p>
-                  <p className="text-xs text-muted-foreground">2시간 전</p>
-                </div>
-                {/* 이더리움 네트워크 업그레이드 */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">이더리움 네트워크 업그레이드 임박</h3>
-                    <Badge className="bg-green-100 text-green-700">강세</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">이번 업그레이드로 확장성 향상과 가스비 절감이 기대됩니다.</p>
-                  <p className="text-xs text-muted-foreground">4시간 전</p>
-                </div>
-                {/* 유럽, 암호화폐 규제 명확화 */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">유럽, 암호화폐 규제 기준 확립</h3>
-                    <Badge variant="secondary">중립</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">새로운 규제 도입으로 기관 투자자들의 진입 장벽이 낮아졌습니다.</p>
-                  <p className="text-xs text-muted-foreground">6시간 전</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+         <Card>
+          <CardHeader>
+      <CardTitle>📰 시장 뉴스</CardTitle>
+      <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>
+    </CardHeader>
+
+    <CardContent>
+      <div className="space-y-4">
+        {marketNews.map((item, idx) => (
+          <div key={idx} className="p-4 border rounded-lg">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-semibold">{item.title}</h3>
+              <Badge variant="secondary">{item.source}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{item.published_at}</p>
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-500 hover:underline">
+              자세히 보기
+            </a>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
+
 
         <TabsContent value="analysis">
           <div className="grid md:grid-cols-2 gap-6">
