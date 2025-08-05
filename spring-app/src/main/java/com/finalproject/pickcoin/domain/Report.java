@@ -32,5 +32,8 @@ public class Report {
     @Column(name="created_at", updatable = false)
     @Temporal(TemporalType.TIMESTAMP)   
     private Date createdAt; // 신고 생성 시간
+
+    @Column(name="processed_at", updatable = false)   
+    private Date processedAT; // 신고 생성 시간
     
 }
