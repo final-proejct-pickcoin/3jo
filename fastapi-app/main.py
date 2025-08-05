@@ -14,6 +14,8 @@ from typing import Dict
 from json import dumps
 from enums.Role import Role
 from fastapi.middleware.cors import CORSMiddleware
+from news_api.news_router import router as news_router
+
 
 load_dotenv()
 
@@ -36,7 +38,11 @@ templates = Jinja2Templates(directory="templates")
 # CORS 설정
 origins = [
     "http://localhost:3000",
-    "http://localhost:8080"
+    "http://localhost:8080",
+    "http://localhost",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1"
 ]
 
 app.add_middleware(
@@ -46,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# 뉴스 가져오기
+app.include_router(news_router)
 
 manager = ConnectionManager()
 alert_manager = AlertManager()

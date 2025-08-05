@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Search, Bell, Mic, MicOff } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
+//import {toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
+import { useBookmark } from "@/components/bookmark-provider.jsx"
 
 const watchlistData = [
   {
@@ -52,6 +54,18 @@ const availableCoins = [
   { symbol: "AVAX", name: "Avalanche", price: 38.5 },
   { symbol: "SOL", name: "Solana", price: 98.5 },
   { symbol: "DOGE", name: "Dogecoin", price: 0.08 },
+  { symbol: "DOGEJA", name: "Dogejacoin", price: 14.3 },
+  { symbol: "D1", name: "Done", price: 14.3 },
+  { symbol: "D2", name: "Dtwo", price: 14.3 },
+  { symbol: "D3", name: "Dtree", price: 14.3 },
+  { symbol: "D4", name: "Dfour", price: 14.3 },
+  { symbol: "D5", name: "Dfive", price: 14.3 },
+  { symbol: "D6", name: "Dsix", price: 14.3 },
+  { symbol: "D7", name: "Dseven", price: 14.3 },
+  { symbol: "D8", name: "Deight", price: 14.3 },
+  { symbol: "D9", name: "Dnine", price: 14.3 },
+  { symbol: "D10", name: "Dten", price: 14.3 },
+
 ]
 
 
@@ -61,16 +75,22 @@ const formatPrice = (price, currency, krwRate) =>
     : `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
 export const WatchlistManager = () => {
+  
   const { toast } = useToast()
   const { subscribe, unsubscribe, marketData } = useWebSocket()
   const [searchTerm, setSearchTerm] = useState("")
-  const [watchlist, setWatchlist] = useState(watchlistData)
+
+  const { bookmarked,toggle_Bookmark } = useBookmark()
+  // const [watchlist, setWatchlist] = useState(watchlistData)
+const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarked[coin.symbol])
+
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [voiceCommand, setVoiceCommand] = useState("")
   const [showNotificationDialog, setShowNotificationDialog] = useState(false)
   const [alertDialogOpen, setAlertDialogOpen] = useState({})
   const [currency, setCurrency] = useState("KRW")
   const [krwRate, setKrwRate] = useState(0)
+  
 
   useEffect(() => { getKrwRate().then(setKrwRate) }, [])
   useEffect(() => {
@@ -129,6 +149,12 @@ export const WatchlistManager = () => {
         coin.symbol.toLowerCase().includes(searchTerm.toLowerCase())) &&
       !watchlist.find((w) => w.symbol === coin.symbol),
   )
+  
+
+  const bookmarkedcoins=availableCoins.filter(
+    (coin)=>bookmarked[coin.symbol]
+  );
+
 
   return (
     <>
@@ -213,8 +239,9 @@ export const WatchlistManager = () => {
                                 <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
                               )}
                               <span className={`text-xs ${currentChange > 0 ? "text-green-500" : "text-red-500"}`}> 
-                                {currentChange > 0 ? "+" : ""}
-                                {currentChange.toFixed(1)}%
+                              {Number.isFinite(currentChange)
+                                ? `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(1)}%`
+                                : "-"}
                               </span>
                             </div>
                           </div>
@@ -288,7 +315,7 @@ export const WatchlistManager = () => {
                           </div>
                         </div>
                       </div>
-                      {coin.alerts.length > 0 && (
+                      {Array.isArray(coin.alerts) && coin.alerts.length >= 1 && (
                         <div className="flex gap-2 mt-1">
                           {coin.alerts.map((alert, index) => (
                             <Badge
@@ -296,7 +323,7 @@ export const WatchlistManager = () => {
                               variant="outline"
                               className="flex items-center justify-center text-[11px] rounded-full px-3 w-32 h-9 min-w-[110px] max-w-[180px]"
                               style={{ borderRadius: '9999px' }}
-                            >
+                            >{`${alert.type}${alert.condition}${alert.value}`}
                               <button
                                 type="button"
                                 className="mr-2 text-muted-foreground hover:text-destructive flex-shrink-0"
@@ -379,7 +406,7 @@ export const WatchlistManager = () => {
             )}
 
             <div className="space-y-2">
-              {filteredCoins.map((coin) => (
+              {filteredCoins.slice(0,7).map((coin) => (
                 <div key={coin.symbol} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
@@ -397,9 +424,27 @@ export const WatchlistManager = () => {
                         ? `₩${(coin.price * krwRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : `$${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                     </span>
-                    <Button size="sm" variant="outline" onClick={() => addToWatchlist(coin)}>
+                    {/* <Button size="sm" variant="outline" onClick={() => addToWatchlist(coin)}>
                       <Plus className="h-3 w-3" />
-                    </Button>
+                    </Button> */}
+                    {filteredCoins.length === 1 ? (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {toggle_Bookmark(coin.symbol);setSearchTerm("");}}
+                      >
+                        <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
+                      </Button>
+                      ):
+                      (
+                        <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggle_Bookmark(coin.symbol)}
+                      >
+                        <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
+                      </Button>
+                      )}
                   </div>
                 </div>
               ))}

@@ -8,17 +8,18 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Star, Plus, Trash2, TrendingUp, TrendingDown, Search } from "lucide-react"
 
+
 const watchlistData = [
   { symbol: "BTC", name: "Bitcoin", price: 43000, change: 2.5, alert: { type: "price", value: 45000 } },
   { symbol: "ETH", name: "Ethereum", price: 1600, change: -1.2, alert: { type: "price", value: 1700 } },
   { symbol: "ADA", name: "Cardano", price: 0.48, change: 5.2, alert: null },
-  { symbol: "DOT", name: "Polkadot", price: 7.2, change: -3.1, alert: { type: "volume", value: "10M" } },
+  // { symbol: "DOT", name: "Polkadot", price: 7.2, change: -3.1, alert: { type: "volume", value: "10M" } },
 ]
 const availableCoins = [
   { symbol: "LINK", name: "Chainlink", price: 15.2 },
   { symbol: "UNI", name: "Uniswap", price: 6.8 },
   { symbol: "MATIC", name: "Polygon", price: 0.92 },
-  { symbol: "AVAX", name: "Avalanche", price: 38.5 },
+  // { symbol: "AVAX", name: "Avalanche", price: 38.5 },
 ]
 
 const formatPrice = (price, currency, krwRate) =>
@@ -41,6 +42,12 @@ export const Watchlist = () => {
       coin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       coin.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+  const {is_bookmarked} = useBookmark();
+
+  const bookmarked_coins = availableCoins.filter(
+    (coin)=>bookmarked[coin.symbol]
+  );
+
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
@@ -58,7 +65,7 @@ export const Watchlist = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {watchlist.map((coin) => (
+            {/* {watchlist.map((coin) => (
               <div key={coin.symbol} className="flex items-center justify-between p-4 border rounded-lg overflow-hidden">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -104,7 +111,7 @@ export const Watchlist = () => {
                   </Button>
                 </div>
               </div>
-            ))}
+            ))} */}
 
             {watchlist.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">

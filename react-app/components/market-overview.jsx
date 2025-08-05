@@ -60,6 +60,7 @@ const coinNameMap = { BTC: "비트코인", ETH: "이더리움", BNB: "비엔비"
 const getKoreanCoinName = (symbol, name) => coinNameMap[symbol] ? `${coinNameMap[symbol]} (${symbol})` : name ? `${name} (${symbol})` : symbol
 
 export const MarketOverview = ({ detailed = false }) => {
+
   if (!detailed) return (
     <Card>
       <CardHeader>
@@ -102,6 +103,7 @@ export const MarketOverview = ({ detailed = false }) => {
       </CardContent>
     </Card>
   )
+
   return (
     <div className="space-y-6">
       <Card>
@@ -159,10 +161,11 @@ export const MarketOverview = ({ detailed = false }) => {
                   <div className="text-right text-sm text-muted-foreground">
                     <p>거래량: {coin.volume} 달러</p>
                     <p>시가총액: {coin.marketCap} 달러</p>
+                    <p>변경 테스트용</p>
                   </div>
 
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" >
                       <Star className="h-3 w-3" />
                     </Button>
                     <Button size="sm" variant="outline">

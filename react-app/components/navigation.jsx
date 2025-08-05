@@ -109,7 +109,7 @@ export const Navigation = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/portfolio")}> 
                     <Briefcase className="mr-2 h-4 w-4" />
-                    <span>내 자산</span>
+                    <span>마이페이지</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer" onClick={() => setShowSettingsDialog(true)}>
                     <Settings className="mr-2 h-4 w-4" />
