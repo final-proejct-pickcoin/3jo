@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,12 @@ import { TrendingUp, Shield, Brain, Mic, BarChart3, Users, Smartphone, Globe, Za
 
 export const LandingPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const { login } = useAuth()
+  const { login, loginError } = useAuth()
+
+  useEffect(() => {
+    if (loginError) setShowAuthModal(true) //로그인 실패 모달 자동 열림
+  }, [loginError])
+
   const handleDemoLogin = async () => { try { await login("demo@example.com", "password123") } catch (e) { console.error("Demo login failed:", e) } }
   const handleClearStorage = () => { localStorage.clear(); window.location.reload() }
   const features = [
@@ -61,7 +66,7 @@ export const LandingPage = () => {
             🚀 Next-Generation Virtual Trading Platform
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Master Crypto Trading
+            Master Crypto Trading!
             <br />
             Without the Risk
           </h1>
