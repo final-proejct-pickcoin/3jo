@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { useState } from "react";
 import { Button } from "@/components_admin/ui/button";
@@ -11,6 +11,7 @@ import { Separator } from "@/components_admin/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import { Eye, EyeOff, Shield, Smartphone, Mail, Phone, User, Building, CheckCircle, AlertTriangle } from "lucide-react";
+import axios from "axios";
 export default function ProfileDialogs({
   isDarkMode,
   isProfileDialogOpen,
@@ -24,10 +25,10 @@ export default function ProfileDialogs({
 }) {
   // 프로필 설정 상태
   const [profileData, setProfileData] = useState({
-    name: "관리자",
-    email: "admin@pickcoin.com",
+    name: "",
+    email: "",
     phone: "010-1234-5678",
-    department: "시스템 관리팀"
+    role: ""
   });
 
   // 비밀번호 변경 상태
@@ -57,10 +58,7 @@ export default function ProfileDialogs({
   };
   const handlePasswordChange = () => {
     setPasswordError("");
-    if (passwordData.currentPassword !== "admin123") {
-      setPasswordError("현재 비밀번호가 올바르지 않습니다.");
-      return;
-    }
+
     if (passwordData.newPassword.length < 8) {
       setPasswordError("새 비밀번호는 8자 이상이어야 합니다.");
       return;
@@ -70,20 +68,51 @@ export default function ProfileDialogs({
       return;
     }
 
-    // 실제로는 API 호출
-    console.log("Password changed successfully");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
-    setIsPasswordDialogOpen(false);
+    // 비밀번호 유효성 검사
+    const formData = new FormData();
+    formData.append("email", profileData.email);
+    formData.append("currentPassword", passwordData.currentPassword);
+    formData.append("newPassword", passwordData.newPassword);
+    axios.post("http://localhost:8000/admin/change-pwd", formData)
+      .then(response => {
+        console.log(response.data);
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+        console.log("Password changed successfully");
+        setIsPasswordDialogOpen(false);
+      }).catch(error => {
+        console.error("Error changing password:", error);
+        setPasswordError("현재 비밀번호가 일치하지 않습니다.")
+      });
+    
   };
   const handleSecuritySave = () => {
     // 실제로는 API 호출
     console.log("Security settings updated:", securitySettings);
     setIsSecurityDialogOpen(false);
   };
+
+  useEffect(() => {
+    if(localStorage.getItem("access_token")){
+
+      const email = localStorage.getItem("sub");
+      const name = localStorage.getItem("name");
+      const role = localStorage.getItem("role");
+
+      const newProfileData = {
+        email: email ,
+        name: name ,
+        role: role // 기본값 설정
+      }
+
+      setProfileData(newProfileData);
+        
+    }
+  }, []);
+
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Dialog, {
     open: isProfileDialogOpen,
     onOpenChange: setIsProfileDialogOpen
@@ -150,10 +179,10 @@ export default function ProfileDialogs({
     className: "h-4 w-4 inline mr-2"
   }), "\uBD80\uC11C"), /*#__PURE__*/React.createElement(Input, {
     id: "department",
-    value: profileData.department,
+    value: profileData.role,
     onChange: e => setProfileData({
       ...profileData,
-      department: e.target.value
+      role: e.target.value
     }),
     className: isDarkMode ? "bg-gray-700 border-gray-600 text-gray-200" : ""
   }))), /*#__PURE__*/React.createElement(DialogFooter, null, /*#__PURE__*/React.createElement(Button, {
