@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Star, Plus, Activity, Globe, BarChart3 } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
 import { TradingChart } from "@/components/trading-chart"
+import {bookmarked,toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
 
 const marketData = [
   { symbol: "BTC", name: "Bitcoin", price: 43000, change: 2.5, volume: "28.5B", marketCap: "840B", rank: 1 },
@@ -20,6 +21,10 @@ const marketData = [
   { symbol: "MATIC", name: "Polygon", price: 0.92, change: -2.1, volume: "450M", marketCap: "8.5B", rank: 8 },
   { symbol: "DOT", name: "Polkadot", price: 7.2, change: -3.1, volume: "320M", marketCap: "9.2B", rank: 9 },
   { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 10 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 11 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 12 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 13 },
+  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 14 },
 ]
 
 const trendingCoins = [
@@ -27,6 +32,7 @@ const trendingCoins = [
   { symbol: "SHIB", change: 18.4, reason: "Community growth" },
   { symbol: "FLOKI", change: 12.3, reason: "Partnership news" },
 ]
+
 
 const marketNews = [
   {
@@ -64,6 +70,16 @@ export const MarketAnalysis = () => {
   const { subscribe, marketData: liveData } = useWebSocket()
   const [selectedTimeframe, setSelectedTimeframe] = useState("24h")
   const [currency, setCurrency] = useState("KRW")
+
+  const [marketNews, setMarketNews] = useState([])
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/news") // FastAPI 서버 주소
+      .then(res => res.json())
+      .then(data => setMarketNews(data))
+      .catch(err => console.error(err))
+  }, [])
+
   const exchangeRate = 1391
   const totalMarketCapUSD = 16800
   const totalMarketCapKRW = totalMarketCapUSD * 1e8 * exchangeRate
@@ -72,6 +88,9 @@ export const MarketAnalysis = () => {
   const volumeKRW = volumeUSD * 1e8 * exchangeRate
   const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
   useEffect(() => { subscribe(marketData.map(coin => coin.symbol)) }, [subscribe])
+
+  const {bookmarked,toggle_Bookmark}=useBookmark();
+
   return (
     <div className="space-y-6">
       {/* 통화 선택 토글 */}
@@ -249,7 +268,7 @@ export const MarketAnalysis = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {marketData.map((coin) => {
+                {marketData.slice(0,10).map((coin) => {
                   const livePrice = liveData[coin.symbol]?.price || coin.price
                   const liveChange = liveData[coin.symbol]?.change24h || coin.change
                   return (
@@ -277,8 +296,12 @@ export const MarketAnalysis = () => {
                           <p>시가총액: {formatNumber(coin.marketCap)}</p>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline"><Star className="h-3 w-3" /></Button>
-                          <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button>
+                       
+                          <Button size="sm" variant="outline" onClick={()=> toggle_Bookmark(coin.symbol)}>
+                             {/* 클릭 통해 관심코인 추가시 노란별 변경/클릭시 해제와 빈 별  */}
+                            <Star className="h-3 w-3" fill={bookmarked[coin.symbol]? "yellow":"none"} />
+                            </Button>
+                          {/* <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button> */}
                         </div>
                       </div>
                     </div>
@@ -333,7 +356,7 @@ export const MarketAnalysis = () => {
                     <div key={sector.name} className="flex items-center justify-between">
                       <span className="font-medium">{sector.name}</span>
                       <span className={`font-semibold ${sector.color}`}>
-                        {sector.change > 0 ? "+" : ""}
+                        {/* {sector.change > 0 ? "+" : ""} */}
                         {sector.change}%
                       </span>
                     </div>
@@ -344,45 +367,38 @@ export const MarketAnalysis = () => {
           </div>
         </TabsContent>
 
+
+        {/* 뉴스 */}
         <TabsContent value="news">
-          <Card>
-            <CardHeader>
-              <CardTitle>📰 시장 뉴스</CardTitle>
-              <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* 비트코인 ETF 승인 */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">비트코인 ETF 승인, 시장 랠리 촉진</h3>
-                    <Badge className="bg-green-100 text-green-700">강세</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">기관 자금이 대거 유입되며 비트코인이 최근 한 달 최고가를 돌파했습니다.</p>
-                  <p className="text-xs text-muted-foreground">2시간 전</p>
-                </div>
-                {/* 이더리움 네트워크 업그레이드 */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">이더리움 네트워크 업그레이드 임박</h3>
-                    <Badge className="bg-green-100 text-green-700">강세</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">이번 업그레이드로 확장성 향상과 가스비 절감이 기대됩니다.</p>
-                  <p className="text-xs text-muted-foreground">4시간 전</p>
-                </div>
-                {/* 유럽, 암호화폐 규제 명확화 */}
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold">유럽, 암호화폐 규제 기준 확립</h3>
-                    <Badge variant="secondary">중립</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2">새로운 규제 도입으로 기관 투자자들의 진입 장벽이 낮아졌습니다.</p>
-                  <p className="text-xs text-muted-foreground">6시간 전</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+         <Card>
+          <CardHeader>
+      <CardTitle>📰 시장 뉴스</CardTitle>
+      <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>
+    </CardHeader>
+
+    <CardContent>
+      <div className="space-y-4">
+        {marketNews.map((item, idx) => (
+          <div key={idx} className="p-4 border rounded-lg">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="font-semibold">{item.title}</h3>
+              <Badge variant="secondary">{item.source}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{item.published_at}</p>
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-500 hover:underline">
+              자세히 보기
+            </a>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
+
 
         <TabsContent value="analysis">
           <div className="grid md:grid-cols-2 gap-6">

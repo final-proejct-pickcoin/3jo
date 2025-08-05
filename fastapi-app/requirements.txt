@@ -11,4 +11,8 @@ redis
 bcrypt>=4.0.0
 passlib>=1.7.4
 pybithumb
-websocket
+websocket-client
+selenium
+bs4
+webdriver_manager
+lxml
