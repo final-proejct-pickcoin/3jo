@@ -44,13 +44,19 @@ services:
       - "6379:6379"
     restart: always 
   spring-app:
-    build: ./spring-app
+    build:
+      #이미지빌드 할 폴더위치 설정
+      context: ./spring-app
+      #도커파일 설정
+      dockerfile: Dockerfile.dev
     volumes:
       - ./spring-app:/home/gradle/app
     container_name: spring-app
     ports:
       - "8080:8080"
     environment:
+      #Docker에게 volume으로 연결된 폴더의 변경 사항을 적극적으로 감시명령 (dev-tools의존성)
+      - SPRING_DEVTOOLS_WATCH_ADDITIONAL_PATHS=/home/gradle/app
       - SPRING_PROFILES_ACTIVE=default
       - SPRING_MAIL_HOST=smtp.gmail.com
       - SPRING_MAIL_PORT=587
@@ -65,7 +71,8 @@ services:
       - redis
     command: ./gradlew bootRun
   react-app:
-    build: ./react-app      
+
+    build: ./react-app
     volumes:
       - ./react-app:/app
       - /app/node_modules

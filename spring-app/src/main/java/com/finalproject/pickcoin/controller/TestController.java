@@ -11,6 +11,6 @@ public class TestController {
     
     @RequestMapping("/test")
     public void test() {
-        logger.info("Test endpoint called");
+        logger.info("서버껐다키기");
     }
 }
