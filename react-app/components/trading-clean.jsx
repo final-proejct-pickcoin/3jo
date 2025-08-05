@@ -1,4 +1,12 @@
+
 "use client"
+// 심볼-한글명 매핑 (일부 주요 코인만 예시)
+const symbolToKorean = {
+  BTC: '비트코인', ETH: '이더리움', ETC: '이더리움클래식', XRP: '리플', BCH: '비트코인캐시', QTUM: '퀀텀',
+  LTC: '라이트코인', EOS: '이오스', ADA: '에이다', TRX: '트론', XLM: '스텔라루멘', ZIL: '질리카',
+  DOGE: '도지코인', LINK: '체인링크', SAND: '샌드박스', APT: '앱토스', AAVE: '에이브',
+  // ... 필요시 추가
+};
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,46 +51,37 @@ export const TradingInterface = () => {
   const krwRate = 1300
 
   // API 호출 함수
+  // 빗썸 public API에서 코인 목록을 직접 가져오는 함수
   const fetchCoins = async () => {
     try {
-      setLoading(true)
-
-      // 백엔드 API 호출
-      const apiUrl = "http://localhost:8080";
-      const headers = { 'Content-Type': 'application/json' };
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch(`${apiUrl}/api/coins/list?sortBy=${sortBy}&page=0&size=50&market=${selectedMarket}&search=${searchTerm}`, {
-        method: 'GET',
-        headers
-      });
-
+      setLoading(true);
+      // 빗썸 전체 시세 API 호출
+      const response = await fetch('https://api.bithumb.com/public/ticker/ALL_KRW');
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      const result = await response.json()
-      // result가 배열이면 그대로, 객체면 .data 사용
-      if (Array.isArray(result)) {
-        setCoins(result)
-        console.log('코인 목록 로드 성공:', result.length, '개')
-      } else if (result.success) {
-        setCoins(result.data || [])
-        console.log('코인 목록 로드 성공:', result.data?.length, '개')
-      } else {
-        console.error('API 응답 에러:', result.error)
-        toast.error(result.error || '코인 목록을 불러올 수 없습니다.')
+      const data = await response.json();
+      if (data.status !== '0000') {
+        throw new Error('빗썸 API 오류: ' + data.message);
       }
+      // data.data에 각 코인별 정보가 있음
+      const coinsArr = Object.entries(data.data)
+        .filter(([symbol]) => symbol !== 'date')
+        .map(([symbol, info]) => ({
+          coin_name: symbol,
+          symbol: symbol,
+          currentPrice: Number(info.closing_price),
+          changeRate: Number(info.fluctate_rate_24H),
+          volume24h: Number(info.units_traded_24H)
+        }));
+      setCoins(coinsArr);
+      console.log('빗썸 코인 목록 로드 성공:', coinsArr.length, '개');
     } catch (error) {
-      console.error('코인 목록 조회 실패:', error)
-      toast.error('서버와 연결할 수 없습니다. 네트워크를 확인해주세요.')
-      
-      // 에러 시 빈 배열로 설정
-      setCoins([])
+      console.error('코인 목록 조회 실패:', error);
+      toast.error('코인 데이터를 불러올 수 없습니다.');
+      setCoins([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -153,7 +152,7 @@ export const TradingInterface = () => {
 
   const handleCoinSelect = (coin) => {
     setSelectedCoin(coin.symbol)
-    toast.success(`${coin.coin_name} 선택됨`)
+    // toast.success(`${coin.coin_name} 선택됨`)
   }
 
   const toggleFavorite = async (coinId) => {
@@ -257,7 +256,7 @@ export const TradingInterface = () => {
       {/* 코인명 */}
       <div className="col-span-4 flex items-center">
         <div>
-          <div className="font-medium text-xs">{coin.coin_name || 'Unknown'}</div>
+          <div className="font-medium text-xs">{symbolToKorean[coin.symbol] || coin.coin_name || 'Unknown'}</div>
           <div className="text-xs text-muted-foreground">{coin.symbol || 'N/A'}</div>
         </div>
       </div>
@@ -377,9 +376,9 @@ export const TradingInterface = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-[calc(100vh-200px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-[auto,1fr] gap-4 h-[calc(100vh-200px)]">
         {/* 코인 목록 */}
-        <Card className="lg:row-span-2">
+        <Card className="max-w-md w-full">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold">코인 목록</CardTitle>
@@ -428,7 +427,7 @@ export const TradingInterface = () => {
             </div>
 
             {/* 코인 목록 */}
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-[600px] overflow-y-auto">
               {loading ? (
                 <CoinListSkeleton />
               ) : filteredCoins.length > 0 ? (
@@ -450,6 +449,12 @@ export const TradingInterface = () => {
             </div>
           </CardContent>
         </Card>
+
+
+        {/* Advanced Trading Chart */}
+        <div className="w-full">
+          <TradingChart symbol={`${selectedCoin}/USDT`} height={600} />
+        </div>
 
         {/* Order Book */}
         <Card className="lg:row-span-2">
@@ -554,10 +559,6 @@ export const TradingInterface = () => {
           </CardContent>
         </Card>
 
-        {/* Advanced Trading Chart */}
-        <div className="lg:col-span-2 lg:row-span-2">
-          <TradingChart symbol={`${selectedCoin}/USDT`} height={600} />
-        </div>
       </div>
     </div>
   )
