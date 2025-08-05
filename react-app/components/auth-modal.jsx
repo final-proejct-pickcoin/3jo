@@ -18,7 +18,8 @@ import { useAuth } from "@/components/auth-provider"
 
 
 export function AuthModal({ isOpen, onClose }) {
-  const { login, register, loginWithOAuth, isLoading } = useAuth()
+  const { login, register, loginWithOAuth, isLoading, loginError } = useAuth()
+
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
@@ -108,10 +109,10 @@ export function AuthModal({ isOpen, onClose }) {
             <TabsTrigger value="signup">Create Account</TabsTrigger>
           </TabsList>
 
-          {errors.general && (
+          {loginError && (
             <Alert variant="destructive" className="mt-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{errors.general}</AlertDescription>
+              <AlertDescription>{loginError}</AlertDescription>
             </Alert>
           )}
 
@@ -128,7 +129,7 @@ export function AuthModal({ isOpen, onClose }) {
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="john@example.com"
+                      placeholder="john123@example.com"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       className={errors.email ? "border-destructive" : ""}
@@ -142,6 +143,7 @@ export function AuthModal({ isOpen, onClose }) {
                       <Input
                         id="login-password"
                         type={showPassword ? "text" : "password"}
+                        placeholder="your password"
                         value={formData.password}
                         onChange={(e) => handleInputChange("password", e.target.value)}
                         className={errors.password ? "border-destructive pr-10" : "pr-10"}

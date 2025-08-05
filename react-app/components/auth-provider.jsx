@@ -7,11 +7,12 @@ const AuthContext = createContext(undefined)
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [loginError, setLoginError] = useState(null)
 
   useEffect(() => {
     try {
-      const token = localStorage.getItem("auth_token")
-      const userData = localStorage.getItem("user_data")
+      const token = sessionStorage.getItem("auth_token")
+      const userData = sessionStorage.getItem("user_data")
       if (token && userData) setUser(JSON.parse(userData))
     } catch (e) {
       localStorage.removeItem("auth_token")
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }) => {
   // 로그인
   const login = async (email, password) => {
     setIsLoading(true)
+    setLoginError(null)
     try {
       const formData = new URLSearchParams()
       formData.append("email", email)
@@ -34,7 +36,13 @@ export const AuthProvider = ({ children }) => {
         body: formData,
       })
 
-      if (!res.ok) throw new Error("Login failed")
+      // 로그인 실패
+      if (!res.ok) {
+        const ErrorMsg = (await res.json())?.error || "로그인 실패"
+        setLoginError(ErrorMsg)
+        return
+      }
+
       const data = await res.json()
 
       localStorage.setItem("auth_token", data.access_token)
@@ -46,6 +54,13 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  //로그아웃시 세션 종료
+  const logout = () => {
+    localStorage.removeItem("auth_token")
+    localStorage.removeItem("user_data")
+    setUser(null)
   }
 
   // 회원가입
@@ -72,12 +87,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user_data")
-    setUser(null)
-  }
-
+  
   return (
     <AuthContext.Provider
       value={{
@@ -87,6 +97,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        loginError,
       }}
     >
       {children}

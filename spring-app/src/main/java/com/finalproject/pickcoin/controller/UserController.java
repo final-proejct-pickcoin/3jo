@@ -119,6 +119,7 @@ public class UserController {
             return ResponseEntity.status(401).body(result);
         }
         
+        //로그인 성공시 토큰 발급
         String token = jwtHelper.createAccessToken(email, Map.of("name", user.getName()));
         result.put("access_token", token);
         result.put("token_type", "bearer");
