@@ -10,3 +10,5 @@ python-dotenv
 redis
 bcrypt>=4.0.0
 passlib>=1.7.4
+pybithumb
+websocket

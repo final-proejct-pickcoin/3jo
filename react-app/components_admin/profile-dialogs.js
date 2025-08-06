@@ -11,6 +11,7 @@ import { Separator } from "@/components_admin/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import { Eye, EyeOff, Shield, Smartphone, Mail, Phone, User, Building, CheckCircle, AlertTriangle } from "lucide-react";
+import axios from "axios";
 export default function ProfileDialogs({
   isDarkMode,
   isProfileDialogOpen,
@@ -57,10 +58,7 @@ export default function ProfileDialogs({
   };
   const handlePasswordChange = () => {
     setPasswordError("");
-    if (passwordData.currentPassword !== "admin123") {
-      setPasswordError("현재 비밀번호가 올바르지 않습니다.");
-      return;
-    }
+
     if (passwordData.newPassword.length < 8) {
       setPasswordError("새 비밀번호는 8자 이상이어야 합니다.");
       return;
@@ -70,14 +68,26 @@ export default function ProfileDialogs({
       return;
     }
 
-    // 실제로는 API 호출
-    console.log("Password changed successfully");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
-    setIsPasswordDialogOpen(false);
+    // 비밀번호 유효성 검사
+    const formData = new FormData();
+    formData.append("email", profileData.email);
+    formData.append("currentPassword", passwordData.currentPassword);
+    formData.append("newPassword", passwordData.newPassword);
+    axios.post("http://localhost:8000/admin/change-pwd", formData)
+      .then(response => {
+        console.log(response.data);
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+        console.log("Password changed successfully");
+        setIsPasswordDialogOpen(false);
+      }).catch(error => {
+        console.error("Error changing password:", error);
+        setPasswordError("현재 비밀번호가 일치하지 않습니다.")
+      });
+    
   };
   const handleSecuritySave = () => {
     // 실제로는 API 호출
