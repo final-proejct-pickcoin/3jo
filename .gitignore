@@ -40,4 +40,9 @@ out/
 mysql_data/
 
 ## python ##
-__pycache__
+*.pyc
+__pycache__/
+.venv/
+
+## react ##
+node_modules/

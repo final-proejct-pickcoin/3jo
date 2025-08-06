@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,12 @@ import { TrendingUp, Shield, Brain, Mic, BarChart3, Users, Smartphone, Globe, Za
 
 export const LandingPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false)
-  const { login } = useAuth()
+  const { login, loginError } = useAuth()
+
+  useEffect(() => {
+    if (loginError) setShowAuthModal(true) //로그인 실패 모달 자동 열림
+  }, [loginError])
+
   const handleDemoLogin = async () => { try { await login("demo@example.com", "password123") } catch (e) { console.error("Demo login failed:", e) } }
   const handleClearStorage = () => { localStorage.clear(); window.location.reload() }
   const features = [
