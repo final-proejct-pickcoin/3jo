@@ -21,11 +21,8 @@ export default function RootLayout({children}) {
     }
     setReady(true);
   }, []);
-
-  
   
   return <>{children}</>
-  
 
 }
 

@@ -1,11 +1,19 @@
 import pymysql
 from enums.Role import Role
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, HTTPException, status, Depends
 from passlib.context import CryptContext
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from dotenv import load_dotenv
 from utils.jwt_helper import create_access_token
+from fastapi.security import OAuth2PasswordBearer
+import os
+import jwt
 
 router = APIRouter()
+
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 host = "mysql"
 
@@ -65,7 +73,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
         # 비밀번호 비교
         if pwd_context.verify(password, user["password"]):
             # ✅ JWT 토큰 생성
-            token = create_access_token({"sub": email})
+            token = create_access_token({"sub": email, "role": user["role"]})
             conn.commit()
 
             logged_in_users.add(email)  # 로그인한 유저 저장
@@ -141,3 +149,29 @@ async def logout(email: str = Form(...)):
     response = JSONResponse(content={"msg": "로그아웃됨"})
     logged_in_users.discard(email)
     return response
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin/login")
+ADMIN_ROLE = Role.ADMIN.value
+
+def get_current_admin(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        role = payload.get("role")
+        if not email or not role:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="토큰에 이메일/권한 정보 없음"
+            )
+        if role != ADMIN_ROLE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="관리자 권한 없음"
+            )
+        return email
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 토큰"
+        )
