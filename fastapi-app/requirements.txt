@@ -16,3 +16,7 @@ selenium
 bs4
 webdriver_manager
 lxml
+
+# Google cloud API_0806_feature_l
+google-cloud-speech
+google-generativeai
