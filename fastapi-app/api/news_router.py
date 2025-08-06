@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from .news_service import bloomingbit_news
-from .models import NewsItem
+from service.news_service import bloomingbit_news
+from models.news import NewsItem
 from typing import List
 
 router = APIRouter()
