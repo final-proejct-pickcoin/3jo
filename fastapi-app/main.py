@@ -3,18 +3,16 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 import jwt
 from passlib.context import CryptContext
-import pymysql
-from utils.jwt_helper import create_access_token, verify_token
 from dotenv import load_dotenv
 import os
 import redis
 from utils.user_manager import ConnectionManager
 from alert_manager import AlertManager
-from typing import Dict
 from json import dumps
 from fastapi.middleware.cors import CORSMiddleware
 from api.news_router import router as news_router
 from api.auth import router as auth_router
+from api.admin_user import router as admin_user_router
 
 
 load_dotenv()
@@ -50,10 +48,14 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# 뉴스 가져오기
+# 뉴스 크롤링 라우터
 app.include_router(news_router)
 
+# 로그인, 로그아웃, 회원가입 라우터
 app.include_router(auth_router)
+
+# admin_user 로그 라우터
+app.include_router(admin_user_router)
 
 manager = ConnectionManager()
 alert_manager = AlertManager()
@@ -93,7 +95,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...), room
         await websocket.send_text(msg)
 
     # 4. 브로드캐스트 및 케세지 기록    
-    
     await manager.broadcast(f"✅ {username}님이 [{room}] 채팅방에 입장했습니다.", room)
 
     try:
@@ -145,12 +146,6 @@ async def alert_listener(websocket: WebSocket, token: str = Query(...)):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
-
-
-
-
-
-
 
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):

@@ -1,22 +1,31 @@
 import pymysql
 from enums.Role import Role
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, HTTPException, status, Depends, Request
 from passlib.context import CryptContext
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from dotenv import load_dotenv
 from utils.jwt_helper import create_access_token
+from fastapi.security import OAuth2PasswordBearer
+import os
+import jwt
 
 router = APIRouter()
 
-host = "mysql"
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+host = "34.64.105.135"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 회원가입
 @router.post("/admin/register")
-async def register(email: str = Form(...), password: str = Form(...), name: str = Form(...)):
-
+async def register(request:Request, email: str = Form(...), password: str = Form(...), name: str = Form(...)):
+    data = await request.form()
+    print(f"Received form data: {data}")
     # db연결
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
@@ -49,7 +58,7 @@ logged_in_users: set[str] = set()  # 나중에 redis 사용해서 로그인회�
 @router.post("/admin/login")
 async def login(email: str = Form(...), password: str = Form(...)):
 
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
 
     cursor = conn.cursor()
 
@@ -65,7 +74,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
         # 비밀번호 비교
         if pwd_context.verify(password, user["password"]):
             # ✅ JWT 토큰 생성
-            token = create_access_token({"sub": email})
+            token = create_access_token({"sub": email, "role": user["role"]})
             conn.commit()
 
             logged_in_users.add(email)  # 로그인한 유저 저장
@@ -95,7 +104,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
 # 비밀번호 변경
 @router.post("/admin/change-pwd")
 async def change_password(email: str = Form(...), currentPassword: str = Form(...), newPassword: str = Form(...)):
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
     cursor = conn.cursor()
 
     try:
@@ -141,3 +150,29 @@ async def logout(email: str = Form(...)):
     response = JSONResponse(content={"msg": "로그아웃됨"})
     logged_in_users.discard(email)
     return response
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin/login")
+ADMIN_ROLE = Role.ADMIN.value
+
+def get_current_admin(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        role = payload.get("role")
+        if not email or not role:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="토큰에 이메일/권한 정보 없음"
+            )
+        if role != ADMIN_ROLE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="관리자 권한 없음"
+            )
+        return email
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 토큰"
+        )
