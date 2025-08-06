@@ -109,6 +109,10 @@ services:
   #     - 5044:5044
   #   environment:
   #     - ELASTICSERACH_HOSTS=http://elastic:9200
+      # volumes:
+      # - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      # depends_on:
+      # - elasticsearch
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.17.4
   #   ports:
