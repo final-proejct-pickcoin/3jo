@@ -16,3 +16,4 @@ selenium
 bs4
 webdriver_manager
 lxml
+python-logstash
