@@ -43,3 +43,6 @@ mysql_data/
 *.pyc
 __pycache__/
 .venv/
+
+## react ##
+node_modules/
