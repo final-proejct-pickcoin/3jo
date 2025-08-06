@@ -1,6 +1,6 @@
 import pymysql
 from enums.Role import Role
-from fastapi import APIRouter, Form, HTTPException, status, Depends
+from fastapi import APIRouter, Form, HTTPException, status, Depends, Request
 from passlib.context import CryptContext
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from dotenv import load_dotenv
@@ -15,16 +15,17 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "mysql"
+host = "34.64.105.135"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 회원가입
 @router.post("/admin/register")
-async def register(email: str = Form(...), password: str = Form(...), name: str = Form(...)):
-
+async def register(request:Request, email: str = Form(...), password: str = Form(...), name: str = Form(...)):
+    data = await request.form()
+    print(f"Received form data: {data}")
     # db연결
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
@@ -57,7 +58,7 @@ logged_in_users: set[str] = set()  # 나중에 redis 사용해서 로그인회�
 @router.post("/admin/login")
 async def login(email: str = Form(...), password: str = Form(...)):
 
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
 
     cursor = conn.cursor()
 
@@ -103,7 +104,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
 # 비밀번호 변경
 @router.post("/admin/change-pwd")
 async def change_password(email: str = Form(...), currentPassword: str = Form(...), newPassword: str = Form(...)):
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
     cursor = conn.cursor()
 
     try:
