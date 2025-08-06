@@ -10,8 +10,8 @@ spring:
       host: redis
       port: 6379
   datasource:
-    url: jdbc:mysql://34.64.105.135:3306/coindb?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Seoul
-    # url: jdbc:mysql://localhost:3306/coindb
+    # url 뒷부분에 한글 설정만 하면 에러가남. 이대로도 한글 잘 되긴하는데 다른 테이블에서 확인 필요.
+    url: jdbc:mysql://34.64.105.135:3306/coindb
     username: pickcoin
     password: Admin1234!
     driver-class-name: com.mysql.cj.jdbc.Driver

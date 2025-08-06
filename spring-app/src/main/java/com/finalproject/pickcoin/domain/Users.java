@@ -27,9 +27,10 @@ public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer user_id;
+
     @Column(nullable = false, unique = true)
     private String email;
-    @Column(nullable = false)
+
     private String password;
     @Column(nullable = false)
     private String name;
@@ -39,15 +40,20 @@ public class Users {
     @Column(columnDefinition = "boolean default false")
     private boolean onboarding_completed;
 
-    @Column(name="created_at", updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
-
-    @Column(name = "expires_at")
-    private LocalDateTime expiresAt;
+    
 
     @Column(name = "is_verified", columnDefinition = "boolean default false")
     private boolean verified;
     @Column(name = "verification_token", length = 100)
     private String verificationToken;    // 인증용 토큰 (필수)
+
+    // API 회원가입 시 필요한 컬럼
+    private String provider;
+    private String provider_id;
+
+    @Column(name="created_at", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 }
