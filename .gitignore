@@ -42,3 +42,4 @@ mysql_data/
 ## python ##
 *.pyc
 __pycache__/
+.venv/
