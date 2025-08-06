@@ -9,7 +9,8 @@ import { Label } from "@/components_admin/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import axios from "axios";
-import SignUpModal from "./ui/signup-modal";
+import SignUpModal from "@/components_admin/ui/signup-modal";
+
 export default function LoginForm({
   onLogin
 }) {
@@ -19,7 +20,9 @@ export default function LoginForm({
     email: "",
     password: ""
   });
-  const [isModalOpen, setModalOpen] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isOpenSignUp, setIsOpenSignUp] = useState(false);
   
   const [token, setToken] = useState(null);
   const [error, setError] = useState("");
@@ -64,6 +67,7 @@ export default function LoginForm({
         setToken(response.data.access_token);    // 상태 업데이트 추가
         
         onLogin();
+        window.location.reload(); // 페이지 새로고침
         setError(null);
         window.location.reload();
       }else if(response.data.role === "USER"){
@@ -124,13 +128,12 @@ export default function LoginForm({
           </form>
             
         ) : (
-          <MainDashboardComponent onLogout={handleLogout} />
+          <MainDashboardComponent onLogout={handleLogout} />          
         )}
         <hr/>
-        <hr/>
-        <Button className="w-full h-11 ..." onClick={() => {setModalOpen(true)}}>회원가입</Button>
-        <SignUpModal isOpenSignUp={isModalOpen} onClose={() => setModalOpen(false)} />
-      </CardContent>
+        <Button className="w-full h-11 ..." onClick={() => setModalOpen(true)}>회원가입</Button>
+        <SignUpModal isOpenSignUp={modalOpen} onClose={() => setModalOpen(false)} />
+      </CardContent>      
     </Card>
   </div>
 );

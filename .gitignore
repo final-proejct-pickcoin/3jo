@@ -38,3 +38,6 @@ out/
 
 ### mysql ###
 mysql_data/
+
+## python ##
+__pycache__
