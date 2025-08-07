@@ -24,6 +24,7 @@ def getuser():
     try:
         conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
         with conn.cursor() as cursor:
+            # 1. 유저정보 가져오기
             userSQL = """SELECT
                         u.user_id,
                         u.name,
@@ -36,12 +37,12 @@ def getuser():
                         LEFT JOIN wallet w 
                             ON u.user_id = w.user_id
                         LEFT JOIN asset a
-                            ON w.asset_id = a.asset_id
-                           
+                            ON w.asset_id = a.asset_id                           
                         """
             cursor.execute(userSQL)
-            result = cursor.fetchall()
-            print(result)
+            users = cursor.fetchall()
+
+            print(users)
     except Exception as e:
         print("Error in /admin/getuser:", e)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(e))
@@ -49,4 +50,4 @@ def getuser():
         conn.close()
 
 
-    return result
+    return users
