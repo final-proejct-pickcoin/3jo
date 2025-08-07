@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { BookmarkProvider } from "@/components/bookmark-provider"
 import "./globals.css"
+import KakaoScript from "@/components/kakaoscript"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -32,6 +33,9 @@ const RootLayout = ({ children }) => (
       <link rel="apple-touch-icon" href="/icon-192x192.png" />
     </head>
     <body className={inter.className}>
+      <KakaoScript />
+       
+
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <AuthProvider>
           <WebSocketProvider>
