@@ -10,7 +10,6 @@ services:
       - ./.env
     # 환경변수에 DB 접속 정보 지정(아래 예시 참고)
     environment:
-<<<<<<< HEAD
       - MYSQL_HOST=34.64.105.135
       - MYSQL_USER=pickcoin
       - MYSQL_PASSWORD=Admin1234!
@@ -36,34 +35,6 @@ services:
   #     - --character-set-server=utf8mb4
   #     - --collation-server=utf8mb4_unicode_ci
   #     - --skip-character-set-client-handshake
-=======
-      - MYSQL_HOST=mysql
-      - MYSQL_USER=pickcoin
-      - MYSQL_PASSWORD=final3
-      - MYSQL_DATABASE=coindb
-    depends_on:
-      - mysql
-      - redis
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-  mysql:
-    image: mysql:8.0
-    restart: always
-    container_name: mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: admin1234
-      MYSQL_DATABASE: coindb
-      MYSQL_USER: pickcoin
-      MYSQL_PASSWORD: final3
-      TZ: Asia/Seoul
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./mysql_data:/var/lib/mysql
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --skip-character-set-client-handshake
->>>>>>> feature_jh
 
   redis:
     image: redis:7
