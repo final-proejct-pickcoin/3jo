@@ -1,6 +1,5 @@
 import pymysql
 from enums.Role import Role
-<<<<<<< HEAD
 from fastapi import APIRouter, Form, HTTPException, status, Depends, Request
 from passlib.context import CryptContext
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -17,33 +16,16 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 host = "34.64.105.135"
-=======
-from fastapi import APIRouter, Form
-from passlib.context import CryptContext
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from utils.jwt_helper import create_access_token
-
-router = APIRouter()
-
-host = "mysql"
->>>>>>> feature_jh
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 회원가입
 @router.post("/admin/register")
-<<<<<<< HEAD
 async def register(request:Request, email: str = Form(...), password: str = Form(...), name: str = Form(...)):
     data = await request.form()
     print(f"Received form data: {data}")
     # db연결
     conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
-=======
-async def register(email: str = Form(...), password: str = Form(...), name: str = Form(...)):
-
-    # db연결
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
->>>>>>> feature_jh
 
     cursor = conn.cursor()
 
@@ -76,11 +58,7 @@ logged_in_users: set[str] = set()  # 나중에 redis 사용해서 로그인회�
 @router.post("/admin/login")
 async def login(email: str = Form(...), password: str = Form(...)):
 
-<<<<<<< HEAD
     conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
-=======
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
->>>>>>> feature_jh
 
     cursor = conn.cursor()
 
@@ -96,11 +74,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
         # 비밀번호 비교
         if pwd_context.verify(password, user["password"]):
             # ✅ JWT 토큰 생성
-<<<<<<< HEAD
             token = create_access_token({"sub": email, "role": user["role"]})
-=======
-            token = create_access_token({"sub": email})
->>>>>>> feature_jh
             conn.commit()
 
             logged_in_users.add(email)  # 로그인한 유저 저장
@@ -130,11 +104,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
 # 비밀번호 변경
 @router.post("/admin/change-pwd")
 async def change_password(email: str = Form(...), currentPassword: str = Form(...), newPassword: str = Form(...)):
-<<<<<<< HEAD
     conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
-=======
-    conn = pymysql.connect(host=host, user="pickcoin", password="final3", port=3306, database="coindb", charset="utf8mb4")
->>>>>>> feature_jh
     cursor = conn.cursor()
 
     try:
@@ -179,7 +149,6 @@ async def logout(email: str = Form(...)):
     
     response = JSONResponse(content={"msg": "로그아웃됨"})
     logged_in_users.discard(email)
-<<<<<<< HEAD
     return response
 
 
@@ -207,6 +176,8 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 토큰"
         )
-=======
-    return response
->>>>>>> feature_jh
+
+# 관리자 인증이 필요한 API 예시
+@router.get("/admin/only")
+async def admin_only_api(current_admin: str = Depends(get_current_admin)):
+    return {"msg": f"관리자 {current_admin}만 접근 가능"}

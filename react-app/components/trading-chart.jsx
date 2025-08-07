@@ -1,4 +1,3 @@
-// trading-chart.jsx
 "use client"
 
 import { useEffect, useRef, useState, useMemo } from "react"
@@ -17,29 +16,41 @@ import {
 } from "lucide-react"
 
 
-export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
+export const TradingChart = ({ 
+  symbol = "BTC/KRW", 
+  height = 500, 
+  realTimeData = null, 
+  currentPrice = null 
+}) => {
   const chartContainerRef = useRef(null)
+  const chartRef = useRef(null)
+  const candleSeriesRef = useRef(null)
+  const volumeSeriesRef = useRef(null)
+  
   const [timeframe, setTimeframe] = useState("1h")
-  const [indicators, setIndicators] = useState(["volume"])
   const [candleData, setCandleData] = useState([])
   const [chartType, setChartType] = useState("candlestick")
   const intervalRef = useRef(null)
+  const [chartInitialized, setChartInitialized] = useState(false)
 
+  // 초기 데이터 생성 (실제 가격 범위로 수정)
   const generateInitialData = useMemo(() => {
     const data = []
-    let basePrice = 43000
+    let basePrice = currentPrice || 163000000 // 비트코인 실제 가격대
     const now = Math.floor(Date.now() / 1000)
     const timeInterval = timeframe === "1m" ? 60 : timeframe === "5m" ? 300 : timeframe === "15m" ? 900 : timeframe === "1h" ? 3600 : 86400
+
     for (let i = 100; i >= 0; i--) {
       const time = now - i * timeInterval
       const trend = Math.sin(i * 0.1) * 0.3 + (Math.random() - 0.5) * 0.4
       basePrice = basePrice * (1 + trend * 0.01)
-      const volatility = 50 + Math.random() * 150
+      const volatility = basePrice * 0.02 // 2% 변동성
       const open = basePrice + (Math.random() - 0.5) * volatility
       const close = open + (Math.random() - 0.5) * volatility * 0.8
       const high = Math.max(open, close) + Math.random() * volatility * 0.3
       const low = Math.min(open, close) - Math.random() * volatility * 0.3
-      const volume = 100 + Math.random() * 800 + Math.abs(close - open) * 5
+      const volume = 100 + Math.random() * 800
+      
       data.push({
         time,
         open: Math.max(low, open),
@@ -50,132 +61,213 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
       })
     }
     return data.sort((a, b) => a.time - b.time)
-  }, [timeframe])
+  }, [timeframe, currentPrice])
 
+  // 차트 초기화
+  useEffect(() => {
+    const initChart = async () => {
+      if (!chartContainerRef.current) return
+
+      try {
+        // 기존 차트 제거
+        if (chartRef.current) {
+          chartRef.current.remove()
+          chartRef.current = null
+          candleSeriesRef.current = null
+          volumeSeriesRef.current = null
+        }
+
+        const { createChart } = await import('lightweight-charts')
+        
+        const chart = createChart(chartContainerRef.current, {
+          width: chartContainerRef.current.clientWidth || 800,
+          height: height - 200,
+          layout: {
+            background: { color: '#ffffff' },
+            textColor: '#333333',
+          },
+          grid: {
+            vertLines: { color: '#f0f0f0' },
+            horzLines: { color: '#f0f0f0' },
+          },
+          crosshair: {
+            mode: 0,
+          },
+          timeScale: {
+            borderColor: '#cccccc',
+            timeVisible: true,
+            secondsVisible: false,
+          },
+          rightPriceScale: {
+            borderColor: '#cccccc',
+            scaleMargins: {
+              top: 0.1,
+              bottom: 0.2,
+            },
+          },
+        })
+
+        chartRef.current = chart
+
+        // 캔들스틱 시리즈
+        const candlestickSeries = chart.addCandlestickSeries({
+          upColor: '#10b981',
+          downColor: '#ef4444',
+          borderDownColor: '#ef4444',
+          borderUpColor: '#10b981',
+          wickDownColor: '#ef4444',
+          wickUpColor: '#10b981',
+        })
+        candleSeriesRef.current = candlestickSeries
+
+        // 볼륨 시리즈
+        const volumeSeries = chart.addHistogramSeries({
+          color: '#26a69a',
+          priceFormat: {
+            type: 'volume',
+          },
+          priceScaleId: '',
+          scaleMargins: {
+            top: 0.8,
+            bottom: 0,
+          },
+        })
+        volumeSeriesRef.current = volumeSeries
+
+        // 리사이즈 핸들러
+        const handleResize = () => {
+          if (chart && chartContainerRef.current) {
+            chart.applyOptions({
+              width: chartContainerRef.current.clientWidth,
+            })
+          }
+        }
+
+        window.addEventListener('resize', handleResize)
+        
+        setChartInitialized(true)
+        console.log('✅ 차트 초기화 완료')
+
+        return () => {
+          window.removeEventListener('resize', handleResize)
+        }
+
+      } catch (error) {
+        console.error('❌ 차트 초기화 오류:', error)
+      }
+    }
+
+    // 약간의 지연 후 초기화 (DOM이 완전히 렌더링된 후)
+    const timer = setTimeout(initChart, 100)
+    
+    return () => {
+      clearTimeout(timer)
+      if (chartRef.current) {
+        chartRef.current.remove()
+        chartRef.current = null
+      }
+    }
+  }, [height])
+
+  // 초기 데이터 설정
   useEffect(() => {
     setCandleData(generateInitialData)
   }, [generateInitialData])
 
+  // 차트에 데이터 적용
+  useEffect(() => {
+    if (chartInitialized && candleSeriesRef.current && volumeSeriesRef.current && candleData.length > 0) {
+      console.log('📊 차트 데이터 적용 중...', candleData.length, '개 캔들')
+
+      const chartData = candleData.map(candle => ({
+        time: candle.time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      }))
+
+      const volumeData = candleData.map(candle => ({
+        time: candle.time,
+        value: candle.volume,
+        color: candle.close > candle.open ? '#10b981' : '#ef4444',
+      }))
+
+      try {
+        candleSeriesRef.current.setData(chartData)
+        volumeSeriesRef.current.setData(volumeData)
+        console.log('✅ 차트 데이터 적용 완료')
+      } catch (error) {
+        console.error('❌ 차트 데이터 적용 오류:', error)
+      }
+    }
+  }, [chartInitialized, candleData])
+
+  // 실시간 업데이트
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
+    
     intervalRef.current = setInterval(() => {
       setCandleData(prev => {
         if (prev.length === 0) return prev
+        
         const lastCandle = prev[prev.length - 1]
-        const newClose = lastCandle.close * (1 + (Math.random() - 0.5) * 0.02)
+        const newClose = lastCandle.close * (1 + (Math.random() - 0.5) * 0.01) // 1% 변동
         const newHigh = Math.max(lastCandle.high, newClose)
         const newLow = Math.min(lastCandle.low, newClose)
-        const updatedCandle = { ...lastCandle, close: newClose, high: newHigh, low: newLow }
+        
+        const updatedCandle = { 
+          ...lastCandle, 
+          close: newClose, 
+          high: newHigh, 
+          low: newLow 
+        }
+        
+        // 실시간 업데이트
+        if (candleSeriesRef.current) {
+          try {
+            candleSeriesRef.current.update({
+              time: updatedCandle.time,
+              open: updatedCandle.open,
+              high: updatedCandle.high,
+              low: updatedCandle.low,
+              close: updatedCandle.close,
+            })
+          } catch (error) {
+            console.error('실시간 업데이트 오류:', error)
+          }
+        }
+        
         return [...prev.slice(0, -1), updatedCandle]
       })
     }, 3000)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [])
 
-  // SVG 캔들스틱 차트 렌더링
-  const renderCandlesticks = () => {
-    if (!candleData.length) return null
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [chartInitialized])
 
-    const maxPrice = Math.max(...candleData.map(d => d.high))
-    const minPrice = Math.min(...candleData.map(d => d.low))
-    const priceRange = maxPrice - minPrice
-    const padding = 40
-    const chartHeight = height - 200
-    const candleWidth = Math.max(2, Math.min(12, (chartContainerRef.current?.clientWidth || 800) / candleData.length * 0.7))
-
-    return (
-      <div className="relative w-full h-full">
-        <svg 
-          width="100%" 
-          height={chartHeight + 40} 
-          className="overflow-visible"
-          viewBox={`0 0 ${chartContainerRef.current?.clientWidth || 800} ${chartHeight + 40}`}
-          preserveAspectRatio="none"
-        >
-          {/* 격자 배경 */}
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgb(148, 163, 184, 0.1)" strokeWidth="1"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-
-          {/* 수평 가격선 */}
-          {[0, 0.2, 0.4, 0.6, 0.8, 1].map((ratio, index) => {
-            const price = maxPrice - (priceRange * ratio)
-            const y = padding + ratio * (chartHeight - padding * 2)
-            return (
-              <g key={index}>
-                <line 
-                  x1={padding} 
-                  y1={y} 
-                  x2="100%" 
-                  y2={y} 
-                  stroke="rgb(148, 163, 184, 0.3)" 
-                  strokeWidth="1"
-                  strokeDasharray="2,3"
-                />
-              </g>
-            )
-          })}
-
-          {/* 캔들스틱 */}
-          {candleData.map((candle, index) => {
-            const containerWidth = chartContainerRef.current?.clientWidth || 800
-            const x = padding + (index / (candleData.length - 1)) * (containerWidth - padding * 2)
-            const openY = padding + ((maxPrice - candle.open) / priceRange) * (chartHeight - padding * 2)
-            const closeY = padding + ((maxPrice - candle.close) / priceRange) * (chartHeight - padding * 2)
-            const highY = padding + ((maxPrice - candle.high) / priceRange) * (chartHeight - padding * 2)
-            const lowY = padding + ((maxPrice - candle.low) / priceRange) * (chartHeight - padding * 2)
-            
-            const isGreen = candle.close > candle.open
-            const color = isGreen ? '#10b981' : '#ef4444'
-            const bodyHeight = Math.abs(closeY - openY)
-
-            return (
-              <g key={index}>
-                {/* 심지 */}
-                <line
-                  x1={x}
-                  y1={highY}
-                  x2={x}
-                  y2={lowY}
-                  stroke={color}
-                  strokeWidth="1.5"
-                />
-                {/* 캔들 몸체 */}
-                <rect
-                  x={x - candleWidth / 2}
-                  y={Math.min(openY, closeY)}
-                  width={candleWidth}
-                  height={Math.max(bodyHeight, 1)}
-                  fill={isGreen ? color : color}
-                  stroke={color}
-                  strokeWidth="1"
-                  rx="1"
-                />
-              </g>
-            )
-          })}
-        </svg>
-
-        {/* 가격 라벨 (오른쪽) */}
-        <div className="absolute right-0 top-0 h-full flex flex-col justify-between py-10">
-          {[0, 0.2, 0.4, 0.6, 0.8, 1].map((ratio, index) => {
-            const price = maxPrice - (priceRange * ratio)
-            return (
-              <div 
-                key={index} 
-                className="text-xs font-mono text-muted-foreground bg-background px-2 py-1 border rounded"
-              >
-                ${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
+  // 실시간 데이터 적용
+  useEffect(() => {
+    if (realTimeData && currentPrice && chartInitialized && candleSeriesRef.current) {
+      console.log('🔄 실시간 데이터 업데이트:', realTimeData)
+      
+      const now = Math.floor(Date.now() / 1000)
+      const realTimeCandle = {
+        time: now,
+        open: parseFloat(realTimeData.openPrice || currentPrice),
+        high: parseFloat(realTimeData.maxPrice || currentPrice),
+        low: parseFloat(realTimeData.minPrice || currentPrice),
+        close: currentPrice,
+      }
+      
+      try {
+        candleSeriesRef.current.update(realTimeCandle)
+      } catch (error) {
+        console.error('실시간 데이터 적용 오류:', error)
+      }
+    }
+  }, [realTimeData, currentPrice, chartInitialized])
 
   const timeframes = [
     { value: "1m", label: "1분" },
@@ -186,18 +278,31 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
     { value: "1d", label: "1일" },
   ]
 
-  const marketStats = {
-    price: 43156.78,
-    change: 1247.32,
-    changePercent: 2.98,
-    volume: "28,450.67 BTC",
-    high24h: 44200,
-    low24h: 41800,
-    marketCap: "847.2B"
-  }
+  const marketStats = useMemo(() => {
+    if (realTimeData && currentPrice) {
+      return {
+        price: currentPrice,
+        change: parseFloat(realTimeData.chgAmt || 0),
+        changePercent: parseFloat(realTimeData.chgRate || 0),
+        volume: `${parseFloat(realTimeData.unitsTraded || 0).toLocaleString()} ${symbol.split('/')[0]}`,
+        high24h: parseInt(realTimeData.maxPrice || 44200),
+        low24h: parseInt(realTimeData.minPrice || 41800),
+        marketCap: "847.2B"
+      }
+    }
+    return {
+      price: currentPrice || 163172000,
+      change: 1247.32,
+      changePercent: 2.98,
+      volume: "28,450.67 BTC",
+      high24h: 163627000,
+      low24h: 162916000,
+      marketCap: "847.2B"
+    }
+  }, [realTimeData, currentPrice, symbol])
 
   const latestCandle = candleData[candleData.length - 1]
-  const currentPrice = latestCandle?.close || marketStats.price
+  const displayPrice = currentPrice || latestCandle?.close || marketStats.price
   const priceChange = latestCandle && candleData.length > 1 
     ? latestCandle.close - candleData[candleData.length - 2].close 
     : marketStats.change
@@ -216,18 +321,20 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
               </div>
               <div>
                 <CardTitle className="text-xl font-bold">{symbol}</CardTitle>
-                <p className="text-sm text-muted-foreground">Bitcoin</p>
+                <p className="text-sm text-muted-foreground">
+                  {chartInitialized ? '차트 로드됨' : '차트 로딩 중...'}
+                </p>
               </div>
             </div>
             
             <div className="flex items-center gap-6">
               <div className="text-right">
                 <div className="text-2xl font-bold font-mono">
-                  ${currentPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  ₩{displayPrice.toLocaleString()}
                 </div>
                 <div className={`text-sm flex items-center gap-1 ${priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-600' : ''}`}> 
                   {priceChange > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {`${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}`} ({`${priceChangePercent > 0 ? '+' : ''}${priceChangePercent.toFixed(2)}%`})
+                  {`${priceChange > 0 ? '+' : ''}${priceChange.toFixed(0)}`} ({`${priceChangePercent > 0 ? '+' : ''}${priceChangePercent.toFixed(2)}%`})
                 </div>
               </div>
             </div>
@@ -251,15 +358,11 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
           </div>
           <div>
             <span className="text-muted-foreground">24h 최고:</span>
-            <span className="ml-1 font-semibold text-green-600">${marketStats.high24h.toLocaleString()}</span>
+            <span className="ml-1 font-semibold text-green-600">₩{marketStats.high24h.toLocaleString()}</span>
           </div>
           <div>
             <span className="text-muted-foreground">24h 최저:</span>
-            <span className="ml-1 font-semibold text-red-600">${marketStats.low24h.toLocaleString()}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">시가총액:</span>
-            <span className="ml-1 font-semibold">${marketStats.marketCap}</span>
+            <span className="ml-1 font-semibold text-red-600">₩{marketStats.low24h.toLocaleString()}</span>
           </div>
         </div>
       </CardHeader>
@@ -301,61 +404,27 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
                   </Button>
                 ))}
               </div>
-              <Button variant="outline" size="sm">
-                <Plus className="h-3 w-3 mr-1" />
-                지표 추가
-              </Button>
-
             </div>
-          </div>
-
-          {/* 기술 지표 태그 */}
-          <div className="flex items-center gap-2 p-2 px-4 bg-muted/20 border-b">
-            <Badge variant="secondary" className="text-xs">
-              <Activity className="h-3 w-3 mr-1" />
-              거래량
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              <Activity className="h-3 w-3 mr-1" />
-              MA(20)
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              <Activity className="h-3 w-3 mr-1" />
-              RSI
-            </Badge>
           </div>
 
           {/* 메인 차트 */}
-          <div 
-            ref={chartContainerRef} 
-            className="relative w-full h-[80%] bg-background overflow-hidden"
+          <div
+            ref={chartContainerRef}
+            className="relative w-full bg-background"
+            style={{ 
+              height: height - 200, 
+              minHeight: 400,
+              border: chartInitialized ? '1px solid #e5e7eb' : '1px dashed #d1d5db'
+            }}
           >
-            {renderCandlesticks()}
-          </div>
-
-          {/* 볼륨 차트 */}
-          <div className="h-32 border-t bg-muted/10 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Volume2 className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">거래량</span>
-            </div>
-            <div className="flex items-end gap-1 h-20 overflow-hidden">
-              {candleData.slice(-60).map((candle, index) => {
-                const isGreen = candle.close > candle.open
-                const maxVolume = Math.max(...candleData.map(c => c.volume))
-                const volumeHeight = Math.max(1, (candle.volume / maxVolume) * 100)
-                return (
-                  <div
-                    key={index}
-                    className={`flex-1 transition-all duration-200 ${
-                      isGreen ? 'bg-green-500/70 hover:bg-green-500/90' : 'bg-red-500/70 hover:bg-red-500/90'
-                    } rounded-t-sm min-w-[1px]`}
-                    style={{ height: `${volumeHeight}%` }}
-                    title={`거래량: ${candle.volume.toFixed(0)}`}
-                  />
-                )
-              })}
-            </div>
+            {!chartInitialized && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                  <p>차트 로딩 중...</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 차트 하단 정보 */}
@@ -363,15 +432,11 @@ export const TradingChart = ({ symbol = "BTC/USDT", height = 500 }) => {
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
-                <span>상승: 67%</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
-                <span>하락: 33%</span>
+                <span>실시간 연결: {chartInitialized ? '활성' : '대기'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Volume2 className="h-3 w-3" />
-                <span>평균 거래량: 1,247 BTC</span>
+                <span>데이터: {candleData.length}개 캔들</span>
               </div>
             </div>
             
