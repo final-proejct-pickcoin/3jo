@@ -63,7 +63,6 @@ services:
       - SPRING_MAIL_PASSWORD=yqpmfomkytgtokpm
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
-<<<<<<< HEAD
       - MYSQL_HOST=34.64.105.135
       - MYSQL_USER=pickcoin
       - MYSQL_PASSWORD=Admin1234!
@@ -71,12 +70,6 @@ services:
       # 아래 base_url은 배포시 수정
       - APP_BASE_URL=http://localhost:8080
     depends_on:
-=======
-      # 아래 base_url은 배포시 수정
-      - APP_BASE_URL=http://localhost:8080
-    depends_on:
-      - mysql
->>>>>>> feature_jh
       - redis
     command: ./gradlew bootRun
   react-app:
@@ -118,13 +111,10 @@ services:
   #     - 5044:5044
   #   environment:
   #     - ELASTICSERACH_HOSTS=http://elastic:9200
-<<<<<<< HEAD
       # volumes:
       # - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
       # depends_on:
       # - elasticsearch
-=======
->>>>>>> feature_jh
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.17.4
   #   ports:
