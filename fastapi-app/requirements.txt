@@ -17,3 +17,8 @@ bs4
 webdriver_manager
 lxml
 python-logstash
+aiohttp
+
+# Google cloud API_0806_feature_l
+google-cloud-speech
+google-generativeai

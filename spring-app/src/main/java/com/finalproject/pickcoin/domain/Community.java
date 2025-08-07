@@ -31,7 +31,7 @@ public class Community {
     private Integer cnt;
     private Integer reply_count;
     
-    private PostStatus status;
+    private String status;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", updatable = false)
