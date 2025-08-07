@@ -15,13 +15,9 @@ websocket-client
 selenium
 bs4
 webdriver_manager
-<<<<<<< HEAD
 lxml
 python-logstash
 
 # Google cloud API_0806_feature_l
 google-cloud-speech
 google-generativeai
-=======
-lxml
->>>>>>> feature_jh
