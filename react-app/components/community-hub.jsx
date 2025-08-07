@@ -1,7 +1,11 @@
 "use client"
 
+<<<<<<< HEAD
 import axios from "axios"
 import { useState, useEffect } from "react"
+=======
+import { useState } from "react"
+>>>>>>> feature_jh
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -55,7 +59,11 @@ const topTraders = [
   { name: "AltcoinAce", profit: "+98%", followers: 1200, badge: "⭐" },
 ]
 
+<<<<<<< HEAD
 // 태그 한글 변환 함수
+=======
+// 태그 한글 변환 함수 (중복 제거)
+>>>>>>> feature_jh
 const tagToKr = (tag) => {
   if (tag === "BTC" || tag === "비트코인") return "비트코인"
   if (tag === "ETH" || tag === "이더리움") return "이더리움"
@@ -71,6 +79,7 @@ const tagToKr = (tag) => {
 }
 
 export const CommunityHub = () => {
+<<<<<<< HEAD
   const [posts, setPosts] = useState(communityPosts) // 초기값: 더미데이터
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
@@ -160,6 +169,19 @@ export const CommunityHub = () => {
     }
   }
 
+=======
+  const [posts, setPosts] = useState(communityPosts)
+  const [newPost, setNewPost] = useState("")
+  const [selectedTags, setSelectedTags] = useState([])
+  const availableTags = ["BTC", "ETH", "DeFi", "NFT", "Technical Analysis", "News", "Portfolio", "Trading Tips"]
+  const handleLike = (postId) => setPosts(posts.map(post => post.id === postId ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 } : post))
+  const handleCreatePost = () => {
+    if (!newPost.trim()) return
+    setPosts([{ id: Date.now(), author: "You", avatar: "/placeholder.svg?height=40&width=40&text=Y", time: "now", content: newPost, likes: 0, comments: 0, tags: selectedTags, isLiked: false }, ...posts])
+    setNewPost("")
+    setSelectedTags([])
+  }
+>>>>>>> feature_jh
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       {/* Main Feed */}
@@ -187,6 +209,7 @@ export const CommunityHub = () => {
                     key={tag}
                     variant={selectedTags.includes(tag) ? "default" : "outline"}
                     className="cursor-pointer"
+<<<<<<< HEAD
                     onClick={() =>
                       setSelectedTags(
                         selectedTags.includes(tag)
@@ -194,6 +217,9 @@ export const CommunityHub = () => {
                           : [...selectedTags, tag]
                       )
                     }
+=======
+                    onClick={() => setSelectedTags(selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [...selectedTags, tag])}
+>>>>>>> feature_jh
                   >
                     {tagToKr(tag)}
                   </Badge>
@@ -214,18 +240,27 @@ export const CommunityHub = () => {
         {/* Posts Feed */}
         <div className="space-y-4">
           {posts.map((post) => (
+<<<<<<< HEAD
 
             <Card key={post.post_id || post.id}>
+=======
+            <Card key={post.id}>
+>>>>>>> feature_jh
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-3">
                   <Avatar>
                     <AvatarImage src={post.avatar || "/placeholder.svg"} />
+<<<<<<< HEAD
                     <AvatarFallback>{post.author?.charAt(0) || "?"}</AvatarFallback>
+=======
+                    <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+>>>>>>> feature_jh
                   </Avatar>
 
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
+<<<<<<< HEAD
                         <p className="font-semibold">{post.author || "익명"}</p>
                         <p className="text-sm text-muted-foreground">{post.time || ""}</p>
                       </div>
@@ -237,12 +272,24 @@ export const CommunityHub = () => {
                           삭제 [{post.post_id}]
                         </Button>
                       </div>
+=======
+                        <p className="font-semibold">{post.author}</p>
+                        <p className="text-sm text-muted-foreground">{post.time}</p>
+                      </div>
+                      <Button variant="ghost" size="sm">
+                        <Flag className="h-4 w-4" />
+                      </Button>
+>>>>>>> feature_jh
                     </div>
 
                     <p className="text-sm leading-relaxed">{post.content}</p>
 
                     <div className="flex flex-wrap gap-2">
+<<<<<<< HEAD
                       {post.tags?.map((tag) => (
+=======
+                      {post.tags.map((tag) => (
+>>>>>>> feature_jh
                         <Badge key={tag} variant="secondary" className="text-xs">
                           {tagToKr(tag)}
                         </Badge>
@@ -253,16 +300,28 @@ export const CommunityHub = () => {
                       <Button
                         variant="ghost"
                         size="sm"
+<<<<<<< HEAD
                         onClick={() => handleLike(post.post_id)}
                         className={post.isLiked ? "text-red-500" : ""}
                       >
                         <Heart className={`h-4 w-4 mr-1 ${post.isLiked ? "fill-current" : ""}`} />
                         {post.like_count || 0}
+=======
+                        onClick={() => handleLike(post.id)}
+                        className={post.isLiked ? "text-red-500" : ""}
+                      >
+                        <Heart className={`h-4 w-4 mr-1 ${post.isLiked ? "fill-current" : ""}`} />
+                        {post.likes}
+>>>>>>> feature_jh
                       </Button>
 
                       <Button variant="ghost" size="sm">
                         <MessageCircle className="h-4 w-4 mr-1" />
+<<<<<<< HEAD
                         {post.comments || 0}
+=======
+                        {post.comments}
+>>>>>>> feature_jh
                       </Button>
 
                       <Button variant="ghost" size="sm">
@@ -291,7 +350,11 @@ export const CommunityHub = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+<<<<<<< HEAD
               {topTraders.map((trader) => (
+=======
+              {topTraders.map((trader, index) => (
+>>>>>>> feature_jh
                 <div key={trader.name} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">{trader.badge}</span>

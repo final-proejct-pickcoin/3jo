@@ -1,6 +1,10 @@
 "use client"
 
+<<<<<<< HEAD
 import { useState } from "react"
+=======
+import { useState, useEffect } from "react"
+>>>>>>> feature_jh
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +26,7 @@ const CoinInfoPanel = ({ coin }) => (
   </div>
 );
 
+<<<<<<< HEAD
 export const TradingInterface = () => {
   // State hooks for UI controls
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,12 +41,158 @@ export const TradingInterface = () => {
     { symbol: "XRP", name: "리플", price: 800, change: 1.2, changeAmount: 10, volume: "3,000.000", trend: "up" },
     // ... add more coins as needed
   ];
+=======
+
+export const TradingInterface = () => {
+  // State hooks for UI controls
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCoin, setSelectedCoin] = useState("BTC");
+  const [activeTab, setActiveTab] = useState("원화");
+  const [showSettings, setShowSettings] = useState(false);
+  const [realTimeData, setRealTimeData] = useState({});
+  const [wsConnected, setWsConnected] = useState(false);
+  // WebSocket 통계 상태
+  const [wsStats, setWsStats] = useState({
+    total_symbols: 0,
+    active_subscriptions: 0,
+    last_update: null
+  });
+
+  // 빗썸 WebSocket 연결
+  useEffect(() => {
+    console.log('WebSocket 연결 시도...');
+    const ws = new WebSocket('ws://localhost:8000/ws/realtime');
+    ws.onopen = () => {
+      setWsConnected(true);
+      console.log('✅ 빗썸 실시간 연결 성공!');
+    };
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📊 실시간 데이터 수신:', data);
+        if (data.type === 'ticker' && data.content && data.content.symbol) {
+          setRealTimeData(prev => ({
+            ...prev,
+            [data.content.symbol + '_KRW']: data.content
+          }));
+        }
+      } catch (e) {
+        console.error('데이터 파싱 오류:', e);
+      }
+    };
+    ws.onclose = () => {
+      setWsConnected(false);
+      console.log('❌ WebSocket 연결 종료');
+    };
+    ws.onerror = (error) => {
+      console.error('WebSocket 오류:', error);
+    };
+    return () => {
+      console.log('WebSocket 정리 중...');
+      ws.close();
+    };
+  }, []);
+
+  // WebSocket 통계 가져오기
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/websocket/stats');
+        const data = await response.json();
+        setWsStats(data.subscription_stats || {});
+      } catch (error) {
+        console.error('통계 조회 오류:', error);
+      }
+    };
+    if (wsConnected) {
+      fetchStats();
+      const interval = setInterval(fetchStats, 30000); // 30초마다 업데이트
+      return () => clearInterval(interval);
+    }
+  }, [wsConnected]);
+  
+
+  // 실제 API에서 코인 목록 가져오기 (FastAPI)
+  const [coinList, setCoinList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCoins = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:8000/api/coins');
+        const data = await response.json();
+        if (data.status === 'success') {
+          // API 구조에 맞게 변환
+          setCoinList(data.data.map(coin => ({
+            symbol: coin.symbol,
+            name: coin.korean_name,
+            price: coin.current_price,
+            change: coin.change_rate,
+            changeAmount: coin.change_amount,
+            volume: coin.volume,
+            trend: coin.change_rate > 0 ? 'up' : 'down'
+          })));
+        } else {
+          setCoinList([]);
+        }
+      } catch (e) {
+        setCoinList([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCoins();
+  }, []);
+
+  // 실시간 데이터로 코인 목록 업데이트
+  const getUpdatedCoinList = () => {
+    return coinList.map(coin => {
+      const realtimeInfo = realTimeData[coin.symbol + '_KRW'];
+      if (realtimeInfo) {
+        console.log(`${coin.symbol} 실시간 업데이트:`, realtimeInfo);
+        return {
+          ...coin,
+          price: parseInt(realtimeInfo.closePrice),
+          change: parseFloat(realtimeInfo.chgRate),
+          changeAmount: parseInt(realtimeInfo.chgAmt),
+          trend: parseFloat(realtimeInfo.chgRate) > 0 ? 'up' : 'down',
+          volume: parseFloat(realtimeInfo.value).toFixed(3) // 실시간 거래량
+        };
+      }
+      return coin;
+    });
+  };
+
+  const updatedCoinList = getUpdatedCoinList();
+>>>>>>> feature_jh
 
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
 
   return (
     <div className="w-full p-4 space-y-4">
+<<<<<<< HEAD
+=======
+    {/* 🚨 연결 상태 표시 추가 */}
+      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
+        <div className="flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span className={`font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
+            {wsConnected ? '🟢 빗썸 실시간 연결됨' : '🔴 연결 끊어짐'}
+          </span>
+          <span className="text-xs text-gray-500">
+            구독: {wsStats.active_subscriptions || 0}개 | 
+            실시간: {Object.keys(realTimeData).length}개 | 
+            총 코인: {coinList.length}개
+          </span>
+        </div>
+        <div className="text-sm text-gray-500">
+          마지막 업데이트: {new Date().toLocaleTimeString()}
+        </div>
+      </div>
+
+>>>>>>> feature_jh
       <div className="flex flex-row gap-4 min-h-0 items-stretch max-h-100vh">
         {/* 좌측: Coin List */}
         <div className="flex flex-col min-h-0 h-full w-[368px] max-w-[90vw] self-stretch">
@@ -93,7 +244,11 @@ export const TradingInterface = () => {
                 <div className="text-right flex items-center gap-1 cursor-pointer">거래대금 <span className="text-[10px]">▼</span></div>
               </div>
               <div className="max-h-[500px] overflow-y-auto flex-1 min-h-0">
+<<<<<<< HEAD
                 {coinList.map((coin, index) => (
+=======
+                {updatedCoinList.map((coin, index) => (
+>>>>>>> feature_jh
                   <div
                     key={coin.symbol}
                     onClick={() => setSelectedCoin(coin.symbol)}
@@ -108,6 +263,13 @@ export const TradingInterface = () => {
                           className={`font-semibold text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
                         >
                           {coin.name}
+<<<<<<< HEAD
+=======
+                          {/* 🚨 실시간 표시 추가 */}
+                          {realTimeData[coin.symbol + '_KRW'] && (
+                            <span className="ml-1 text-green-500 text-[8px]">●</span>
+                          )}
+>>>>>>> feature_jh
                         </div>
                         <div className="text-muted-foreground text-[11px]">{coin.symbol}/KRW</div>
                       </div>
@@ -161,6 +323,7 @@ export const TradingInterface = () => {
                           <span className="text-white font-bold text-sm">₿</span>
                         </div>
                         <div>
+<<<<<<< HEAD
                           <h3 className="font-semibold text-lg">비트코인 BTC/KRW</h3>
                           <div className="flex items-center gap-4">
                             <div>
@@ -169,6 +332,32 @@ export const TradingInterface = () => {
                             </div>
                             <div className="text-xs text-muted-foreground">
                               <div>Coinbase 164,483,704 ($118,338.50)</div>
+=======
+                          <h3 className="font-semibold text-lg">
+                            {updatedCoinList.find(c => c.symbol === selectedCoin)?.name || "비트코인"} {selectedCoin || "BTC"}/KRW
+                          </h3>
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <div className="text-2xl font-bold text-red-600">
+                                {/* 🚨 실시간 가격 표시 */}
+                                {realTimeData[selectedCoin + '_KRW'] ? 
+                                  parseInt(realTimeData[selectedCoin + '_KRW'].closePrice).toLocaleString() : 
+                                  '163,172,000'
+                                } 
+                                <span className="text-sm">KRW</span>
+                                {/* 실시간 표시 */}
+                                {realTimeData[selectedCoin + '_KRW'] && (
+                                  <span className="ml-2 text-xs text-green-500">● LIVE</span>
+                                )}                                  
+                              </div>
+                              <div className="text-sm text-red-600">
+                                {/* 🚨 실시간 변동률 표시 */}
+                                {realTimeData[selectedCoin + '_KRW'] ? 
+                                  `${parseFloat(realTimeData[selectedCoin + '_KRW'].chgRate) > 0 ? '+' : ''}${parseFloat(realTimeData[selectedCoin + '_KRW'].chgRate).toFixed(2)}% ${parseFloat(realTimeData[selectedCoin + '_KRW'].chgAmt) > 0 ? '▲' : '▼'}${Math.abs(parseInt(realTimeData[selectedCoin + '_KRW'].chgAmt)).toLocaleString()}` :
+                                  '+0.03% ▲54,000'
+                                }
+                              </div>
+>>>>>>> feature_jh
                             </div>
                           </div>
                         </div>
@@ -176,6 +365,7 @@ export const TradingInterface = () => {
                       <div className="flex gap-6 text-sm">
                         <div>
                           <p className="text-muted-foreground">고가</p>
+<<<<<<< HEAD
                           <p className="font-semibold text-red-600">163,627,000</p>
                         </div>
                         <div>
@@ -185,6 +375,29 @@ export const TradingInterface = () => {
                         <div>
                           <p className="text-muted-foreground">거래량(24H)</p>
                           <p className="font-semibold">1,231.795 BTC</p>
+=======
+                          <p className="font-semibold text-red-600">
+                            {realTimeData[selectedCoin + '_KRW']?.maxPrice
+                              ? parseInt(realTimeData[selectedCoin + '_KRW'].maxPrice).toLocaleString()
+                              : '163,627,000'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">저가</p>
+                          <p className="font-semibold text-blue-600">
+                            {realTimeData[selectedCoin + '_KRW']?.minPrice
+                              ? parseInt(realTimeData[selectedCoin + '_KRW'].minPrice).toLocaleString()
+                              : '162,916,000'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">거래량(24H)</p>
+                          <p className="font-semibold">
+                            {realTimeData[selectedCoin + '_KRW']?.unitsTraded
+                              ? `${parseFloat(realTimeData[selectedCoin + '_KRW'].unitsTraded).toLocaleString()} ${selectedCoin}`
+                              : '1,231.795 BTC'}
+                          </p>
+>>>>>>> feature_jh
                         </div>
                       </div>
                     </div>
@@ -353,4 +566,8 @@ export const TradingInterface = () => {
   )  
 }
 
+<<<<<<< HEAD
 
+=======
+export default TradingInterface;
+>>>>>>> feature_jh

@@ -10,6 +10,7 @@ services:
       - ./.env
     # 환경변수에 DB 접속 정보 지정(아래 예시 참고)
     environment:
+<<<<<<< HEAD
       - MYSQL_HOST=34.64.105.135
       - MYSQL_USER=pickcoin
       - MYSQL_PASSWORD=Admin1234!
@@ -35,6 +36,34 @@ services:
   #     - --character-set-server=utf8mb4
   #     - --collation-server=utf8mb4_unicode_ci
   #     - --skip-character-set-client-handshake
+=======
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=pickcoin
+      - MYSQL_PASSWORD=final3
+      - MYSQL_DATABASE=coindb
+    depends_on:
+      - mysql
+      - redis
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  mysql:
+    image: mysql:8.0
+    restart: always
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin1234
+      MYSQL_DATABASE: coindb
+      MYSQL_USER: pickcoin
+      MYSQL_PASSWORD: final3
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+>>>>>>> feature_jh
 
   redis:
     image: redis:7
@@ -63,6 +92,7 @@ services:
       - SPRING_MAIL_PASSWORD=yqpmfomkytgtokpm
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+<<<<<<< HEAD
       - MYSQL_HOST=34.64.105.135
       - MYSQL_USER=pickcoin
       - MYSQL_PASSWORD=Admin1234!
@@ -70,6 +100,12 @@ services:
       # 아래 base_url은 배포시 수정
       - APP_BASE_URL=http://localhost:8080
     depends_on:
+=======
+      # 아래 base_url은 배포시 수정
+      - APP_BASE_URL=http://localhost:8080
+    depends_on:
+      - mysql
+>>>>>>> feature_jh
       - redis
     command: ./gradlew bootRun
   react-app:
@@ -111,10 +147,13 @@ services:
   #     - 5044:5044
   #   environment:
   #     - ELASTICSERACH_HOSTS=http://elastic:9200
+<<<<<<< HEAD
       # volumes:
       # - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
       # depends_on:
       # - elasticsearch
+=======
+>>>>>>> feature_jh
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.17.4
   #   ports:

@@ -1,5 +1,6 @@
 package com.finalproject.pickcoin.service;
 
+<<<<<<< HEAD
 import java.util.List;
 
 import org.apache.ibatis.session.SqlSession;
@@ -43,4 +44,8 @@ public class CommunityServiceImpl implements CommunityService {
     public void increaseLikeCount(int post_id){
         sqlSession.update("com.finalproject.pickcoin.repository.CommunityRepository.increaseLikeCount", post_id);
     }
+=======
+public class CommunityServiceImpl implements CommunityService {
+    
+>>>>>>> feature_jh
 }
