@@ -10,17 +10,15 @@ export const AuthProvider = ({ children }) => {
   const [loginError, setLoginError] = useState(null)
 
   useEffect(() => {
-    try {
-      const token = sessionStorage.getItem("auth_token")
-      const userData = sessionStorage.getItem("user_data")
-      if (token && userData) setUser(JSON.parse(userData))
-    } catch (e) {
-      localStorage.removeItem("auth_token")
-      localStorage.removeItem("user_data")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  const token = sessionStorage.getItem("auth_token");
+  const userData = sessionStorage.getItem("user_data");
+
+  if (token && userData) {
+    setUser(JSON.parse(userData)); // 로그인 상태 복원
+  }
+  
+  setIsLoading(false);
+}, []);
 
   // 로그인
   const login = async (email, password) => {
@@ -45,8 +43,8 @@ export const AuthProvider = ({ children }) => {
 
       const data = await res.json()
 
-      localStorage.setItem("auth_token", data.access_token)
-      localStorage.setItem(
+      sessionStorage.setItem("auth_token", data.access_token)
+      sessionStorage.setItem(
         "user_data",
         JSON.stringify({ email: data.sub, nickname: data.sub.split("@")[0] })
       )
