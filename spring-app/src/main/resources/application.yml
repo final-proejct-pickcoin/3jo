@@ -1,0 +1,100 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  data:
+    redis:
+      # host: localhost
+      host: redis
+      port: 6379
+  datasource:
+    url: jdbc:mysql://mysql:3306/coindb
+    # url: jdbc:mysql://localhost:3306/coindb
+    username: pickcoin
+    password: final3
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      enabled: true
+
+  mvc:
+    view:
+      prefix: /WEB-INF/views/
+      suffix: .jsp
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+  servlet:
+    multipart:
+      enabled: true
+      location: /tmp/
+      max-file-size: 10MB
+      max-request-size: 10MB
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  mail:
+      host: smtp.gmail.com
+      port: 587
+      username: jeesoo1899@gmail.com
+      password: yqpm fomk ytgt okpm
+      # gmail 2단계 인증 키고 '앱 비밀번호' 발급 받아야함
+      properties:
+        mail:
+          smtp:
+            auth: true
+            starttls:
+              enable: true
+
+logging:
+  level:
+    root: INFO
+    level:
+      org.springframework.web: DEBUG
+      org.hibernate.SQL: DEBUG
+      org.hibernate.type: TRACE
+
+jwt:
+  secret: a_super_secret_key_that_is_long_and_random_123
+  # 실제 배포 환경에서는 환경변수 등 안전하게 보관
+
+# MyBatis
+  mybatis:
+    mapper-locations: classpath*:mappers/**/*.xml
+    type-aliases-package: com.finalproject.pickcoin.domain
+
+# Websocket 관련 (엔드포인트, broker 등은 코드에서 설정)
+
+
+# spring:
+#   mvc:
+#       view:
+#         prefix: /WEB-INF/views/
+#         suffix: .jsp
+#   elasticsearch:
+#     uris: http://localhost:9200
+# logging:
+#   level:
+#     org.elasticsearch.client: TRACE
+  
+#   servlet:
+#     encoding:
+#       charset: UTF-8
+#       enabled: true
+#       force: true
