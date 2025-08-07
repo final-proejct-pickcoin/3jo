@@ -3,6 +3,7 @@ package com.finalproject.pickcoin.domain;
 import java.time.LocalDateTime;
 import java.util.Date;
 
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.finalproject.pickcoin.enums.Role;
@@ -29,7 +30,7 @@ public class Users {
     private Integer user_id;
     @Column(nullable = false, unique = true)
     private String email;
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
     @Column(nullable = false)
     private String name;
@@ -41,7 +42,7 @@ public class Users {
 
     @Column(name="created_at", updatable = false)
     @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
@@ -50,4 +51,9 @@ public class Users {
     private boolean verified;
     @Column(name = "verification_token", length = 100)
     private String verificationToken;    // 인증용 토큰 (필수)
+
+    @Column(name = "provider")
+    private String provider;
+    @Column(name = "provider_id")
+    private String providerId;
 }
