@@ -21,3 +21,5 @@ python-logstash
 # Google cloud API_0806_feature_l
 google-cloud-speech
 google-generativeai
+
+aiohttp
