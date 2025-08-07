@@ -36,7 +36,7 @@ const RootLayout = ({ children }) => (
       <KakaoScript />
        
 
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeProvider defaultTheme="system">
         <AuthProvider>
           <WebSocketProvider>
             <OnboardingProvider>

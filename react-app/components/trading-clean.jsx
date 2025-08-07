@@ -103,20 +103,25 @@ export const TradingInterface = () => {
         const response = await fetch('http://localhost:8000/api/coins');
         const data = await response.json();
         if (data.status === 'success') {
+           console.log(`✅ 총 ${data.total_count}개 코인 중 ${data.korean_names_from_api}개 한글명을 API에서 받아옴`);
+
           // API 구조에 맞게 변환
           setCoinList(data.data.map(coin => ({
             symbol: coin.symbol,
             name: coin.korean_name,
+            englishName: coin.english_name,
             price: coin.current_price,
             change: coin.change_rate,
             changeAmount: coin.change_amount,
-            volume: coin.volume,
-            trend: coin.change_rate > 0 ? 'up' : 'down'
+            volume: (coin.volume / 1000000).toFixed(0),
+            trend: coin.change_rate > 0 ? 'up' : 'down',
+            marketWarning: coin.market_warning
           })));
         } else {
           setCoinList([]);
         }
       } catch (e) {
+        console.error('코인 목록 조회 오류:', e);
         setCoinList([]);
       } finally {
         setLoading(false);

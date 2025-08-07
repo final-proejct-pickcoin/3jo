@@ -223,66 +223,87 @@ async def test_bithumb():
 # 개선된 코인 목록 API
 @app.get("/api/coins")
 async def get_coin_list():
-    """모든 활성 거래 코인 목록 조회 (마켓 코드 API 활용)"""
+    """모든 활성 거래 코인 목록 조회 (API에서 한글명 받아오기)"""
     try:
-        # 1. 먼저 마켓 코드 조회로 지원 코인 목록 확인        
+        # 1. 마켓 코드 조회와 시세 정보 동시 요청        
         markets_url = "https://api.bithumb.com/v1/market/all"
         ticker_url = "https://api.bithumb.com/public/ticker/ALL_KRW"
         
         async with aiohttp.ClientSession() as session:
-            # 마켓 정보와 시세 정보 동시 요청
-            market_task = session.get(markets_url)
-            ticker_task = session.get(ticker_url)
-            
-            market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
-            
-            if market_response.status != 200 or ticker_response.status != 200:
-                return {"status": "error", "message": "API 요청 실패"}
-            
-            markets_data = await market_response.json()
-            ticker_data = await ticker_response.json()
-        
-        if ticker_data.get("status") != "0000":
-            return {"status": "error", "message": "빗썸 시세 API 오류"}
-        
-        # 마켓 정보로 한글명 매핑 생성
-        market_map = {}
-        if isinstance(markets_data, list):
-            for market in markets_data:
-                if market.get("market", "").endswith("_KRW"):
-                    symbol = market["market"].replace("_KRW", "")
-                    market_map[symbol] = {
-                        "korean_name": market.get("korean_name", symbol),
-                        "english_name": market.get("english_name", symbol),
-                        "market_warning": market.get("market_warning", "NONE")
-                    }
-        
-        coins = []
-        for symbol, info in ticker_data["data"].items():
-            if symbol == "date":
-                continue
-                
             try:
-                trade_value = float(info.get("acc_trade_value_24H", 0))
-                if trade_value <= 1000000:  # 거래대금 100만원 이상만
+                # 마켓 정보와 시세 정보 동시 요청
+                market_task = session.get(markets_url, timeout=10)
+                ticker_task = session.get(ticker_url, timeout=10)
+
+                market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
+                
+                # 시세 데이터
+                if ticker_response.status != 200:
+                    return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
+                
+                ticker_data = await ticker_response.json()
+                        
+                if ticker_data.get("status") != "0000":
+                    return {"status": "error", "message": "빗썸 시세 API 오류"}
+                
+                # 마켓 데이터 처리 (실패해도 계속 진행)
+                market_map = {}
+                if market_response.status == 200:
+                    try:
+                        markets_data = await market_response.json()
+                        if isinstance(markets_data, list):
+                            for market in markets_data:
+                                market_code = market.get("market", "")
+                                if market_code.endswith("_KRW"):
+                                    symbol = market_code.replace("_KRW", "")
+                                    market_map[symbol] = {
+                                        "korean_name": market.get("korean_name", ""),
+                                        "english_name": market.get("english_name", ""),
+                                        "market_warning": market.get("market_warning", "NONE")
+                                    }
+                        print(f"✅ 마켓 정보 {len(market_map)}개 코인 한글명 로드 성공")
+                    except Exception as e:
+                        print(f"⚠️ 마켓 정보 파싱 실패 (폴백 모드로 진행): {e}")
+                else:
+                    print(f"⚠️ 마켓 API 실패 (폴백 모드로 진행): {market_response.status}")
+                    
+            except Exception as e:
+                print(f"⚠️ 마켓 API 요청 실패 (폴백 모드로 진행): {e}")
+                # 시세 데이터만 요청
+                ticker_response = await session.get(ticker_url, timeout=10)
+                ticker_data = await ticker_response.json()
+                market_map = {}
+                
+            coins = []
+            for symbol, info in ticker_data["data"].items():
+                if symbol == "date":
                     continue
-                
-                market_info = market_map.get(symbol, {})
-                
-                coins.append({
-                    "symbol": symbol,
-                    "korean_name": market_info.get("korean_name", get_korean_name(symbol)),
-                    "english_name": market_info.get("english_name", symbol),
-                    "current_price": float(info.get("closing_price", 0)),
-                    "change_rate": float(info.get("fluctate_rate_24H", 0)),
-                    "change_amount": float(info.get("fluctate_24H", 0)),
-                    "volume": trade_value,
-                    "market_warning": market_info.get("market_warning", "NONE"),
-                    "units_traded": float(info.get("units_traded_24H", 0))
-                })
-            except (ValueError, TypeError) as e:
-                print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
-                continue
+                    
+                try:
+                    trade_value = float(info.get("acc_trade_value_24H", 0))
+                    if trade_value <= 1000000:  # 거래대금 100만원 이상만
+                        continue
+                    
+                    # API에서 받은 한글명 우선 사용, 없으면 폴백 함수 사용
+                    market_info = market_map.get(symbol, {})
+                    korean_name = market_info.get("korean_name", "").strip()
+                    if not korean_name:  # 한글명이 없으면 폴백
+                        korean_name = get_korean_name(symbol)
+                    
+                    coins.append({
+                        "symbol": symbol,
+                        "korean_name": korean_name,
+                        "english_name": market_info.get("english_name", symbol),
+                        "current_price": float(info.get("closing_price", 0)),
+                        "change_rate": float(info.get("fluctate_rate_24H", 0)),
+                        "change_amount": float(info.get("fluctate_24H", 0)),
+                        "volume": trade_value,
+                        "market_warning": market_info.get("market_warning", "NONE"),
+                        "units_traded": float(info.get("units_traded_24H", 0))
+                    })
+                except (ValueError, TypeError) as e:
+                    print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
+                    continue
         
         # 거래대금순 정렬
         coins.sort(key=lambda x: x["volume"], reverse=True)
@@ -291,6 +312,7 @@ async def get_coin_list():
             "status": "success",
             "data": coins,
             "total_count": len(coins),
+            "korean_names_from_api": len([c for c in coins if c["korean_name"] != c["symbol"]]),
             "last_updated": datetime.now().isoformat()
         }
         
@@ -298,31 +320,31 @@ async def get_coin_list():
         print(f"❌ 코인 목록 조회 오류: {e}")
         return {"status": "error", "message": str(e)}
 
-# 특정 코인 차트 데이터
-@app.get("/api/chart/{symbol}")
-async def get_chart_data(symbol: str, interval: str = "24h"):
-    """특정 코인의 차트 데이터 조회"""
-    try:
-        url = f"https://api.bithumb.com/public/candlestick/{symbol}_KRW/{interval}"
-        response = requests.get(url)
+# # 특정 코인 차트 데이터
+# @app.get("/api/chart/{symbol}")
+# async def get_chart_data(symbol: str, interval: str = "24h"):
+#     """특정 코인의 차트 데이터 조회"""
+#     try:
+#         url = f"https://api.bithumb.com/public/candlestick/{symbol}_KRW/{interval}"
+#         response = requests.get(url)
         
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                "status": "success",
-                "symbol": symbol,
-                "interval": interval,
-                "data": data
-            }
-        else:
-            return {"status": "error", "message": "차트 데이터 조회 실패"}
+#         if response.status_code == 200:
+#             data = response.json()
+#             return {
+#                 "status": "success",
+#                 "symbol": symbol,
+#                 "interval": interval,
+#                 "data": data
+#             }
+#         else:
+#             return {"status": "error", "message": "차트 데이터 조회 실패"}
             
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+#     except Exception as e:
+#         return {"status": "error", "message": str(e)}
 
-# 코인 한글명 매핑 함수
+# 폴백용 한글명 매핑 함수 (API 실패시에만 사용)
 def get_korean_name(symbol: str) -> str:
-    """코인 심볼을 한글명으로 변환"""
+    """API에서 한글명을 받아오지 못했을 때 사용하는 폴백 함수"""
     korean_names = {
         "BTC": "비트코인",
         "ETH": "이더리움", 
@@ -334,9 +356,12 @@ def get_korean_name(symbol: str) -> str:
         "BCH": "비트코인캐시",
         "XLM": "스텔라루멘",
         "EOS": "이오스",
-        # 더 많은 매핑 추가 가능
+        "DOGE": "도지코인",
+        "SOL": "솔라나",
+        "MATIC": "폴리곤",
+        "AVAX": "아발란체"
     }
-    return korean_names.get(symbol, symbol)            
+    return korean_names.get(symbol, symbol)  # 없으면 심볼 그대로 반환   
 
 # 빗썸 실시간 데이터 관리 클래스
 
