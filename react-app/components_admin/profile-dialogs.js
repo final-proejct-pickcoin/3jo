@@ -191,6 +191,7 @@ export default function ProfileDialogs({
                   value={passwordData.currentPassword}
                   onChange={e => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                   className={`pr-10 ${isDarkMode ? "bg-gray-700 border-gray-600 text-gray-200" : ""}`}
+                  autoComplete="new-password"
                 />
                 <Button
                   type="button"

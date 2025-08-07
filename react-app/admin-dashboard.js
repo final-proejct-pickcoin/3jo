@@ -93,37 +93,15 @@ export default function Component() {
   // Mock data with more realistic information
   const [users, setUsers] = useState([
     {
-      id: 1,
-      username: "user123",
-      email: "user123@example.com",
-      status: "활성",
-      joinDate: "2024-01-10",
-      balance: "1.2345 BTC",
-      lastLogin: "2024-01-15 14:30",
-      trades: 45,
-      verified: true
-    },
-    {
-      id: 2,
-      username: "user456",
-      email: "user456@example.com",
-      status: "정지",
-      joinDate: "2024-01-08",
-      balance: "0.8901 BTC",
-      lastLogin: "2024-01-14 09:15",
-      trades: 23,
-      verified: false
-    },
-    {
-      id: 3,
-      username: "user789",
-      email: "user789@example.com",
-      status: "활성",
-      joinDate: "2024-01-05",
-      balance: "2.1234 BTC",
-      lastLogin: "2024-01-15 13:45",
-      trades: 78,
-      verified: true
+      // id: 1,
+      // username: "user123",
+      // email: "user123@example.com",
+      // status: "활성",
+      // joinDate: "2024-01-10",
+      // balance: "1.2345 BTC",
+      // lastLogin: "2024-01-15 14:30",
+      // trades: 45,
+      // verified: true
     }
   ]);
 
@@ -198,11 +176,15 @@ export default function Component() {
 
   // Filter functions
   const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const name = user.name?.toLowerCase() ?? "";
+    const email = user.email?.toLowerCase() ?? "";
+    const search = searchTerm.toLowerCase();
+
+    const status = user.is_verified === 1 ? "활성" : "정지";
+
+    const matchesSearch = name.includes(search) || email.includes(search);
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  return matchesSearch && matchesStatus;
   });
   const filteredLogs = logs.filter((log) => {
     const matchesLevel = logLevelFilter === "all" || log.level === logLevelFilter;
@@ -213,10 +195,10 @@ export default function Component() {
   const handleUserStatusToggle = (userId) => {
     setUsers(
       users.map((user) =>
-        user.id === userId
+        user.user_id === userId
           ? {
               ...user,
-              status: user.status === "활성" ? "정지" : "활성"
+              is_verified: user.is_verified === 1 ? 0 : 1
             }
           : user
       )
@@ -368,6 +350,18 @@ export default function Component() {
         name: name,
         email: email
       });
+
+      axios.get("http://localhost:8000/admin/getuser")
+        .then((result)=>{
+          console.log("백엔드에서 가져온 값", result.data)
+          setUsers(result.data)
+
+        })
+        .catch((err)=> console.log(err))
+
+      
+
+      // setUsers()
 
       setIsLoggedIn(true);
     }
@@ -705,6 +699,7 @@ export default function Component() {
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="w-64"
+                          autoComplete="off"
                         />
                       </div>
                       <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -735,19 +730,19 @@ export default function Component() {
                     </TableHeader>
                     <TableBody>
                       {filteredUsers.map((user) => (
-                        <TableRow key={user.id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
+                        <TableRow key={user.user_id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                           <TableCell className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
                             <div className="flex items-center">
-                              {user.username}
+                              {user.name}
                               {user.verified && <CheckCircle className="h-4 w-4 text-green-500 ml-2" />}
                             </div>
                           </TableCell>
                           <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.email}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.joinDate}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.created_at}</TableCell>
                           <TableCell className={`font-mono ${isDarkMode ? "text-gray-300" : ""}`}>{user.balance}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.trades}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.amount}</TableCell>
                           <TableCell>
-                            <Badge variant={user.status === "활성" ? "default" : "destructive"}>{user.status}</Badge>
+                            <Badge variant={user.is_verified === 1 ? "default" : "destructive"}>{user.is_verified === 1? "활성": "정지"}</Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
@@ -764,12 +759,12 @@ export default function Component() {
                                 상세
                               </Button>
                               <Button
-                                variant={user.status === "활성" ? "destructive" : "default"}
+                                variant={user.is_verified === 1 ? "destructive" : "default"}
                                 size="sm"
-                                onClick={() => handleUserStatusToggle(user.id)}
+                                onClick={() => handleUserStatusToggle(user.user_id)}
                                 className="w-20" // 고정 너비 추가
                               >
-                                {user.status === "활성" ? (
+                                {user.is_verified === 1 ? (
                                   <>
                                     <Ban className="h-4 w-4 mr-1" />
                                     정지
