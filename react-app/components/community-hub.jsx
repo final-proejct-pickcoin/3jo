@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import axios from "axios"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -54,7 +55,7 @@ const topTraders = [
   { name: "AltcoinAce", profit: "+98%", followers: 1200, badge: "⭐" },
 ]
 
-// 태그 한글 변환 함수 (중복 제거)
+// 태그 한글 변환 함수
 const tagToKr = (tag) => {
   if (tag === "BTC" || tag === "비트코인") return "비트코인"
   if (tag === "ETH" || tag === "이더리움") return "이더리움"
@@ -70,17 +71,95 @@ const tagToKr = (tag) => {
 }
 
 export const CommunityHub = () => {
-  const [posts, setPosts] = useState(communityPosts)
+  const [posts, setPosts] = useState(communityPosts) // 초기값: 더미데이터
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
   const availableTags = ["BTC", "ETH", "DeFi", "NFT", "Technical Analysis", "News", "Portfolio", "Trading Tips"]
-  const handleLike = (postId) => setPosts(posts.map(post => post.id === postId ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 } : post))
-  const handleCreatePost = () => {
-    if (!newPost.trim()) return
-    setPosts([{ id: Date.now(), author: "You", avatar: "/placeholder.svg?height=40&width=40&text=Y", time: "now", content: newPost, likes: 0, comments: 0, tags: selectedTags, isLiked: false }, ...posts])
-    setNewPost("")
-    setSelectedTags([])
+
+  // DB에서 게시글 불러오기
+  const fetchPosts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8080/community/findAll")
+      if (res.data && res.data.length > 0) {
+        setPosts(res.data) // DB 데이터 있으면 덮어쓰기
+      }
+    } catch (err) {
+      console.error("게시글 불러오기 실패:", err)
+    }
   }
+
+  useEffect(() => {
+    fetchPosts() // 페이지 로드 시 실행
+  }, [])
+
+   //  좋아요 기능 
+  const handleLike = async (postId) => {
+    try {
+      await axios.put(`http://localhost:8080/community/${postId}/like`)
+      // UI 즉시 반영
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.post_id === postId
+            ? { ...post, like_count: (post.like_count || 0) + 1 }
+            : post
+        )
+      )
+    } catch (err) {
+      console.error("좋아요 실패:", err)
+    }
+  }
+
+  const handleCreatePost = async () => {
+  if (!newPost.trim()) return;
+
+  try {
+    await axios.post("http://localhost:8080/community/insert", {
+      user_id: 1,
+      coin_id: null,
+      title: newPost,
+      content: newPost,
+      status: "NORMAL",
+    });
+
+    // 등록 후 실행할 작업
+    setNewPost("");
+    setSelectedTags([]);
+    fetchPosts();
+  } catch (error) {
+    console.error("글 등록 실패:", error.response?.data || error.message);
+  }
+};
+
+  const handleDelete = async (postId) => {
+    if (!window.confirm("정말 삭제하시겠습니까?")) return
+    try {
+      await axios.delete(`http://localhost:8080/community/${postId}`)
+      alert("삭제 완료되었습니다.")
+      fetchPosts()
+    } catch (err) {
+      console.error("삭제 실패:", err)
+    }
+  }
+
+  const handleUpdate = async (postId, currentContent) => {
+    console.log("수정 클릭 postId:",postId)
+    const newContent = prompt("수정할 내용을 입력하세요:", currentContent)
+    if (!newContent || newContent.trim() === "") return
+
+    try {
+      await axios.put(`http://localhost:8080/community/${postId}`, {
+        user_id: 1,
+        coin_id: null,
+        title: newContent,
+        content: newContent,
+        status: "NORMAL",
+      })
+      fetchPosts()
+    } catch (err) {
+      console.error("수정 실패:", err)
+    }
+  }
+
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       {/* Main Feed */}
@@ -108,7 +187,13 @@ export const CommunityHub = () => {
                     key={tag}
                     variant={selectedTags.includes(tag) ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() => setSelectedTags(selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [...selectedTags, tag])}
+                    onClick={() =>
+                      setSelectedTags(
+                        selectedTags.includes(tag)
+                          ? selectedTags.filter((t) => t !== tag)
+                          : [...selectedTags, tag]
+                      )
+                    }
                   >
                     {tagToKr(tag)}
                   </Badge>
@@ -129,29 +214,35 @@ export const CommunityHub = () => {
         {/* Posts Feed */}
         <div className="space-y-4">
           {posts.map((post) => (
-            <Card key={post.id}>
+
+            <Card key={post.post_id || post.id}>
               <CardContent className="pt-6">
                 <div className="flex items-start space-x-3">
                   <Avatar>
                     <AvatarImage src={post.avatar || "/placeholder.svg"} />
-                    <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{post.author?.charAt(0) || "?"}</AvatarFallback>
                   </Avatar>
 
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-semibold">{post.author}</p>
-                        <p className="text-sm text-muted-foreground">{post.time}</p>
+                        <p className="font-semibold">{post.author || "익명"}</p>
+                        <p className="text-sm text-muted-foreground">{post.time || ""}</p>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Flag className="h-4 w-4" />
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleUpdate(post.post_id, post.content)}>
+                          수정
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(post.post_id)}>
+                          삭제 [{post.post_id}]
+                        </Button>
+                      </div>
                     </div>
 
                     <p className="text-sm leading-relaxed">{post.content}</p>
 
                     <div className="flex flex-wrap gap-2">
-                      {post.tags.map((tag) => (
+                      {post.tags?.map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs">
                           {tagToKr(tag)}
                         </Badge>
@@ -162,16 +253,16 @@ export const CommunityHub = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleLike(post.id)}
+                        onClick={() => handleLike(post.post_id)}
                         className={post.isLiked ? "text-red-500" : ""}
                       >
                         <Heart className={`h-4 w-4 mr-1 ${post.isLiked ? "fill-current" : ""}`} />
-                        {post.likes}
+                        {post.like_count || 0}
                       </Button>
 
                       <Button variant="ghost" size="sm">
                         <MessageCircle className="h-4 w-4 mr-1" />
-                        {post.comments}
+                        {post.comments || 0}
                       </Button>
 
                       <Button variant="ghost" size="sm">
@@ -200,7 +291,7 @@ export const CommunityHub = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topTraders.map((trader, index) => (
+              {topTraders.map((trader) => (
                 <div key={trader.name} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">{trader.badge}</span>
