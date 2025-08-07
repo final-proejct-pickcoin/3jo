@@ -183,7 +183,7 @@ export default function Component() {
     const status = user.is_verified === 1 ? "활성" : "정지";
 
     const matchesSearch = name.includes(search) || email.includes(search);
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || String(user.is_verified) === statusFilter;
   return matchesSearch && matchesStatus;
   });
   const filteredLogs = logs.filter((log) => {
@@ -708,8 +708,8 @@ export default function Component() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">전체</SelectItem>
-                          <SelectItem value="활성">활성</SelectItem>
-                          <SelectItem value="정지">정지</SelectItem>
+                          <SelectItem value="1">활성</SelectItem>
+                          <SelectItem value="0">정지</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -724,8 +724,8 @@ export default function Component() {
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>가입일</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>재고</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>거래 횟수</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>신뢰도</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>평판</TableHead>
+                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>계정상태</TableHead>
+                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>상세</TableHead>                        
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -739,8 +739,8 @@ export default function Component() {
                           </TableCell>
                           <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.email}</TableCell>
                           <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.created_at}</TableCell>
-                          <TableCell className={`font-mono ${isDarkMode ? "text-gray-300" : ""}`}>{user.balance}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.amount}</TableCell>
+                          <TableCell className={`font-mono ${isDarkMode ? "text-gray-300" : ""}`}>{user.point}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.txcount}</TableCell>
                           <TableCell>
                             <Badge variant={user.is_verified === 1 ? "default" : "destructive"}>{user.is_verified === 1? "활성": "정지"}</Badge>
                           </TableCell>
