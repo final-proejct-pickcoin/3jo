@@ -55,18 +55,6 @@ public class Users {
 
     @Column(name = "provider")
     private String provider;
-<<<<<<< HEAD
-    
-    @Column(name = "provider_id", columnDefinition = "boolean default false")
-    private String providerId;
-
-    @Column(name="created_at", updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
-    @Column(name = "expires_at")
-    private LocalDateTime expiresAt;
-=======
     @Column(name = "provider_id")
     private String providerId;
->>>>>>> be28e9418ebda3f5893f4af49715aa7e809cea5d
 }
