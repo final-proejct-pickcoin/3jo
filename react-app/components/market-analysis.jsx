@@ -33,7 +33,6 @@ const trendingCoins = [
   { symbol: "FLOKI", change: 12.3, reason: "Partnership news" },
 ]
 
-
 const marketNews = [
   {
     title: "Bitcoin ETF Approval Drives Market Rally",

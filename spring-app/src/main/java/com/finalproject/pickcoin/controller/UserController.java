@@ -62,7 +62,7 @@ public class UserController {
         user.setName(name);
         user.setRole(Role.USER);
         user.setVerified(false);  /// ??
-        user.setCreatedAt(new Date());
+        user.setCreatedAt(LocalDateTime.now());
         user.setVerificationToken(token);        
         // 인증 만료 시간 5분
         user.setExpiresAt(LocalDateTime.now().plusMinutes(5));
@@ -128,4 +128,45 @@ public class UserController {
         
         return ResponseEntity.ok(result);
     }
+    
+    @PostMapping("/social-login")
+    public ResponseEntity<Map<String, Object>> socialLogin(
+        @RequestParam String provider,
+        @RequestParam String email,
+        @RequestParam(required = false) String providerId
+    
+    ) {
+        Map<String, Object> result = new HashMap<>();
+
+        Optional<Users> existingUser = userService.findByEmail(email);
+        Users user;
+
+        if (existingUser.isEmpty()) {
+
+            user = new Users();
+            user.setEmail(email);
+            user.setName(email.split("@")[0]); // 이메일 앞부분을 닉네임으로 사용
+            user.setProvider(provider);
+            user.setProviderId(providerId);
+            user.setVerified(true); // 소셜 로그인은 이메일 인증 생략
+            user.setCreatedAt(LocalDateTime.now());
+
+            userService.save(user); // 신규 유저 저장
+        } else {
+            user = existingUser.get();
+        }
+
+        // jwt 발급
+        String token = jwtHelper.createAccessToken(user.getEmail(), Map.of("name", user.getName()));
+
+        result.put("access_token", token);
+        result.put("sub", user.getEmail());
+        result.put("provider", user.getProvider());
+
+        return ResponseEntity.ok(result);
+    }
+
+
+    
 }
+
