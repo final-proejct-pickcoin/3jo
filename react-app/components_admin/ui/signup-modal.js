@@ -10,6 +10,15 @@ export default function SignUpModal({ isOpenSignUp, onClose }) {
     confirmPassword: "",
     name: "",
   });
+<<<<<<< HEAD
+=======
+
+  const formData = new FormData();
+  formData.append("email", form.email);
+  formData.append("password", form.password);
+  formData.append("name", form.name);
+
+>>>>>>> feature_jh
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
@@ -21,6 +30,7 @@ export default function SignUpModal({ isOpenSignUp, onClose }) {
     if (form.password !== form.confirmPassword) {
       alert("비밀번호가 일치하지 않습니다.");
       return;
+<<<<<<< HEAD
     }
 
     const formData = new FormData();
@@ -30,6 +40,10 @@ export default function SignUpModal({ isOpenSignUp, onClose }) {
 
     
     axios.post("http://localhost:8000/admin/register",formData)
+=======
+    }else{
+        axios.post("http://localhost:8000/admin/register",formData)
+>>>>>>> feature_jh
       .then((response) => {
         console.log("회원가입 성공", response.data);
         onClose();
@@ -37,7 +51,11 @@ export default function SignUpModal({ isOpenSignUp, onClose }) {
       .catch((error) => {
         console.error("회원가입 실패", error);
       });
+<<<<<<< HEAD
     
+=======
+    }
+>>>>>>> feature_jh
 
     // TODO: 회원가입 API 호출
     console.log("회원가입 정보", form);
