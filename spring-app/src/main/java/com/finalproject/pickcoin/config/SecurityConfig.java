@@ -16,7 +16,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/users/register", "/users/verify"
-                                , "/users/login", "/css/**", "/js/**", "/error", "/test"
+                                , "/users/login", "/users/social-login", "/css/**", "/js/**", "/error", "/test"
                                 ,"/WEB-INF/views/**", "/WEB-INF/**").permitAll() // 회원가입, 로그인은 인증 없이 접근
                 .anyRequest().authenticated()
             );
