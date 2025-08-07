@@ -3,11 +3,7 @@ WORKDIR /app
 COPY . /app
 EXPOSE 8000
 RUN pip install --no-cache-dir -r requirements.txt
-<<<<<<< HEAD
 # RUN pip install fastapi==0.110.2 uvicorn[standard]==0.29.0 jinja2 PyJWT passlib[bcrypt] python-multipart pymysql cryptography python-dotenv redis pybithumb websocket-client selenium bs4 webdriver_manager lxml python-logstash
-=======
-# RUN pip install fastapi==0.110.2 uvicorn[standard]==0.29.0 jinja2 PyJWT passlib[bcrypt] python-multipart pymysql cryptography python-dotenv redis pybithumb websocket-client selenium bs4 webdriver_manager lxml
->>>>>>> feature_jh
 
 # 크롬/크로미움 및 관련 라이브러리 설치
 RUN apt-get update && \
