@@ -4,10 +4,10 @@
 	
 <mapper namespace="com.finalproject.pickcoin.repository.MarketRepository">
 	
-<select id = "get_coin_list" resultType="com.finalproject.pickoin.domain.Asset">
-    SELECT *
-    FROM asset
-    ORDER BY asset_id;
+    <select id="get_coin_list" resultType="com.finalproject.pickcoin.domain.Asset">
+        SELECT *
+        FROM asset
+        ORDER BY asset_id;
     </select>
     
 </mapper>

@@ -13,7 +13,7 @@ import lombok.Data;
 
 @Data
 @Entity
-public class community_likes {
+public class Community_Likes {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
