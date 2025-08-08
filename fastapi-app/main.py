@@ -22,6 +22,11 @@ from api.auth import router as auth_router
 from api.admin_user import router as admin_user_router
 from api.admin import router as admin_router
 
+# --- 음성 AI 관련 모듈 추가 ---
+import google.generativeai as genai
+from api.voice_router import router as voice_ai_router
+# ---------------------------------
+
 
 import requests
 import asyncio
@@ -31,6 +36,14 @@ import websockets
 import json
  
 load_dotenv()
+
+# --- Gemini API 설정 추가 ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    print("경고: .env 파일에 GEMINI_API_KEY가 설정되지 않았습니다.")
+# -----------------------------
 
 # docker-compose.yml의 서비스명이 redis이면
 redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
