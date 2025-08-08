@@ -343,7 +343,6 @@ export default function Component() {
       const name = localStorage.getItem("name");
       const role = localStorage.getItem("role");
 
-      // console.log(email, name, role);
       setProfileData({
         ...profileData,
         role: role,
@@ -353,15 +352,9 @@ export default function Component() {
 
       axios.get("http://localhost:8000/admin/getuser")
         .then((result)=>{
-          console.log("백엔드에서 가져온 값", result.data)
           setUsers(result.data)
-
         })
         .catch((err)=> console.log(err))
-
-      
-
-      // setUsers()
 
       setIsLoggedIn(true);
     }

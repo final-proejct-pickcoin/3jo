@@ -110,25 +110,26 @@ export const CommunityHub = () => {
   }
 
   const handleCreatePost = async () => {
-  if (!newPost.trim()) return;
+    if (!newPost.trim()) return;
 
-  try {
-    await axios.post("http://localhost:8080/community/insert", {
-      user_id: 1,
-      coin_id: null,
-      title: newPost,
-      content: newPost,
-      status: "NORMAL",
-    });
+    try {
+      
+      await axios.post("http://localhost:8080/community/insert", {
+        user_id: 1, // 주성이, 토큰값 이용해서 user_id 찾아서 보내야됨!
+        coin_id: null,
+        title: newPost,
+        content: newPost,
+        status: "NORMAL",
+      });
 
-    // 등록 후 실행할 작업
-    setNewPost("");
-    setSelectedTags([]);
-    fetchPosts();
-  } catch (error) {
-    console.error("글 등록 실패:", error.response?.data || error.message);
-  }
-};
+      // 등록 후 실행할 작업
+      setNewPost("");
+      setSelectedTags([]);
+      fetchPosts();
+    } catch (error) {
+      console.error("글 등록 실패:", error.response?.data || error.message);
+    }
+  };
 
   const handleDelete = async (postId) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return
