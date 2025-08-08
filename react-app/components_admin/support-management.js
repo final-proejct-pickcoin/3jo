@@ -370,15 +370,13 @@ export default function SupportManagement({ isDarkMode }) {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>ID</TableHead>
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>제목</TableHead>
+              <TableRow>                
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>                
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>카테고리</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>우선순위</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>답변일</TableHead>
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>설명</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태처리</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -387,9 +385,6 @@ export default function SupportManagement({ isDarkMode }) {
                   key={ticket.id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
-                  <TableCell className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
-                    #{ticket.id}
-                  </TableCell>
                   <TableCell>
                     <div>
                       <p className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
@@ -399,9 +394,6 @@ export default function SupportManagement({ isDarkMode }) {
                         {ticket.email}
                       </p>
                     </div>
-                  </TableCell>
-                  <TableCell className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
-                    {ticket.subject}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{ticket.category}</Badge>
@@ -443,7 +435,7 @@ export default function SupportManagement({ isDarkMode }) {
                       <DropdownMenuContent>
                         <DropdownMenuItem onClick={() => handleTicketClick(ticket)}>
                           <Eye className="h-4 w-4 mr-2" />
-                          상세 보기
+                          고객 대화
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "진행중")}>
                           <Clock className="h-4 w-4 mr-2" />
@@ -508,22 +500,11 @@ export default function SupportManagement({ isDarkMode }) {
                 </div>
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    우선순위
+                    신청 금액
                   </p>
-                  <Select
-                    value={selectedTicket.priority}
-                    onValueChange={(value) => handlePriorityChange(selectedTicket.id, value)}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="긴급">긴급</SelectItem>
-                      <SelectItem value="보통">보통</SelectItem>
-                      <SelectItem value="낮음">낮음</SelectItem>
-                      <SelectItem value="해제">해제</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className={`w-32 p-2 rounded border ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : "bg-white text-black border-gray-300"}`}>
+                    {selectedTicket.amount ? `${selectedTicket.amount} 원` : "금액 정보 없음"}
+                  </p>
                 </div>
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
@@ -546,7 +527,7 @@ export default function SupportManagement({ isDarkMode }) {
                 </div>
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    작성일
+                    문의 날짜
                   </p>
                   <p className={isDarkMode ? "text-gray-200" : "text-gray-900"}>
                     {selectedTicket.createdAt}
