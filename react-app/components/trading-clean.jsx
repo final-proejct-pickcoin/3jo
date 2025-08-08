@@ -1,10 +1,6 @@
 "use client"
 
-<<<<<<< HEAD
-import { useState } from "react"
-=======
 import { useState, useEffect } from "react"
->>>>>>> feature_jh
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,22 +22,6 @@ const CoinInfoPanel = ({ coin }) => (
   </div>
 );
 
-<<<<<<< HEAD
-export const TradingInterface = () => {
-  // State hooks for UI controls
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCoin, setSelectedCoin] = useState("");
-  const [activeTab, setActiveTab] = useState("원화");
-  const [showSettings, setShowSettings] = useState(false);
-
-  // Dummy coin list for demonstration (should be replaced with real data)
-  const coinList = [
-    { symbol: "BTC", name: "비트코인", price: 163172000, change: 0.03, changeAmount: 54000, volume: "1,231.795", trend: "up" },
-    { symbol: "ETH", name: "이더리움", price: 5400000, change: -0.12, changeAmount: -6500, volume: "2,000.000", trend: "down" },
-    { symbol: "XRP", name: "리플", price: 800, change: 1.2, changeAmount: 10, volume: "3,000.000", trend: "up" },
-    // ... add more coins as needed
-  ];
-=======
 
 export const TradingInterface = () => {
   // State hooks for UI controls
@@ -165,15 +145,12 @@ export const TradingInterface = () => {
   };
 
   const updatedCoinList = getUpdatedCoinList();
->>>>>>> feature_jh
 
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
 
   return (
     <div className="w-full p-4 space-y-4">
-<<<<<<< HEAD
-=======
     {/* 🚨 연결 상태 표시 추가 */}
       <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
         <div className="flex items-center gap-2">
@@ -192,7 +169,6 @@ export const TradingInterface = () => {
         </div>
       </div>
 
->>>>>>> feature_jh
       <div className="flex flex-row gap-4 min-h-0 items-stretch max-h-100vh">
         {/* 좌측: Coin List */}
         <div className="flex flex-col min-h-0 h-full w-[368px] max-w-[90vw] self-stretch">
@@ -244,11 +220,7 @@ export const TradingInterface = () => {
                 <div className="text-right flex items-center gap-1 cursor-pointer">거래대금 <span className="text-[10px]">▼</span></div>
               </div>
               <div className="max-h-[500px] overflow-y-auto flex-1 min-h-0">
-<<<<<<< HEAD
-                {coinList.map((coin, index) => (
-=======
                 {updatedCoinList.map((coin, index) => (
->>>>>>> feature_jh
                   <div
                     key={coin.symbol}
                     onClick={() => setSelectedCoin(coin.symbol)}
@@ -263,13 +235,10 @@ export const TradingInterface = () => {
                           className={`font-semibold text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
                         >
                           {coin.name}
-<<<<<<< HEAD
-=======
                           {/* 🚨 실시간 표시 추가 */}
                           {realTimeData[coin.symbol + '_KRW'] && (
                             <span className="ml-1 text-green-500 text-[8px]">●</span>
                           )}
->>>>>>> feature_jh
                         </div>
                         <div className="text-muted-foreground text-[11px]">{coin.symbol}/KRW</div>
                       </div>
@@ -323,16 +292,6 @@ export const TradingInterface = () => {
                           <span className="text-white font-bold text-sm">₿</span>
                         </div>
                         <div>
-<<<<<<< HEAD
-                          <h3 className="font-semibold text-lg">비트코인 BTC/KRW</h3>
-                          <div className="flex items-center gap-4">
-                            <div>
-                              <div className="text-2xl font-bold text-red-600">163,172,000 <span className="text-sm">KRW</span></div>
-                              <div className="text-sm text-red-600">+0.03% ▲54,000</div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              <div>Coinbase 164,483,704 ($118,338.50)</div>
-=======
                           <h3 className="font-semibold text-lg">
                             {updatedCoinList.find(c => c.symbol === selectedCoin)?.name || "비트코인"} {selectedCoin || "BTC"}/KRW
                           </h3>
@@ -357,7 +316,6 @@ export const TradingInterface = () => {
                                   '+0.03% ▲54,000'
                                 }
                               </div>
->>>>>>> feature_jh
                             </div>
                           </div>
                         </div>
@@ -365,17 +323,6 @@ export const TradingInterface = () => {
                       <div className="flex gap-6 text-sm">
                         <div>
                           <p className="text-muted-foreground">고가</p>
-<<<<<<< HEAD
-                          <p className="font-semibold text-red-600">163,627,000</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">저가</p>
-                          <p className="font-semibold text-blue-600">162,916,000</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">거래량(24H)</p>
-                          <p className="font-semibold">1,231.795 BTC</p>
-=======
                           <p className="font-semibold text-red-600">
                             {realTimeData[selectedCoin + '_KRW']?.maxPrice
                               ? parseInt(realTimeData[selectedCoin + '_KRW'].maxPrice).toLocaleString()
@@ -397,7 +344,6 @@ export const TradingInterface = () => {
                               ? `${parseFloat(realTimeData[selectedCoin + '_KRW'].unitsTraded).toLocaleString()} ${selectedCoin}`
                               : '1,231.795 BTC'}
                           </p>
->>>>>>> feature_jh
                         </div>
                       </div>
                     </div>
@@ -566,8 +512,4 @@ export const TradingInterface = () => {
   )  
 }
 
-<<<<<<< HEAD
-
-=======
 export default TradingInterface;
->>>>>>> feature_jh
