@@ -10,7 +10,6 @@ export default function RootLayout({children}) {
   const [authenticated, setAuthenticated] = useState(false);
   const router = useRouter();
 
-<<<<<<< HEAD
   function isTokenExpired(token) {
     try {
       const [, payloadBase64] = token.split('.');
@@ -22,37 +21,21 @@ export default function RootLayout({children}) {
     }
   }
 
-=======
->>>>>>> feature_jh
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     const sub = localStorage.getItem("sub");
 
-<<<<<<< HEAD
     if (token && sub && !isTokenExpired(token)) {
       setAuthenticated(true);
     }else {
       localStorage.removeItem("access_token");
       localStorage.removeItem("sub");
-=======
-    if (token && sub) {
-      setAuthenticated(true);
-    }else {
->>>>>>> feature_jh
       router.replace("/admin");  // 로그인 안됐으면 login 페이지로 리디렉션
     }
     setReady(true);
   }, []);
-<<<<<<< HEAD
   
   return <>{children}</>
-=======
-
-  
-  
-  return <>{children}</>
-  
->>>>>>> feature_jh
 
 }
 
