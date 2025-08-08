@@ -65,9 +65,11 @@ logging:
   level:
     root: INFO
     level:
+      org.mybatis: DEBUG
       org.springframework.web: DEBUG
       org.hibernate.SQL: DEBUG
       org.hibernate.type: TRACE
+    
 
 jwt:
   secret: a_super_secret_key_that_is_long_and_random_123

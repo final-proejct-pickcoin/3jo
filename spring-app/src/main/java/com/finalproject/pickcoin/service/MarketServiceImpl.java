@@ -18,5 +18,5 @@ public class MarketServiceImpl implements MarketService {
         return marketRepository.get_coin_list();
     }
 
-    
+
 }

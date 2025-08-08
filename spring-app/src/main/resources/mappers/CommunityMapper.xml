@@ -21,7 +21,7 @@
         user_id, coin_id, title, content, like_count, cnt, reply_count, status, created_at, updated_at
     ) VALUES (
         #{user_id},
-        #{coin_id, jdbcType=INTEGER},
+        #{coin_id},
         #{title},
         #{content},
         COALESCE(#{like_count}, 0),
@@ -54,11 +54,11 @@
         DELETE FROM community WHERE post_id = #{post_id}
     </delete>
 
-	<update id="increaseLikeCount" parameterType="int">
-    	UPDATE community
-    	SET like_count = like_count + 1,
-			updated_at = NOW()
-    	WHERE post_id = #{value}
-	</update>
+    <update id="increaseLikeCount" parameterType="int">
+        UPDATE community
+        SET like_count = like_count + 1,
+            updated_at = NOW()
+        WHERE post_id = #{value}
+    </update>
 
 </mapper>

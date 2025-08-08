@@ -1,45 +1,35 @@
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, status, Query, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-<<<<<<< HEAD
+
 import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 import os
 import redis
 from utils.user_manager import ConnectionManager
-from alert_manager import AlertManager
-=======
-from fastapi.middleware.cors import CORSMiddleware
+from service.alert_manager import AlertManager
+
 from passlib.context import CryptContext
 from utils.jwt_helper import create_access_token, verify_token
 from dotenv import load_dotenv
 from utils.user_manager import ConnectionManager
-from alert_manager import AlertManager
 from typing import Dict
->>>>>>> feature_jh
 from json import dumps
 from fastapi.middleware.cors import CORSMiddleware
 from api.news_router import router as news_router
 from api.auth import router as auth_router
-<<<<<<< HEAD
 from api.admin_user import router as admin_user_router
+from api.admin import router as admin_router
 
 
-=======
-from datetime import datetime
-
-import jwt
-import pymysql
-import os
-import redis
 import requests
 import asyncio
 import aiohttp
+from datetime import datetime
 import websockets
 import json
  
->>>>>>> feature_jh
 load_dotenv()
 
 # docker-compose.yml의 서비스명이 redis이면
@@ -65,23 +55,14 @@ origins = [
     "http://127.0.0.1"
 ]
 
-<<<<<<< HEAD
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-=======
-# CORS 설정 개선
-app.add_middleware(
-    CORSMiddleware,
-    # allow_origins=origins,
-    allow_origins=["*"],  # 개발 환경용, 프로덕션에서는 구체적 도메인 지정
->>>>>>> feature_jh
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
 )
 
-<<<<<<< HEAD
 # 뉴스 크롤링 라우터
 app.include_router(news_router)
 
@@ -91,13 +72,9 @@ app.include_router(auth_router)
 # admin_user 로그 라우터
 app.include_router(admin_user_router)
 
-=======
-# 뉴스 가져오기
-app.include_router(news_router)
+# 관리자 페이지에서 받아올 라우터
+app.include_router(admin_router)
 
-app.include_router(auth_router)
-
->>>>>>> feature_jh
 manager = ConnectionManager()
 alert_manager = AlertManager()
 
@@ -136,10 +113,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...), room
         await websocket.send_text(msg)
 
     # 4. 브로드캐스트 및 케세지 기록    
-<<<<<<< HEAD
-=======
-    
->>>>>>> feature_jh
     await manager.broadcast(f"✅ {username}님이 [{room}] 채팅방에 입장했습니다.", room)
 
     try:
@@ -192,18 +165,10 @@ async def alert_listener(websocket: WebSocket, token: str = Query(...)):
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> feature_jh
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     return templates.TemplateResponse("chat.html", {"request": request})
 
-<<<<<<< HEAD
-=======
 
 
 # 빗썸 마켓 코드 조회 (신규 추가)
@@ -602,4 +567,3 @@ async def server_status():
         "active_connections": len(bithumb_manager.connections),
         "timestamp": datetime.now().isoformat()
     }        
->>>>>>> feature_jh

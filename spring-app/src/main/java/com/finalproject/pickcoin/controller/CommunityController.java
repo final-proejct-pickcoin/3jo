@@ -27,6 +27,7 @@ public class CommunityController {
     // 전체조회
     @GetMapping("/findAll")
     public List<Community> findAll(){
+        System.out.println("커뮤니티 전체 조회 진입");
         return communityService.findAll();
     }
 
