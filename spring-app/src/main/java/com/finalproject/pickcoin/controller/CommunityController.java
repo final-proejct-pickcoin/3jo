@@ -59,7 +59,7 @@ public class CommunityController {
         communityService.delete(id);
     }
 
-    // 댓글 좋아요 
+    // 댓글 좋아요 /like/{id} 로 받아야되는거 아닌가???
     @PutMapping("/{id}/like")
     public void like(@PathVariable("id") Integer id){
         System.out.println("좋아요 요청 post_id = " + id);

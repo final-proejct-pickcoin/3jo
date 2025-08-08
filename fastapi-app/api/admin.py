@@ -84,7 +84,7 @@ def getuser():
                 user_id = user['user_id']
                 user['tx_count'] = tx_counts_map.get(user_id, 0)
 
-            print(">>>>>>>>>유저쿼리문 결과: ", users)
+            # print(">>>>>>>>>유저쿼리문 결과: ", users)
     except Exception as e:
         print("Error in /admin/getuser:", e)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(e))
@@ -93,3 +93,27 @@ def getuser():
 
 
     return users
+
+
+@router.get("/admin/getinq")
+def getinq():
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                    SELECT i.inquiry_id, i.user_id, i.amount, i.category, i.closed_at, i.created_at, i.priority, i.status, u.name, u.email
+                    FROM inquiry i
+                        LEFT JOIN users u
+                        ON i.user_id = u.user_id
+                  """
+
+            cursor.execute(sql)
+            inquiries = cursor.fetchall()
+    except Exception as err:
+        print("Error in /admin/getinq:", err)  # 콘솔에 예외 출력
+        raise HTTPException(status_code=500, detail=str(err))
+    finally:
+        
+        conn.close()
+
+    return inquiries
