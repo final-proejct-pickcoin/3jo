@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { BookmarkProvider } from "@/components/bookmark-provider"
 import "./globals.css"
 import KakaoScript from "@/components/kakaoscript"
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -33,9 +34,13 @@ const RootLayout = ({ children }) => (
       <link rel="apple-touch-icon" href="/icon-192x192.png" />
     </head>
     <body className={inter.className}>
+      {/* Script 컴포넌트 사용 */}
+      <Script 
+        src="https://unpkg.com/lightweight-charts@5.0.8/dist/lightweight-charts.standalone.production.js"
+        strategy="beforeInteractive"
+      />
       <KakaoScript />
        
-
       <ThemeProvider defaultTheme="system">
         <AuthProvider>
           <WebSocketProvider>
