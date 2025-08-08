@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -51,95 +51,24 @@ import {
   Eye,
   Archive,
 } from "lucide-react";
+import axios from "axios";
 
 export default function SupportManagement({ isDarkMode }) {
-  const [tickets, setTickets] = useState([
-    {
-      id: 1,
-      user: "user123",
-      email: "user123@example.com",
-      subject: "출금이 처리되지 않습니다",
-      category: "출금",
-      priority: "높음",
-      status: "신규",
-      createdAt: "2024-01-15 14:30",
-      lastReply: "2024-01-15 14:30",
-      messages: [
-        {
-          id: 1,
-          sender: "user",
-          message: "어제 출금 신청을 했는데 아직 처리되지 않았습니다. 확인 부탁드립니다.",
-          timestamp: "2024-01-15 14:30",
-        },
-      ],
-    },
-    {
-      id: 2,
-      user: "user456",
-      email: "user456@example.com",
-      subject: "계정 인증 문제",
-      category: "계정",
-      priority: "보통",
-      status: "진행중",
-      createdAt: "2024-01-15 10:15",
-      lastReply: "2024-01-15 15:20",
-      messages: [
-        {
-          id: 1,
-          sender: "user",
-          message: "KYC 인증을 완료했는데 계정이 아직 인증되지 않았습니다.",
-          timestamp: "2024-01-15 10:15",
-        },
-        {
-          id: 2,
-          sender: "admin",
-          message: "안녕하세요. 제출해주신 서류를 검토 중입니다. 추가 서류가 필요할 수 있습니다.",
-          timestamp: "2024-01-15 15:20",
-        },
-      ],
-    },
-    {
-      id: 3,
-      user: "user789",
-      email: "user789@example.com",
-      subject: "거래 수수료 문의",
-      category: "거래",
-      priority: "낮음",
-      status: "완료",
-      createdAt: "2024-01-14 16:45",
-      lastReply: "2024-01-15 09:30",
-      messages: [
-        {
-          id: 1,
-          sender: "user",
-          message: "거래 수수료가 예상보다 높게 나왔는데 확인 부탁드립니다.",
-          timestamp: "2024-01-14 16:45",
-        },
-        {
-          id: 2,
-          sender: "admin",
-          message:
-            "확인해보니 정상적으로 적용된 수수료입니다. 자세한 내용은 수수료 안내 페이지를 참고해주세요.",
-          timestamp: "2024-01-15 09:30",
-        },
-      ],
-    },
-  ]);
+  const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [replyMessage, setReplyMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const filteredTickets = tickets.filter((ticket) => {
-    const matchesSearch =
-      ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =      
+      ticket.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   const handleTicketClick = (ticket) => {
@@ -244,6 +173,21 @@ export default function SupportManagement({ isDarkMode }) {
     }
   };
 
+  useEffect(() => {
+    axios.get("http://localhost:8000/admin/getinq")
+      .then((inq) => {
+        // console.log(inq.data)
+        // 메세지 임시
+        const updatedTickets = inq.data.map(ticket => ({
+          ...ticket,
+          messages: ticket.messages || [],  // 기존에 message가 없으면 빈 배열 할당
+        }));
+        setTickets(updatedTickets) // setTickets(inq.data) 로 바꿔야함
+      }).catch((error) => {
+      console.error("데이터 불러오기 실패:", error);
+    });
+  },[])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -345,23 +289,23 @@ export default function SupportManagement({ isDarkMode }) {
                   <SelectValue placeholder="상태" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="all">상태검색</SelectItem>
                   <SelectItem value="신규">신규</SelectItem>
                   <SelectItem value="진행중">진행중</SelectItem>
                   <SelectItem value="완료">완료</SelectItem>
                   <SelectItem value="삭제">삭제</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder="우선순위" />
+                  <SelectValue placeholder="카테고리" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
-                  <SelectItem value="낮음">낮음</SelectItem>
-                  <SelectItem value="보통">보통</SelectItem>
-                  <SelectItem value="높음">높음</SelectItem>
-                  <SelectItem value="매우높음">매우높음</SelectItem>
+                  <SelectItem value="all">내용검색</SelectItem>
+                  <SelectItem value="입금">입금</SelectItem>
+                  <SelectItem value="출금">출금</SelectItem>
+                  <SelectItem value="신고">신고</SelectItem>
+                  <SelectItem value="탈퇴">탈퇴</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -373,22 +317,22 @@ export default function SupportManagement({ isDarkMode }) {
               <TableRow>                
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>                
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>카테고리</TableHead>
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>우선순위</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>신청금액</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태</TableHead>
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>답변일</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>문의날짜</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태처리</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTickets.map((ticket) => (
                 <TableRow
-                  key={ticket.id}
+                  key={ticket.inquiry_id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <TableCell>
                     <div>
                       <p className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
-                        {ticket.user}
+                        {ticket.name}
                       </p>
                       <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
                         {ticket.email}
@@ -399,20 +343,11 @@ export default function SupportManagement({ isDarkMode }) {
                     <Badge variant="outline">{ticket.category}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Select
-                      value={ticket.priority}
-                      onValueChange={(value) => handlePriorityChange(ticket.id, value)}
-                    >
-                      <SelectTrigger className="w-20">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="낮음">낮음</SelectItem>
-                        <SelectItem value="보통">보통</SelectItem>
-                        <SelectItem value="높음">높음</SelectItem>
-                        <SelectItem value="매우높음">매우높음</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className={isDarkMode ? "text-gray-300" : ""}              >
+                      {ticket.amount !== undefined && ticket.amount !== null
+                        ? `${ticket.amount.toLocaleString()} 원`
+                        : "기타문의"}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
@@ -423,7 +358,7 @@ export default function SupportManagement({ isDarkMode }) {
                     </div>
                   </TableCell>
                   <TableCell className={isDarkMode ? "text-gray-300" : ""}>
-                    {ticket.createdAt}
+                    {ticket.created_at.replace("T", ", ").slice(0, -3)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -463,7 +398,7 @@ export default function SupportManagement({ isDarkMode }) {
         <DialogContent className={`sm:max-w-[700px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`}>
           <DialogHeader>
             <DialogTitle className={isDarkMode ? "text-white" : ""}>
-              문의 상세 - #{selectedTicket?.id}
+              문의 상세 - #{selectedTicket?.inquiry_id}
             </DialogTitle>
             <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
               {selectedTicket?.subject}
@@ -481,7 +416,7 @@ export default function SupportManagement({ isDarkMode }) {
                     사용자
                   </p>
                   <p className={isDarkMode ? "text-gray-200" : "text-gray-900"}>
-                    {selectedTicket.user}
+                    {selectedTicket.name}
                   </p>
                 </div>
                 <div>
@@ -502,8 +437,8 @@ export default function SupportManagement({ isDarkMode }) {
                   <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
                     신청 금액
                   </p>
-                  <p className={`w-32 p-2 rounded border ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : "bg-white text-black border-gray-300"}`}>
-                    {selectedTicket.amount ? `${selectedTicket.amount} 원` : "금액 정보 없음"}
+                  <p className={`isDarkMode ? "text-gray-200" : "text-gray-900"`}>
+                    {selectedTicket.amount ? `${selectedTicket.amount.toLocaleString()} 원` : "금액 정보 없음"}
                   </p>
                 </div>
                 <div>
@@ -521,7 +456,7 @@ export default function SupportManagement({ isDarkMode }) {
                       <SelectItem value="신규">신규</SelectItem>
                       <SelectItem value="진행중">진행중</SelectItem>
                       <SelectItem value="완료">완료</SelectItem>
-                      <SelectItem value="해제">해제</SelectItem>
+                      <SelectItem value="대기">대기</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -530,7 +465,7 @@ export default function SupportManagement({ isDarkMode }) {
                     문의 날짜
                   </p>
                   <p className={isDarkMode ? "text-gray-200" : "text-gray-900"}>
-                    {selectedTicket.createdAt}
+                    {selectedTicket.created_at.replace("T", ", ").slice(0, -3)}
                   </p>
                 </div>
               </div>
@@ -553,7 +488,7 @@ export default function SupportManagement({ isDarkMode }) {
                       <div className="flex items-center mb-2">
                         <User className="h-4 w-4 mr-2" />
                         <span className="text-sm font-medium">
-                          {message.sender === "admin" ? "관리자" : selectedTicket.user}
+                          {message.sender === "admin" ? "관리자" : selectedTicket.name}
                         </span>
                         <span className="text-xs ml-2 opacity-70">{message.timestamp}</span>
                       </div>
