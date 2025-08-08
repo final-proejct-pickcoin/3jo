@@ -722,8 +722,8 @@ export default function Component() {
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자명</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>이메일</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>가입일</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>재고</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>거래 횟수</TableHead>
+                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>신고</TableHead>
+                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>권한</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>계정상태</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>상세</TableHead>                        
                       </TableRow>
@@ -738,9 +738,9 @@ export default function Component() {
                             </div>
                           </TableCell>
                           <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.email}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.created_at}</TableCell>
-                          <TableCell className={`font-mono ${isDarkMode ? "text-gray-300" : ""}`}>{user.point}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.txcount}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.created_at?user.created_at.slice(0,10):'정보 없음'}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.reported_count}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{user.role}</TableCell>
                           <TableCell>
                             <Badge variant={user.is_verified === 1 ? "default" : "destructive"}>{user.is_verified === 1? "활성": "정지"}</Badge>
                           </TableCell>
@@ -790,7 +790,7 @@ export default function Component() {
                   <DialogHeader>
                     <DialogTitle className={isDarkMode ? "text-white" : ""}>사용자 상세 정보</DialogTitle>
                     <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
-                      {selectedUser?.username}의 계정 정보
+                      {selectedUser?.name}의 계정 정보
                     </DialogDescription>
                   </DialogHeader>
                   {selectedUser && (
@@ -799,13 +799,13 @@ export default function Component() {
                         <div>
                           <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>사용자명</Label>
                           <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {selectedUser.username}
+                            {selectedUser.name}
                           </p>
                         </div>
                         <div>
                           <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>이메일</Label>
                           <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {selectedUser.email}
+                            {selectedUser.email} 
                           </p>
                         </div>
                       </div>
@@ -813,39 +813,56 @@ export default function Component() {
                         <div>
                           <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>가입일</Label>
                           <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {selectedUser.joinDate}
+                            {selectedUser.created_at ? selectedUser.created_at.slice(0,10):'정보 없음'}
                           </p>
                         </div>
                         <div>
                           <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>마지막 로그인</Label>
                           <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {selectedUser.lastLogin}
+                            {selectedUser.last_login_at}
                           </p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>재고</Label>
+                          <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>신고 횟수</Label>
                           <p className={`text-sm font-mono ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {selectedUser.balance}
+                            {selectedUser.reported_count}
                           </p>
                         </div>
                         <div>
                           <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>거래 횟수</Label>
                           <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {selectedUser.trades}회
+                            {selectedUser.tx_count}회
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>권한</Label>
+                          <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
+                            {selectedUser.role}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>총 입금액</Label>
+                          <p className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
+                            {selectedUser.balance}원
                           </p>
                         </div>
                       </div>
                       <div>
                         <Label className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>계정 상태</Label>
                         <div className="mt-1">
-                          <Badge variant={selectedUser.status === "활성" ? "default" : "destructive"}>
-                            {selectedUser.status}
+                          <Badge variant={selectedUser.is_verified === 1 ? "default" : "destructive"}>
+                            {selectedUser.is_verified == 1 ? "활성화" : "정지"}
                           </Badge>
-                          {selectedUser.verified && <Badge variant="outline" className="ml-2">인증 완료</Badge>}
-                        </div>
+                          
+                          {selectedUser.is_verified && <Badge variant="outline" className="ml-2">인증 완료</Badge>}
+                        </div>                        
                       </div>
+                      
+                      
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setIsUserDetailDialogOpen(false)}>
                           닫기
