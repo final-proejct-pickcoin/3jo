@@ -8,7 +8,7 @@ import { WebSocketProvider } from "@/components/websocket-provider"
 import { LandingPage } from "@/components/landing-page"
 import { MainDashboard } from "@/components/main-dashboard"
 import { OnboardingTour } from "@/components/onboarding-tour"
-import { VoiceAssistant } from "@/components/voice-assistant"
+import { VoiceAssistant2 } from "@/components/voice-assistant2"
 import { NotificationSystem } from "@/components/notification-system"
 
 
@@ -29,7 +29,7 @@ const AppContent = () => {
     <WebSocketProvider>
       <MainDashboard />
       <OnboardingTour />
-      <VoiceAssistant />
+      <VoiceAssistant2 />
       <NotificationSystem />
     </WebSocketProvider>
   )
