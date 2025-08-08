@@ -47,3 +47,8 @@ venv/
 
 ## react ##
 node_modules/
+<<<<<<< HEAD
+=======
+
+*/venv
+>>>>>>> feature_jh
