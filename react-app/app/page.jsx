@@ -10,7 +10,7 @@ import { MainDashboard } from "@/components/main-dashboard"
 import { OnboardingTour } from "@/components/onboarding-tour"
 import { VoiceAssistant } from "@/components/voice-assistant"
 import { NotificationSystem } from "@/components/notification-system"
-
+import dynamic from "next/dynamic";
 
 const AppContent = () => {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -47,3 +47,18 @@ const VirtualCryptoPlatform = () => (
 )
 
 export default VirtualCryptoPlatform
+
+// TradingChart 컴포넌트를 동적 임포트 (SSR 비활성화)
+const TradingChart = dynamic(()=> import('@/components/trading-chart').then(
+  mod => mod.TradingChart), {
+  ssr: false, loading: () => 
+  <div className="h-[670px] flex items-center justify-center">
+    차트 로딩 중...
+  </div>
+});  
+
+// TradingInterface도 동적 임포트
+const TradingInterface = dynamic(() => import('@/components/trading-clean'), { 
+  ssr: false,
+  loading: () => <div>인터페이스 로딩 중...</div>
+});
