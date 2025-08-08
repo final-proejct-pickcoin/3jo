@@ -74,9 +74,9 @@ jwt:
   # 실제 배포 환경에서는 환경변수 등 안전하게 보관
 
 # MyBatis
-  mybatis:
-    mapper-locations: classpath*:mappers/**/*.xml
-    type-aliases-package: com.finalproject.pickcoin.domain
+mybatis:
+  mapper-locations: classpath*:mappers/**/*.xml
+  type-aliases-package: com.finalproject.pickcoin.domain
 
 # Websocket 관련 (엔드포인트, broker 등은 코드에서 설정)
 

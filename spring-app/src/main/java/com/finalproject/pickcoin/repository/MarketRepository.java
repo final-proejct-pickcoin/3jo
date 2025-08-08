@@ -5,7 +5,7 @@ import java.util.List;
 
 @Mapper
 public interface MarketRepository {
-
-        
+    
     public List<Asset> get_coin_list();
+
 }
