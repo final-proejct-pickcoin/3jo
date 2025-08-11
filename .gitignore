@@ -46,3 +46,5 @@ __pycache__/
 
 ## react ##
 node_modules/
+
+*/venv

@@ -33,9 +33,7 @@ const RootLayout = ({ children }) => (
       <link rel="apple-touch-icon" href="/icon-192x192.png" />
     </head>
     <body className={inter.className}>
-      <KakaoScript />
-       
-
+      <KakaoScript/>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         <AuthProvider>
           <WebSocketProvider>
