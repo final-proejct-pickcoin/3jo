@@ -149,7 +149,7 @@ export const CommunityHub = () => {
 
     try {
       await axios.put(`http://localhost:8080/community/${postId}`, {
-        user_id: 1,
+        user_id: 1, // 주성이, 토큰값 이용해서 user_id 찾아서 보내야됨!
         coin_id: null,
         title: newContent,
         content: newContent,
