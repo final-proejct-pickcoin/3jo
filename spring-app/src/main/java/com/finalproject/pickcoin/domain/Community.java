@@ -2,7 +2,6 @@ package com.finalproject.pickcoin.domain;
 
 import java.util.Date;
 
-import com.finalproject.pickcoin.enums.PostStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

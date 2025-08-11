@@ -52,8 +52,8 @@ public class Users {
     @Column(name = "verification_token", length = 100)
     private String verificationToken;    // 인증용 토큰 (필수)
 
-    @Column(name = "provider")
+    @Column(name = "provider") // kakao, google
     private String provider;
-    @Column(name = "provider_id")
+    @Column(name = "provider_id") // 고유번호
     private String providerId;
 }
