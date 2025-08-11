@@ -14,6 +14,7 @@ class User(BaseModel):
     email: str
     create_at: str
     amount: float
+    is_verified: bool
     trade_count: int
 
 host = "34.64.105.135"
@@ -117,3 +118,27 @@ def getinq():
         conn.close()
 
     return inquiries
+
+@router.get("/admin/user-status")
+def userStatus(user_id: int, is_verified: bool):
+    
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    try:
+        with conn.cursor() as cursor:            
+            new_verified = 0 if is_verified == 1 else 1
+            data = (new_verified, user_id)
+            print("백에서 받은 유저데이터:", data)
+            sql = """
+                    UPDATE users
+                    SET is_verified = %s
+                    WHERE user_id = %s
+                    """
+            cursor.execute(sql, data)
+            
+            conn.commit()
+    except Exception as err:
+        print("Error in /admin/user-status:", err)  # 콘솔에 예외 출력
+        raise HTTPException(status_code=500, detail=str(err))
+    finally:
+        conn.close()
+    pass

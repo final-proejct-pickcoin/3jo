@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Card,
   CardContent,
@@ -61,6 +61,8 @@ export default function SupportManagement({ isDarkMode }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const ws = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =      
@@ -71,15 +73,36 @@ export default function SupportManagement({ isDarkMode }) {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const handleTicketClick = (ticket) => {
-    setSelectedTicket(ticket);
-    setIsTicketDialogOpen(true);
+  const handleTicketClick = async (ticket) => {
+    console.log("선택된 티켓:", ticket);
+
+    try{
+      const res = await axios.get(`http://localhost:8000/chat/history/${ticket.user_id}`);
+      const messages = res.data.messages || [];
+      
+      // 티켓에 messages를 보함시켜서 셋팅
+      const ticketWithMessages = {
+        ...ticket,
+        messages
+      }
+
+      setSelectedTicket(ticketWithMessages);
+      setIsTicketDialogOpen(true);
+
+    }catch(err){
+      console.error("채팅 기록 불러오기 실패:", err);
+      setSelectedTicket({...ticket, message:[]});
+      setIsTicketDialogOpen(true)
+    }
+
+    
   };
 
   const handleStatusChange = (ticketId, newStatus) => {
+    
     setTickets(
       tickets.map((ticket) =>
-        ticket.id === ticketId
+        ticket.inquiry_id === ticketId
           ? {
               ...ticket,
               status: newStatus,
@@ -87,63 +110,59 @@ export default function SupportManagement({ isDarkMode }) {
           : ticket
       )
     );
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({
-        ...selectedTicket,
-        status: newStatus,
-      });
-    }
-  };
+    
+    axios.post("http://localhost:8000/admin/inq-status", null, {
+      params: {
+        inquiry_id: ticketId,
+        status: newStatus
+      }
+    }).then(()=>{
+        setSelectedTicket(prev =>
+          prev && prev.inquiry_id === ticketId
+            ? { ...prev, status: newStatus }
+            : prev
+        );
 
-  const handlePriorityChange = (ticketId, newPriority) => {
-    setTickets(
-      tickets.map((ticket) =>
-        ticket.id === ticketId
-          ? {
-              ...ticket,
-              priority: newPriority,
-            }
-          : ticket
-      )
-    );
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({
-        ...selectedTicket,
-        priority: newPriority,
-      });
-    }
+    })
   };
 
   const handleSendReply = () => {
     if (!selectedTicket || !replyMessage.trim()) return;
+
     const newMessage = {
       id: selectedTicket.messages.length + 1,
       sender: "admin",
       message: replyMessage,
       timestamp: new Date().toLocaleString("ko-KR"),
     };
-    const updatedTicket = {
-      ...selectedTicket,
-      messages: [...selectedTicket.messages, newMessage],
-      lastReply: newMessage.timestamp,
-      status: "진행중",
-    };
-    setTickets(tickets.map((ticket) => (ticket.id === selectedTicket.id ? updatedTicket : ticket)));
-    setSelectedTicket(updatedTicket);
-    setReplyMessage("");
-  };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "긴급":
-      case "높음":
-        return "destructive";
-      case "보통":
-        return "secondary";
-      case "낮음":
-      default:
-        return "default";
+    // 화면 먼저 업데이트
+    setTickets((prev) => 
+      prev.map((ticket) => 
+        ticket.user_id === selectedTicket.user_id ? {
+          ...ticket,
+          messages: [...ticket.messages, newMessage],
+          lastReply: newMessage.timestamp,
+        } : ticket
+      )
+    );
+    setSelectedTicket((prev) => 
+      prev ? {...prev, messages: [...prev.messages, newMessage], lastReply: newMessage} : prev
+    );
+
+    // 웹소켓으로 전송
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        room_id: selectedTicket.user_id,
+        sender: "admin",
+        message: replyMessage
+      }));
+    }else{
+      console.log("WebSocket이 연결되어 있지 않습니다.");
     }
+
+    setReplyMessage("");
+
   };
 
   const getStatusColor = (status) => {
@@ -177,7 +196,7 @@ export default function SupportManagement({ isDarkMode }) {
     axios.get("http://localhost:8000/admin/getinq")
       .then((inq) => {
         // console.log(inq.data)
-        // 메세지 임시
+        // 메세지 - redis에서 저장된 것 가져옮 (handleTicketClick에서 백엔드 요청 -> redis)
         const updatedTickets = inq.data.map(ticket => ({
           ...ticket,
           messages: ticket.messages || [],  // 기존에 message가 없으면 빈 배열 할당
@@ -186,7 +205,35 @@ export default function SupportManagement({ isDarkMode }) {
       }).catch((error) => {
       console.error("데이터 불러오기 실패:", error);
     });
-  },[])
+
+    // 웹소켓 - 연결
+    // room_id 생성    
+    const roomId = selectedTicket?.user_id    
+    if(!roomId) return;
+
+    ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${roomId}`)
+    ws.current.onopen = () => {
+      console.log("웹소켓 연결됨");
+    }
+
+    ws.current.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      console.log(`받은메세지: ${msg}`) // 여기서 ticket / selectedTicet 업데이트 가능
+    }
+    // messages 바뀔 때마다 스크롤 아래로.
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" }); 
+    });
+
+    ws.current.onclose = () => {
+      console.log("웹소켓 연결 종료")
+    }
+
+    return () => {
+      if (ws.current) ws.current.close();
+    }
+
+  },[selectedTicket?.user_id, selectedTicket?.messages])
 
   return (
     <div className="space-y-6">
@@ -372,15 +419,15 @@ export default function SupportManagement({ isDarkMode }) {
                           <Eye className="h-4 w-4 mr-2" />
                           고객 대화
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "진행중")}>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "진행중")}>
                           <Clock className="h-4 w-4 mr-2" />
                           진행중으로 변경
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "완료")}>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "완료")}>
                           <CheckCircle className="h-4 w-4 mr-2" />
                           완료로 변경
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "대기")}>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "대기")}>
                           <Archive className="h-4 w-4 mr-2" />
                           대기로 변경
                         </DropdownMenuItem>
@@ -471,9 +518,9 @@ export default function SupportManagement({ isDarkMode }) {
               </div>
 
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {selectedTicket.messages.map((message) => (
+                {selectedTicket.messages.map((message,idx) => (
                   <div
-                    key={message.id}
+                    key={idx}
                     className={`flex ${message.sender === "admin" ? "justify-end" : "justify-start"}`}
                   >
                     <div
@@ -493,9 +540,11 @@ export default function SupportManagement({ isDarkMode }) {
                         <span className="text-xs ml-2 opacity-70">{message.timestamp}</span>
                       </div>
                       <p className="text-sm">{message.message}</p>
-                    </div>
+                    </div>                    
                   </div>
                 ))}
+                {/* 메세지 보내고 스크롤 아래쪽으로 */}
+                <div ref={messagesEndRef} />
               </div>
 
               <div className="space-y-3">

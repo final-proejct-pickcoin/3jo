@@ -19,6 +19,9 @@ lxml
 python-logstash
 aiohttp
 
+websockets
+broadcaster
+
 # Google cloud API_0806_feature_l
 google-cloud-speech
 google-generativeai
