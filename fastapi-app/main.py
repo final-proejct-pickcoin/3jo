@@ -21,6 +21,8 @@ from api.news_router import router as news_router
 from api.auth import router as auth_router
 from api.admin_user import router as admin_user_router
 from api.admin import router as admin_router
+from api.inquiry import router as inq_router
+from api.chat import router as ws_router
 
 
 import requests
@@ -57,7 +59,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -74,6 +76,12 @@ app.include_router(admin_user_router)
 
 # 관리자 페이지에서 받아올 라우터
 app.include_router(admin_router)
+
+# 문의 라우터
+app.include_router(inq_router)
+
+# 채팅 웹소켓 라우터
+app.include_router(ws_router)
 
 manager = ConnectionManager()
 alert_manager = AlertManager()

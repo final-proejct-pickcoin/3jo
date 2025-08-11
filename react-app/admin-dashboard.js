@@ -193,17 +193,28 @@ export default function Component() {
 
   // Action handlers
   const handleUserStatusToggle = (userId) => {
-    setUsers(
-      users.map((user) =>
+
+    const targetUser = users.find((u) => u.user_id === userId);
+    if (!targetUser) return;
+
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
         user.user_id === userId
-          ? {
-              ...user,
-              is_verified: user.is_verified === 1 ? 0 : 1
-            }
+          ? { ...user, is_verified: user.is_verified === 1 ? 0 : 1 }
           : user
       )
     );
+    axios.get("http://localhost:8000/admin/user-status", {
+        params: {
+          user_id: userId,
+          is_verified: targetUser.is_verified,
+        }
+      }).catch((err) => {
+        console.error("상태 업데이트 실패:", err)
+      })
+
   };
+
   const handleDeleteAnnouncement = (id) => {
     setAnnouncements(announcements.filter((ann) => ann.id !== id));
   };
