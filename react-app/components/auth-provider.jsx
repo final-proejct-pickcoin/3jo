@@ -9,18 +9,35 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [loginError, setLoginError] = useState(null)
 
+  // Google SDK 로드
   useEffect(() => {
-  const token = sessionStorage.getItem("auth_token");
-  const userData = sessionStorage.getItem("user_data");
+    const loadGoogleSDK = async () => {
+      if (!window.google?.accounts?.id) {
+        await new Promise((resolve) => {
+          const s = document.createElement("script")
+          s.src = "https://accounts.google.com/gsi/client"
+          s.async = true
+          s.defer = true
+          s.onload = resolve
+          document.head.appendChild(s)
+        })
+      }
+      console.log("✅ Google SDK Loaded")
+    }
+    loadGoogleSDK()
 
-  if (token && userData) {
-    setUser(JSON.parse(userData)); // 로그인 상태 복원
-  }
-  
-  setIsLoading(false);
-}, []);
+    // 로그인 상태 복원
+    const token = sessionStorage.getItem("auth_token")
+    const userData = sessionStorage.getItem("user_data")
 
-  // 로그인
+    if (token && userData) {
+      setUser(JSON.parse(userData))
+    }
+    setIsLoading(false)
+  }, [])
+
+
+  // 일반 로그인
   const login = async (email, password) => {
     setIsLoading(true)
     setLoginError(null)
@@ -34,7 +51,6 @@ export const AuthProvider = ({ children }) => {
         body: formData,
       })
 
-      // 로그인 실패
       if (!res.ok) {
         const ErrorMsg = (await res.json())?.error || "로그인 실패"
         setLoginError(ErrorMsg)
@@ -43,23 +59,44 @@ export const AuthProvider = ({ children }) => {
 
       const data = await res.json()
 
+      // email 필드 유연 처리
+      const userEmail = data.email || data.sub || email
+      if (!userEmail) {
+        setLoginError("이메일 정보를 가져오지 못했습니다.")
+        return
+      }
+
       sessionStorage.setItem("auth_token", data.access_token)
       sessionStorage.setItem(
         "user_data",
-        JSON.stringify({ email: data.sub, nickname: data.sub.split("@")[0] })
+        JSON.stringify({ email: userEmail, nickname: userEmail.split("@")[0] })
       )
-      setUser({ email: data.sub, nickname: data.sub.split("@")[0] })
+      setUser({ email: userEmail, nickname: userEmail.split("@")[0] })
     } finally {
       setIsLoading(false)
     }
   }
 
-  //로그아웃시 세션 종료
+
+  // 로그아웃
   const logout = () => {
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user_data")
+    const userData = JSON.parse(sessionStorage.getItem("user_data"))
+    const isKakaoUser = userData?.provider === "kakao"
+
+    // 카카오 로그아웃
+    if (isKakaoUser && window.Kakao?.Auth) {
+      console.log("카카오 로그아웃 시도 중")
+      window.Kakao.Auth.logout(() => {
+        console.log("카카오 로그아웃 완료")
+      })
+    }
+
+    // 세션 삭제
+    sessionStorage.removeItem("auth_token")
+    sessionStorage.removeItem("user_data")
     setUser(null)
   }
+
 
   // 회원가입
   const register = async (email, password, nickname) => {
@@ -75,7 +112,7 @@ export const AuthProvider = ({ children }) => {
         body: formData,
       })
 
-      if (!res.ok) throw new Error("Registration failed")
+      if (!res.ok) throw new Error("회원가입 실패")
       const data = await res.json()
 
       alert(data.success || data.error || "회원가입 완료! 이메일 인증 후 로그인하세요.")
@@ -85,63 +122,136 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // 카카오 구글 로그인 연동
+
+  // 소셜 로그인(카카오/구글)
   const socialLogin = async (provider, email, providerId) => {
-  const formData = new URLSearchParams()
-  formData.append("provider", provider)
-  formData.append("email", email)
-  if (providerId) formData.append("providerId", providerId)
+    try {
+      const formData = new URLSearchParams()
+      formData.append("provider", provider)
+      formData.append("email", email)
+      if (providerId) formData.append("providerId", providerId)
 
-  const res = await fetch("http://localhost:8080/users/social-login", {
-    method: "POST",
-    body: formData,
-  })
+      const res = await fetch("http://localhost:8080/users/social-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData,
+      })
 
-  if (!res.ok) throw new Error("소셜 로그인 실패")
+      if (!res.ok) throw new Error("소셜 로그인 실패")
 
-  const data = await res.json()
+      const data = await res.json()
 
-  sessionStorage.setItem("auth_token", data.access_token)
-  sessionStorage.setItem(
-    "user_data",
-    JSON.stringify({ email: data.sub, nickname: data.sub.split("@")[0] })
-  )
-  setUser({ email: data.sub, nickname: data.sub.split("@")[0] })
-}
+      const userEmail = data.socialEmail || data.email
+      if (!userEmail) {
+        alert("이메일 정보를 가져오지 못했습니다.")
+        return
+      }
 
-// 실제 버튼 클릭 시 호출될 함수
-const loginWithOAuth = async (provider) => {
-  if (provider === "kakao") {
-    if (!window.Kakao || !window.Kakao.Auth) {
-      alert("카카오 SDK가 로드되지 않았습니다.")
+      sessionStorage.setItem("auth_token", data.access_token)
+      sessionStorage.setItem(
+        "user_data",
+        JSON.stringify({
+          email: userEmail,
+          nickname: userEmail.split("@")[0],
+          provider: data.provider || provider,
+        })
+      )
+
+      setUser({
+        email: userEmail,
+        nickname: userEmail.split("@")[0],
+        provider: data.provider || provider,
+      })
+    } catch (err) {
+      console.error("소셜 로그인 오류:", err)
+      alert("소셜 로그인 중 오류가 발생했습니다.")
+    }
+  }
+
+
+  // OAuth 로그인 버튼 클릭 시
+  const loginWithOAuth = async (provider) => {
+    if (provider === "kakao") {
+      if (!window.Kakao || !window.Kakao.Auth) {
+        alert("카카오 SDK가 로드되지 않았습니다.")
+        return
+      }
+
+      window.Kakao.Auth.login({
+        scope: "account_email",
+        success: (authObj) => {
+          window.Kakao.API.request({
+            url: "/v2/user/me",
+            success: async (res) => {
+              const email = res.kakao_account.email
+              const kakaoId = res.id
+              await socialLogin("kakao", email, kakaoId)
+            },
+          })
+        },
+        fail: (err) => {
+          console.error("카카오 로그인 실패", err)
+          alert("카카오 로그인 실패")
+        },
+      })
       return
     }
 
-    window.Kakao.Auth.login({
-      scope: "account_email",
-      success: (authObj) => {
-        window.Kakao.API.request({
-          url: "/v2/user/me",
-          success: async (res) => {
-            const email = res.kakao_account.email
-            const kakaoId = res.id
-            await socialLogin("kakao", email, kakaoId)
-          },
-        })
-      },
-      fail: (err) => {
-        console.error("카카오 로그인 실패", err)
-        alert("카카오 로그인 실패")
-      },
-    })
-  } else if (provider === "google") {
-    alert("구글 로그인은 아직 구현 전입니다.")
-  }
+  //   if (provider === "google") {
+  //     const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  //     console.log("📌 1. Google Client ID 로드:", cid)
+
+  //     if (!window.google?.accounts?.id) {
+  //       alert("구글 SDK가 로드되지 않았습니다.")
+  //       return
+  //     }
+
+  //     console.log("📌 2. Google ID 초기화 시작")
+
+  //     // initialize (한 번만 실행)
+  //     if (!window.__gsiInitialized) {
+  //       console.log("📌 3. Google ID 초기화 시작") // 2단계: 초기화 시점
+
+  //       window.google.accounts.id.initialize({
+  //         client_id: cid,
+  //         callback: async ({ credential }) => {
+  //           console.log("📌 4. Google Credential:", credential) // 3단계: credential 수신 여부
+
+  //           if (!credential) {
+  //         console.warn("❌ Credential이 비어있음 - 403 또는 권한 문제 가능")
+  //         return
+  //       }
+
+            
+  //             const payload = JSON.parse(atob(credential.split(".")[1]))
+  //             console.log("📌 5. Google Payload:", payload) // 4단계: payload 파싱
+
+  //             await socialLogin("google", payload.email, payload.sub)
+  //             console.log("📌 6. socialLogin 호출 완료") // 5단계: 백엔드 호출 성공 여부
+  //     },
+  //   })
+
+
+  //       // 버튼 렌더링
+  //       const btnContainer = document.getElementById("googleLoginBtn")
+  //       if (btnContainer) {
+  //         window.google.accounts.id.renderButton(btnContainer, {
+  //           theme: "outline",
+  //           size: "large",
+  //         })
+  //         console.log("📌 8. Google 버튼 렌더링 완료") // ✅ 버튼 그려졌는지 확인
+  //       }
+  //         window.__gsiInitialized = true
+  //         window.google.accounts.id.disableAutoSelect()
+  //     }
+      
+  //   }
 }
 
 
-
-  
+  // Context Provider 리턴
   return (
     <AuthContext.Provider
       value={{
@@ -152,7 +262,7 @@ const loginWithOAuth = async (provider) => {
         register,
         logout,
         loginError,
-        loginWithOAuth
+        loginWithOAuth,
       }}
     >
       {children}
@@ -160,6 +270,7 @@ const loginWithOAuth = async (provider) => {
   )
 }
 
+// useAuth 훅
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) throw new Error("useAuth must be used within an AuthProvider")
