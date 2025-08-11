@@ -77,9 +77,10 @@ export default function SupportManagement({ isDarkMode }) {
   };
 
   const handleStatusChange = (ticketId, newStatus) => {
+    console.log("1.",ticketId, newStatus)
     setTickets(
       tickets.map((ticket) =>
-        ticket.id === ticketId
+        ticket.inquiry_id === ticketId
           ? {
               ...ticket,
               status: newStatus,
@@ -87,31 +88,21 @@ export default function SupportManagement({ isDarkMode }) {
           : ticket
       )
     );
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({
-        ...selectedTicket,
-        status: newStatus,
-      });
-    }
-  };
+    
+    axios.post("http://localhost:8000/admin/inq-status", null, {
+      params: {
+        inquiry_id: ticketId,
+        status: newStatus
+      }
+    }).then(()=>{
+        setSelectedTicket(prev =>
+          prev && prev.inquiry_id === ticketId
+            ? { ...prev, status: newStatus }
+            : prev
+        );
+      console.log("문의 상태변경 성공")
 
-  const handlePriorityChange = (ticketId, newPriority) => {
-    setTickets(
-      tickets.map((ticket) =>
-        ticket.id === ticketId
-          ? {
-              ...ticket,
-              priority: newPriority,
-            }
-          : ticket
-      )
-    );
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({
-        ...selectedTicket,
-        priority: newPriority,
-      });
-    }
+    })
   };
 
   const handleSendReply = () => {
@@ -131,19 +122,6 @@ export default function SupportManagement({ isDarkMode }) {
     setTickets(tickets.map((ticket) => (ticket.id === selectedTicket.id ? updatedTicket : ticket)));
     setSelectedTicket(updatedTicket);
     setReplyMessage("");
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "긴급":
-      case "높음":
-        return "destructive";
-      case "보통":
-        return "secondary";
-      case "낮음":
-      default:
-        return "default";
-    }
   };
 
   const getStatusColor = (status) => {
@@ -372,15 +350,15 @@ export default function SupportManagement({ isDarkMode }) {
                           <Eye className="h-4 w-4 mr-2" />
                           고객 대화
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "진행중")}>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "진행중")}>
                           <Clock className="h-4 w-4 mr-2" />
                           진행중으로 변경
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "완료")}>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "완료")}>
                           <CheckCircle className="h-4 w-4 mr-2" />
                           완료로 변경
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, "대기")}>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "대기")}>
                           <Archive className="h-4 w-4 mr-2" />
                           대기로 변경
                         </DropdownMenuItem>
