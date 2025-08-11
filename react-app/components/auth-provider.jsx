@@ -199,58 +199,34 @@ export const AuthProvider = ({ children }) => {
       return
     }
 
-  //   if (provider === "google") {
-  //     const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  //     console.log("📌 1. Google Client ID 로드:", cid)
+    if (provider === "google") {
+  const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  if (!window.google?.accounts?.id) {
+    alert("구글 SDK가 로드되지 않았습니다.")
+    return
+  }
 
-  //     if (!window.google?.accounts?.id) {
-  //       alert("구글 SDK가 로드되지 않았습니다.")
-  //       return
-  //     }
-
-  //     console.log("📌 2. Google ID 초기화 시작")
-
-  //     // initialize (한 번만 실행)
-  //     if (!window.__gsiInitialized) {
-  //       console.log("📌 3. Google ID 초기화 시작") // 2단계: 초기화 시점
-
-  //       window.google.accounts.id.initialize({
-  //         client_id: cid,
-  //         callback: async ({ credential }) => {
-  //           console.log("📌 4. Google Credential:", credential) // 3단계: credential 수신 여부
-
-  //           if (!credential) {
-  //         console.warn("❌ Credential이 비어있음 - 403 또는 권한 문제 가능")
-  //         return
-  //       }
-
-            
-  //             const payload = JSON.parse(atob(credential.split(".")[1]))
-  //             console.log("📌 5. Google Payload:", payload) // 4단계: payload 파싱
-
-  //             await socialLogin("google", payload.email, payload.sub)
-  //             console.log("📌 6. socialLogin 호출 완료") // 5단계: 백엔드 호출 성공 여부
-  //     },
-  //   })
-
-
-  //       // 버튼 렌더링
-  //       const btnContainer = document.getElementById("googleLoginBtn")
-  //       if (btnContainer) {
-  //         window.google.accounts.id.renderButton(btnContainer, {
-  //           theme: "outline",
-  //           size: "large",
-  //         })
-  //         console.log("📌 8. Google 버튼 렌더링 완료") // ✅ 버튼 그려졌는지 확인
-  //       }
-  //         window.__gsiInitialized = true
-  //         window.google.accounts.id.disableAutoSelect()
-  //     }
-      
-  //   }
+  if (!window.__gsiInitialized) {
+    window.google.accounts.id.initialize({
+      client_id: cid,
+      callback: async ({ credential }) => {
+        if (!credential) return
+        const payload = JSON.parse(atob(credential.split(".")[1]))
+        // ✅ 여기서 동일 엔드포인트로 통합 호출
+        await socialLogin("google", payload.email, payload.sub)
+      },
+    })
+    // 버튼 렌더링 (이미 있는 div#googleLoginBtn에)
+    const btn = document.getElementById("googleLoginBtn")
+    if (btn){ window.google.accounts.id.renderButton(btn, { theme: "outline", size: "large" })
+    }
+    window.__gsiInitialized = true
+  }
+  
+  return
 }
 
-
+  }
   // Context Provider 리턴
   return (
     <AuthContext.Provider
