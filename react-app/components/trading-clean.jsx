@@ -38,38 +38,55 @@ export const TradingInterface = () => {
     last_update: null
   });
 
-  // 빗썸 WebSocket 연결
+  // 빗썸 WebSocket 연결 (실시간 데이터 진단 로그 포함)
   useEffect(() => {
     console.log('WebSocket 연결 시도...');
-    const ws = new WebSocket('ws://localhost:8000/ws/realtime');
-    ws.onopen = () => {
-      setWsConnected(true);
-      console.log('✅ 빗썸 실시간 연결 성공!');
-    };
-    ws.onmessage = (event) => {
+    let ws;
+    const connectWebSocket = () => {
       try {
-        const data = JSON.parse(event.data);
-        console.log('📊 실시간 데이터 수신:', data);
-        if (data.type === 'ticker' && data.content && data.content.symbol) {
-          setRealTimeData(prev => ({
-            ...prev,
-            [data.content.symbol + '_KRW']: data.content
-          }));
-        }
-      } catch (e) {
-        console.error('데이터 파싱 오류:', e);
+        ws = new WebSocket('ws://localhost:8000/ws/realtime');
+        ws.onopen = () => {
+          setWsConnected(true);
+          console.log('✅ WebSocket 연결 성공');
+        };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('📊 실시간 데이터 수신:', data);
+            if (data.type === 'ticker' && data.content && data.content.symbol) {
+              setRealTimeData(prev => ({
+                ...prev,
+                [data.content.symbol]: data.content
+              }));
+            }
+          } catch (e) {
+            console.error('데이터 파싱 오류:', e);
+          }
+        };
+        ws.onclose = (event) => {
+          setWsConnected(false);
+          console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
+          setTimeout(() => {
+            console.log('🔄 WebSocket 재연결 시도...');
+            connectWebSocket();
+          }, 5000);
+        };
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket 오류:', error);
+          setWsConnected(false);
+        };
+      } catch (error) {
+        console.error('❌ WebSocket 생성 오류:', error);
+        setWsConnected(false);
+        setTimeout(connectWebSocket, 5000);
       }
     };
-    ws.onclose = () => {
-      setWsConnected(false);
-      console.log('❌ WebSocket 연결 종료');
-    };
-    ws.onerror = (error) => {
-      console.error('WebSocket 오류:', error);
-    };
+    connectWebSocket();
     return () => {
-      console.log('WebSocket 정리 중...');
-      ws.close();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('WebSocket 정리 중...');
+        ws.close();
+      }
     };
   }, []);
 
