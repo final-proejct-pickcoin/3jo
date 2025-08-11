@@ -99,7 +99,7 @@ export default function SupportManagement({ isDarkMode }) {
   };
 
   const handleStatusChange = (ticketId, newStatus) => {
-    console.log("1.",ticketId, newStatus)
+    
     setTickets(
       tickets.map((ticket) =>
         ticket.inquiry_id === ticketId
