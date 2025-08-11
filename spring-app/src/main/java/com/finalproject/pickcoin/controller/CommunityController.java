@@ -27,6 +27,7 @@ public class CommunityController {
     // 전체조회
     @GetMapping("/findAll")
     public List<Community> findAll(){
+        System.out.println("커뮤니티 전체 조회 진입");
         return communityService.findAll();
     }
 
@@ -58,7 +59,7 @@ public class CommunityController {
         communityService.delete(id);
     }
 
-    // 댓글 좋아요 
+    // 댓글 좋아요 /like/{id} 로 받아야되는거 아닌가???
     @PutMapping("/{id}/like")
     public void like(@PathVariable("id") Integer id){
         System.out.println("좋아요 요청 post_id = " + id);
