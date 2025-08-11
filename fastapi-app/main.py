@@ -15,6 +15,7 @@ from utils.jwt_helper import create_access_token, verify_token
 from dotenv import load_dotenv
 from utils.user_manager import ConnectionManager
 from typing import Dict
+
 from json import dumps
 from fastapi.middleware.cors import CORSMiddleware
 from api.news_router import router as news_router
@@ -24,14 +25,15 @@ from api.admin import router as admin_router
 from api.inquiry import router as inq_router
 from api.chat import router as ws_router
 
-
 import requests
 import asyncio
 import aiohttp
 from datetime import datetime
 import websockets
-import json
- 
+import aiohttp
+from datetime import datetime
+import json 
+
 load_dotenv()
 
 # docker-compose.yml의 서비스명이 redis이면
@@ -59,7 +61,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -357,160 +359,58 @@ def get_korean_name(symbol: str) -> str:
 import time
 from collections import defaultdict
 
+# 빗썸 실시간 WebSocket 및 통계 매니저 클래스 예시
 class BithumbWebSocketManager:
     def __init__(self):
+        self.is_running = False
         self.connections = []
-        self.is_running = False
+        self.connection_stats = {}
         self.subscribed_symbols = []
-        self.connection_stats = {
-            "total_symbols": 0,
-            "active_subscriptions": 0,
-            "last_update": None
-        }
-    async def connect_client(self, websocket: WebSocket):
-        await websocket.accept()
-        self.connections.append(websocket)
-        print(f"✅ 클라이언트 연결: {len(self.connections)}개 활성")
-        if not self.is_running:
-            asyncio.create_task(self.start_bithumb_connection())
-    def disconnect_client(self, websocket: WebSocket):
-        if websocket in self.connections:
-            self.connections.remove(websocket)
-            print(f"❌ 클라이언트 연결 해제: {len(self.connections)}개 남음")
-    async def get_all_active_coins(self):
-        """모든 활성 거래 코인 조회 (aiohttp 사용)"""
+    # 실제 구현은 별도 파일 또는 아래에 추가
+
+bithumb_manager = BithumbWebSocketManager()
+
+# 실시간 WebSocket 엔드포인트 예시
+
+# 실시간 WebSocket 브로드캐스트 함수
+async def broadcast_to_clients(message):
+    for ws in list(bithumb_manager.connections):
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get("https://api.bithumb.com/public/ticker/ALL_KRW") as response:
-                    data = await response.json()
-            if data.get("status") != "0000":
-                return []
-            active_coins = []
-            for symbol, info in data["data"].items():
-                if symbol == "date":
-                    continue
-                try:
-                    closing_price = float(info.get("closing_price", 0))
-                    volume_24h = float(info.get("units_traded_24H", 0))
-                    trade_value_24h = float(info.get("acc_trade_value_24H", 0))
-                    is_active = (
-                        closing_price > 0 and
-                        volume_24h > 0 and
-                        trade_value_24h > 1000000
-                    )
-                    if is_active:
-                        active_coins.append(f"{symbol}_KRW")
-                except (ValueError, TypeError) as e:
-                    print(f"⚠️ {symbol} 데이터 파싱 오류: {e}")
-                    continue
-            sorted_coins = sorted(
-                [(symbol.replace('_KRW', ''), data["data"][symbol.replace('_KRW', '')]) 
-                 for symbol in active_coins if symbol.replace('_KRW', '') in data["data"]],
-                key=lambda x: float(x[1].get("acc_trade_value_24H", 0)),
-                reverse=True
-            )
-            return [f"{coin[0]}_KRW" for coin in sorted_coins]
-        except Exception as e:
-            print(f"❌ 활성 코인 조회 오류: {e}")
-            return []
-    async def start_bithumb_connection(self):
-        """빗썸 실시간 WebSocket 연결 - 모든 활성 코인 동적 구독"""
-        self.is_running = True
-        max_retries = 5
-        retry_count = 0
-        while retry_count < max_retries:
-            try:
-                print("🔄 활성 거래 코인 목록 조회 중...")
-                active_symbols = await self.get_all_active_coins()
-                if not active_symbols:
-                    print("❌ 활성 코인을 찾을 수 없습니다. 30초 후 재시도...")
-                    await asyncio.sleep(30)
-                    retry_count += 1
-                    continue
-                self.subscribed_symbols = active_symbols
-                self.connection_stats.update({
-                    "total_symbols": len(active_symbols),
-                    "last_update": datetime.now().isoformat()
-                })
-                print(f"🚀 총 {len(active_symbols)}개 활성 코인 발견!")
-                print(f"📋 상위 10개: {[s.replace('_KRW', '') for s in active_symbols[:10]]}")
-                uri = "wss://pubwss.bithumb.com/pub/ws"
-                async with websockets.connect(uri) as websocket:
-                    batch_size = 30
-                    successful_subscriptions = 0
-                    for i in range(0, len(active_symbols), batch_size):
-                        batch = active_symbols[i:i+batch_size]
-                        subscribe_msg = {
-                            "type": "ticker",
-                            "symbols": batch,
-                            "tickTypes": ["24H"]
-                        }
-                        try:
-                            await websocket.send(json.dumps(subscribe_msg))
-                            successful_subscriptions += len(batch)
-                            batch_num = i // batch_size + 1
-                            total_batches = (len(active_symbols) + batch_size - 1) // batch_size
-                            print(f"📡 배치 {batch_num}/{total_batches}: {len(batch)}개 구독 완료 (누적: {successful_subscriptions}개)")
-                            await asyncio.sleep(2)
-                        except Exception as e:
-                            print(f"❌ 배치 {batch_num} 구독 실패: {e}")
-                            continue
-                    self.connection_stats["active_subscriptions"] = successful_subscriptions
-                    print(f"✅ 총 {successful_subscriptions}/{len(active_symbols)}개 코인 구독 완료!")
-                    message_count = 0
-                    last_stats_time = time.time()
-                    async for message in websocket:
-                        try:
-                            data = json.loads(message)
-                            message_count += 1
-                            if data.get("type") == "ticker" and data.get("content"):
-                                symbol = data["content"].get("symbol", "")
-                                if symbol in self.subscribed_symbols:
-                                    await self.broadcast_to_clients(data)
-                                    try:
-                                        redis_client.setex(
-                                            f"ticker:{symbol}",
-                                            300,
-                                            json.dumps(data["content"])
-                                        )
-                                    except Exception as e:
-                                        print(f"⚠️ Redis 캐싱 오류 ({symbol}): {e}")
-                            current_time = time.time()
-                            if current_time - last_stats_time > 300:
-                                print(f"📊 실시간 데이터 통계: {message_count}개 메시지 수신, {len(self.connections)}개 클라이언트 연결")
-                                last_stats_time = current_time
-                                message_count = 0
-                        except json.JSONDecodeError as e:
-                            print(f"⚠️ JSON 파싱 오류: {e}")
-                        except Exception as e:
-                            print(f"❌ 메시지 처리 오류: {e}")
-                print("🔄 WebSocket 연결 종료됨. 재연결 시도...")
-                retry_count = 0
-                await asyncio.sleep(5)
-            except websockets.exceptions.ConnectionClosed as e:
-                retry_count += 1
-                print(f"❌ WebSocket 연결 끊어짐 (시도 {retry_count}/{max_retries}): {e}")
-                await asyncio.sleep(min(retry_count * 10, 60))
-            except Exception as e:
-                retry_count += 1
-                print(f"❌ 예상치 못한 오류 (시도 {retry_count}/{max_retries}): {e}")
-                await asyncio.sleep(min(retry_count * 5, 30))
-        print(f"❌ 최대 재시도 횟수 ({max_retries}) 초과. WebSocket 연결 중단.")
-        self.is_running = False
-    async def broadcast_to_clients(self, data):
-        if not self.connections:
+            await ws.send_text(message)
+        except Exception:
+            pass
+
+@app.websocket("/ws/realtime")
+async def realtime_ws(websocket: WebSocket):
+    await websocket.accept()
+    bithumb_manager.is_running = True
+    bithumb_manager.connections.append(websocket)
+    try:
+        # 1. 활성 코인 목록 가져오기
+        coins_resp = await get_coin_list()
+        if coins_resp["status"] != "success":
+            await websocket.send_text(json.dumps({"error": "코인 목록 불러오기 실패"}))
             return
-        disconnected = []
-        message = json.dumps(data)
-        for websocket in self.connections:
-            try:
-                await websocket.send_text(message)
-            except Exception as e:
-                print(f"⚠️ 클라이언트 전송 실패: {e}")
-                disconnected.append(websocket)
-        for ws in disconnected:
-            self.disconnect_client(ws)
-# 추가: WebSocket 통계 엔드포인트
+        symbols = [c["symbol"] for c in coins_resp["data"]]
+        # 2. 빗썸 WebSocket 연결
+        async with websockets.connect("wss://pubwss.bithumb.com/pub/ws") as bithumb_ws:
+            # 3. 모든 코인 구독 메시지 생성
+            subscribe_msg = json.dumps({
+                "type": "ticker",
+                "symbols": [f"{s}_KRW" for s in symbols],
+                "tickTypes": ["30M"]
+            })
+            await bithumb_ws.send(subscribe_msg)
+            while True:
+                data = await bithumb_ws.recv()
+                await broadcast_to_clients(data)
+    except WebSocketDisconnect:
+        bithumb_manager.connections.remove(websocket)
+        bithumb_manager.is_running = False
+    except Exception as e:
+        print("WebSocket 에러:", e)
+
+# WebSocket 통계 엔드포인트 추가
 @app.get("/api/websocket/stats")
 async def get_websocket_stats():
     """WebSocket 연결 통계"""
@@ -522,46 +422,90 @@ async def get_websocket_stats():
         "subscribed_symbols_preview": bithumb_manager.subscribed_symbols[:10] if bithumb_manager.subscribed_symbols else []
     }
 
-# 빗썸 WebSocket 매니저 인스턴스 생성
-bithumb_manager = BithumbWebSocketManager()
+# 코인 목록 API 엔드포인트 추가
 
-# 실시간 데이터 WebSocket 엔드포인트
-@app.websocket("/ws/realtime")
-async def realtime_websocket(websocket: WebSocket):
-    """실시간 빗썸 데이터 WebSocket"""
-    await bithumb_manager.connect_client(websocket)
-    
-    try:
-        while True:
-            # 클라이언트로부터 메시지 대기 (연결 유지용)
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        bithumb_manager.disconnect_client(websocket)
+# 코인 한글명 폴백 함수
 
-# Redis에서 최신 시세 조회
-@app.get("/api/ticker/{symbol}")
-async def get_cached_ticker(symbol: str):
-    """Redis에 캐시된 최신 시세 조회"""
+def get_korean_name(symbol: str) -> str:
+    korean_names = {
+        "BTC": "비트코인", "ETH": "이더리움", "XRP": "리플", "ADA": "에이다",
+        "DOT": "폴카닷", "LINK": "체인링크", "LTC": "라이트코인", "BCH": "비트코인캐시",
+        "XLM": "스텔라루멘", "EOS": "이오스", "DOGE": "도지코인", "SOL": "솔라나",
+        "MATIC": "폴리곤", "AVAX": "아발란체"
+    }
+    return korean_names.get(symbol, symbol)
+
+@app.get("/api/coins")
+async def get_coin_list():
+    markets_url = "https://api.bithumb.com/v1/market/all"
+    ticker_url = "https://api.bithumb.com/public/ticker/ALL_KRW"
     try:
-        cached_data = redis_client.get(f"ticker:{symbol}")
-        if cached_data:
-            return {
-                "status": "success",
-                "data": json.loads(cached_data),
-                "source": "cache"
-            }
-        else:
-            # 캐시에 없으면 직접 API 호출
-            url = f"https://api.bithumb.com/public/ticker/{symbol}_KRW"
-            response = requests.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "status": "success", 
-                    "data": data["data"],
-                    "source": "api"
-                }
+        async with aiohttp.ClientSession() as session:
+            # 마켓 정보와 시세 정보 동시 요청
+            market_task = session.get(markets_url, timeout=10)
+            ticker_task = session.get(ticker_url, timeout=10)
+            market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
+            # 시세 데이터
+            if ticker_response.status != 200:
+                return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
+            ticker_data = await ticker_response.json()
+            if ticker_data.get("status") != "0000":
+                return {"status": "error", "message": "빗썸 시세 API 오류"}
+            # 마켓 데이터 처리 (실패해도 계속 진행)
+            market_map = {}
+            if market_response.status == 200:
+                try:
+                    markets_data = await market_response.json()
+                    if isinstance(markets_data, list):
+                        for market in markets_data:
+                            market_code = market.get("market", "")
+                            if market_code.endswith("_KRW"):
+                                symbol = market_code.replace("_KRW", "")
+                                market_map[symbol] = {
+                                    "korean_name": market.get("korean_name", ""),
+                                    "english_name": market.get("english_name", ""),
+                                    "market_warning": market.get("market_warning", "NONE")
+                                }
+                except Exception as e:
+                    print(f"⚠️ 마켓 정보 파싱 실패 (폴백 모드로 진행): {e}")
+            else:
+                print(f"⚠️ 마켓 API 실패 (폴백 모드로 진행): {market_response.status}")
+        coins = []
+        for symbol, info in ticker_data["data"].items():
+            if symbol == "date":
+                continue
+            try:
+                trade_value = float(info.get("acc_trade_value_24H", 0))
+                if trade_value <= 1000000:
+                    continue
+                market_info = market_map.get(symbol, {})
+                korean_name = market_info.get("korean_name", "").strip()
+                if not korean_name:
+                    korean_name = get_korean_name(symbol)
+                coins.append({
+                    "symbol": symbol,
+                    "korean_name": korean_name,
+                    "english_name": market_info.get("english_name", symbol),
+                    "current_price": float(info.get("closing_price", 0)),
+                    "change_rate": float(info.get("fluctate_rate_24H", 0)),
+                    "change_amount": float(info.get("fluctate_24H", 0)),
+                    "volume": trade_value,
+                    "market_warning": market_info.get("market_warning", "NONE"),
+                    "units_traded": float(info.get("units_traded_24H", 0))
+                })
+            except (ValueError, TypeError) as e:
+                print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
+                continue
+        coins.sort(key=lambda x: x["volume"], reverse=True)
+        return {
+            "status": "success",
+            "data": coins,
+            "total_count": len(coins),
+            "korean_names_from_api": len([c for c in coins if c["korean_name"] != c["symbol"]]),
+            "last_updated": datetime.now().isoformat()
+        }
     except Exception as e:
+        print(f"❌ 코인 목록 조회 오류: {e}")
         return {"status": "error", "message": str(e)}
 
 # 서버 상태 확인

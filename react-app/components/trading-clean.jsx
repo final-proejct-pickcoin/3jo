@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,22 +8,62 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, TrendingUp, TrendingDown, Search, Star, Settings } from "lucide-react"
+import { BarChart3, TrendingUp, TrendingDown, Search, Star, Settings, AlignCenter } from "lucide-react"
 import { toast } from "sonner"
-import { TradingChart } from "@/components/trading-chart"
+import TradingChart from "@/components/trading-chart"
 import { CurrencyToggle } from "@/components/currency-toggle"
 
 // 임시 코인 정보 패널 컴포넌트
-const CoinInfoPanel = ({ coin }) => (
-  <div className="flex flex-col items-center justify-center h-full text-center text-gray-600">
-    <h2 className="text-xl font-bold mb-2">{coin.name} ({coin.symbol}) 정보</h2>
-    <p>여기에 코인 상세 정보, 백서, 시가총액, 유통량 등 표시</p>
-    <p className="mt-4 text-xs text-gray-400">(실제 정보 패널로 교체 가능)</p>
-  </div>
-);
+const CoinInfoPanel = ({ coin }) => {
+  if (!coin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center text-gray-600">
+        <h2 className="text-xl font-bold mb-2">코인을 선택해주세요</h2>
+        <p>코인 목록에서 코인을 선택하면 상세 정보가 표시됩니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center text-gray-600">
+      <h2 className="text-xl font-bold mb-2">{coin.name} ({coin.symbol}) 정보</h2>
+      <p>여기에 코인 상세 정보, 백서, 시가총액, 유통량 등 표시</p>
+      <p className="mt-4 text-xs text-gray-400">(실제 정보 패널로 교체 가능)</p>
+    </div>
+  );
+};
 
 
 export const TradingInterface = () => {
+  // Responsive height: Coin list matches main chart+order book+order panel area (red box)
+  const mainPanelRef = useRef(null);
+  const [combinedHeight, setCombinedHeight] = useState(800);
+  useEffect(() => {
+    function updateHeight() {
+      if (mainPanelRef.current) {
+        setCombinedHeight(mainPanelRef.current.offsetHeight);
+      }
+    }
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    const resizeObs = mainPanelRef.current ? new window.ResizeObserver(updateHeight) : null;
+    if (resizeObs && mainPanelRef.current) resizeObs.observe(mainPanelRef.current);
+    return () => {
+      window.removeEventListener('resize', updateHeight);
+      if (resizeObs && mainPanelRef.current) resizeObs.disconnect();
+    };
+  }, []);
+  // 영어명을 한글 발음으로 변환하는 함수
+  function engToKorPronounce(eng) {
+    if (!eng) return '';
+    const table = {
+      'A': '에이', 'B': '비', 'C': '씨', 'D': '디', 'E': '이', 'F': '에프', 'G': '지', 'H': '에이치',
+      'I': '아이', 'J': '제이', 'K': '케이', 'L': '엘', 'M': '엠', 'N': '엔', 'O': '오', 'P': '피',
+      'Q': '큐', 'R': '알', 'S': '에스', 'T': '티', 'U': '유', 'V': '브이', 'W': '더블유', 'X': '엑스',
+      'Y': '와이', 'Z': '지',
+    };
+    return eng.split('').map(ch => table[ch.toUpperCase()] || ch).join('');
+  }
   // State hooks for UI controls
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCoin, setSelectedCoin] = useState("BTC");
@@ -38,52 +78,76 @@ export const TradingInterface = () => {
     last_update: null
   });
 
-  // 빗썸 WebSocket 연결
+  // Docker Compose 환경에서는 항상 host.docker.internal 사용
+  const getBackendUrl = (path = '') => {
+    return `http://host.docker.internal:8000${path}`;
+  };
+
+  // 빗썸 WebSocket 연결 (실시간 데이터 진단 로그 포함)
   useEffect(() => {
     console.log('WebSocket 연결 시도...');
-    const ws = new WebSocket('ws://localhost:8000/ws/realtime');
-    ws.onopen = () => {
-      setWsConnected(true);
-      console.log('✅ 빗썸 실시간 연결 성공!');
-    };
-    ws.onmessage = (event) => {
+    let ws;
+    const connectWebSocket = () => {
       try {
-        const data = JSON.parse(event.data);
-        console.log('📊 실시간 데이터 수신:', data);
-        if (data.type === 'ticker' && data.content && data.content.symbol) {
-          setRealTimeData(prev => ({
-            ...prev,
-            [data.content.symbol + '_KRW']: data.content
-          }));
-        }
-      } catch (e) {
-        console.error('데이터 파싱 오류:', e);
+        ws = new WebSocket('ws://localhost:8000/ws/realtime');
+        ws.onopen = () => {
+          setWsConnected(true);
+          console.log('✅ WebSocket 연결 성공');
+        };
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('📊 실시간 데이터 수신:', data);
+            if (data.type === 'ticker' && data.content && data.content.symbol) {
+              setRealTimeData(prev => ({
+                ...prev,
+                [data.content.symbol]: data.content
+              }));
+            }
+          } catch (e) {
+            console.error('데이터 파싱 오류:', e);
+          }
+        };
+        ws.onclose = (event) => {
+          setWsConnected(false);
+          console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
+          setTimeout(() => {
+            console.log('🔄 WebSocket 재연결 시도...');
+            connectWebSocket();
+          }, 5000);
+        };
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket 오류:', error);
+          setWsConnected(false);
+        };
+      } catch (error) {
+        console.error('❌ WebSocket 생성 오류:', error);
+        setWsConnected(false);
+        setTimeout(connectWebSocket, 5000);
       }
     };
-    ws.onclose = () => {
-      setWsConnected(false);
-      console.log('❌ WebSocket 연결 종료');
-    };
-    ws.onerror = (error) => {
-      console.error('WebSocket 오류:', error);
-    };
+    connectWebSocket();
     return () => {
-      console.log('WebSocket 정리 중...');
-      ws.close();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('WebSocket 정리 중...');
+        ws.close();
+      }
     };
   }, []);
 
   // WebSocket 통계 가져오기
   useEffect(() => {
     const fetchStats = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/websocket/stats');
+    try {
+      const response = await fetch('http://localhost:8000/api/websocket/stats');
+      if (response.ok) {
         const data = await response.json();
-        setWsStats(data.subscription_stats || {});
-      } catch (error) {
-        console.error('통계 조회 오류:', error);
+        setWsStats(data.subscription_stats || data || {});
       }
-    };
+    } catch (error) {
+      // 오류 로그 제거 (선택사항)
+    }
+  };
     if (wsConnected) {
       fetchStats();
       const interval = setInterval(fetchStats, 30000); // 30초마다 업데이트
@@ -91,72 +155,85 @@ export const TradingInterface = () => {
     }
   }, [wsConnected]);
   
+  
 
-  // 실제 API에서 코인 목록 가져오기 (FastAPI)
-  const [coinList, setCoinList] = useState([]);
-  const [loading, setLoading] = useState(true);
+    // 실제 API에서 코인 목록 가져오기 (FastAPI)
+    const [coinList, setCoinList] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState("");
 
-  useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('http://localhost:8000/api/coins');
-        const data = await response.json();
-        if (data.status === 'success') {
-          // API 구조에 맞게 변환
-          setCoinList(data.data.map(coin => ({
-            symbol: coin.symbol,
-            name: coin.korean_name,
-            price: coin.current_price,
-            change: coin.change_rate,
-            changeAmount: coin.change_amount,
-            volume: coin.volume,
-            trend: coin.change_rate > 0 ? 'up' : 'down'
-          })));
-        } else {
+    useEffect(() => {
+      const fetchCoins = async () => {
+        try {
+          setLoading(true);
+          console.log('🔄 코인 목록 요청 시작...');
+          const response = await fetch('http://localhost:8000/api/coins');
+          console.log('📡 API 응답 상태:', response.status);
+          const data = await response.json();
+          console.log('📊 받은 데이터:', data);
+          if (data.status === 'success' && data.data && Array.isArray(data.data)) {
+            console.log(`✅ 총 ${data.total_count}개 코인 로드 성공`);
+            setCoinList(data.data.map(coin => ({
+              symbol: coin.symbol,
+              name: coin.korean_name || coin.symbol,
+              englishName: coin.english_name || coin.symbol,
+              price: coin.current_price || 0,
+              change: coin.change_rate || 0,
+              changeAmount: coin.change_amount || 0,
+              volume: (coin.volume / 1000000).toFixed(0),
+              trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
+              marketWarning: coin.market_warning || 'NONE'
+            })));
+          } else {
+            console.error('❌ 데이터 형식 오류:', data);
+            setCoinList([]);
+          }
+        } catch (e) {
+          console.error('❌ 코인 목록 조회 실패:', e);
           setCoinList([]);
+        } finally {
+          setLoading(false);
         }
-      } catch (e) {
-        setCoinList([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCoins();
-  }, []);
+      };
+      fetchCoins();
+    }, []);
 
-  // 실시간 데이터로 코인 목록 업데이트
-  const getUpdatedCoinList = () => {
+  // 실시간 데이터 업데이트 부분 useMemo로 최적화
+  const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
       const realtimeInfo = realTimeData[coin.symbol + '_KRW'];
+      // 한글명이 없으면 영어명을 한글 발음으로 변환
+      const korName = coin.korean_name && coin.korean_name.trim() !== ''
+        ? coin.korean_name
+        : engToKorPronounce(coin.englishName || coin.symbol);
       if (realtimeInfo) {
-        console.log(`${coin.symbol} 실시간 업데이트:`, realtimeInfo);
         return {
           ...coin,
+          name: korName,
           price: parseInt(realtimeInfo.closePrice),
           change: parseFloat(realtimeInfo.chgRate),
           changeAmount: parseInt(realtimeInfo.chgAmt),
           trend: parseFloat(realtimeInfo.chgRate) > 0 ? 'up' : 'down',
-          volume: parseFloat(realtimeInfo.value).toFixed(3) // 실시간 거래량
+          volume: (parseFloat(realtimeInfo.value) / 1000000).toFixed(0) + '백만'
         };
       }
-      return coin;
+      return {
+        ...coin,
+        name: korName,
+        volume: typeof coin.volume === 'string' ? coin.volume : (coin.volume / 1000000).toFixed(0) + '백만'
+      };
     });
-  };
-
-  const updatedCoinList = getUpdatedCoinList();
-
+  }, [coinList, realTimeData]);
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
 
   return (
     <div className="w-full p-4 space-y-4">
     {/* 🚨 연결 상태 표시 추가 */}
-      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
+      {/* <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
         <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-          <span className={`font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
-            {wsConnected ? '🟢 빗썸 실시간 연결됨' : '🔴 연결 끊어짐'}
+          <span className={`text-xs font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
+            {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
           </span>
           <span className="text-xs text-gray-500">
             구독: {wsStats.active_subscriptions || 0}개 | 
@@ -167,51 +244,62 @@ export const TradingInterface = () => {
         <div className="text-sm text-gray-500">
           마지막 업데이트: {new Date().toLocaleTimeString()}
         </div>
-      </div>
+      </div> */}
 
-      <div className="flex flex-row gap-4 min-h-0 items-stretch max-h-100vh">
-        {/* 좌측: Coin List */}
-        <div className="flex flex-col min-h-0 h-full w-[368px] max-w-[90vw] self-stretch">
-          <Card className="flex-1 flex flex-col min-h-0 h-full">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 mb-2">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <input
-                  placeholder="코인명/심볼검색"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 flex-1 border rounded px-2"
-                />
-                {/* 설정(톱니바퀴) 아이콘 및 드롭다운 */}
-                <div className="relative">
-                  <button className="p-1" onClick={() => setShowSettings((v) => !v)}>
-                    <Settings className="w-5 h-5" />
-                  </button>
-                  {showSettings && (
-                    <div className="absolute right-0 z-50 mt-2 w-56 bg-white border rounded shadow-lg p-3">
-                      <div className="flex items-center mb-2">
-                        <input type="checkbox" id="showChangeRank" className="mr-2" defaultChecked />
-                        <label htmlFor="showChangeRank" className="text-xs">전일 대비 등락 가격 표시<br/>(KRW 마켓만 적용)</label>
+      {/* <div className="flex flex-row gap-4 min-h-screen items-stretch" style={{ height: 'calc(100vh - 100px)' }}> */}
+        {/* 좌측: 세로 인덱스 탭 + Coin List */}
+        <div className="flex flex-row min-h-0" style={{ height: combinedHeight }}>
+          {/* 세로 인덱스 탭 */}
+          <div className="flex flex-col items-center py-4 px-2 gap-2 bg-gray-50 border-r border-gray-200">
+            <button
+              className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-100 text-blue-600 border border-blue-400' : 'text-gray-500'}`}
+              onClick={() => setView('chart')}
+            >차트</button>
+            <button
+              className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-100 text-blue-600 border border-blue-400' : 'text-gray-500'}`}
+              onClick={() => setView('info')}
+            >코인정보</button>
+          </div>
+          {/* 코인목록 */}
+          <div className="flex flex-col w-[352px] max-w-[90vw] min-h-0" style={{ height: combinedHeight }}>
+            <Card className="flex flex-col" style={{ height: combinedHeight }}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <input
+                    placeholder="코인명/심볼검색"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-8 flex-1 border rounded px-2"
+                  />
+                  {/* 설정(톱니바퀴) 아이콘 및 드롭다운 */}
+                  <div className="relative">
+                    <button className="p-1" onClick={() => setShowSettings((v) => !v)}>
+                      <Settings className="w-5 h-5" />
+                    </button>
+                    {showSettings && (
+                      <div className="absolute right-0 z-50 mt-2 w-56 bg-white border rounded shadow-lg p-3">
+                        <div className="flex items-center mb-2">
+                          <input type="checkbox" id="showChangeRank" className="mr-2" defaultChecked />
+                          <label htmlFor="showChangeRank" className="text-xs">전일 대비 등락 가격 표시<br/>(KRW 마켓만 적용)</label>
+                        </div>
+                        <div className="flex items-center">
+                          <input type="checkbox" id="showKRWVolume" className="mr-2" defaultChecked />
+                          <label htmlFor="showKRWVolume" className="text-xs">거래대금 KRW 환산 가격 표시<br/>(BTC, USDT 마켓만 적용)</label>
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" id="showKRWVolume" className="mr-2" defaultChecked />
-                        <label htmlFor="showKRWVolume" className="text-xs">거래대금 KRW 환산 가격 표시<br/>(BTC, USDT 마켓만 적용)</label>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 h-8">
-                  <TabsTrigger value="원화" className="text-xs">원화</TabsTrigger>
-                  <TabsTrigger value="BTC" className="text-xs">BTC</TabsTrigger>
-                  <TabsTrigger value="USDT" className="text-xs">USDT</TabsTrigger>
-                  <TabsTrigger value="보유" className="text-xs">보유</TabsTrigger>
-                  <TabsTrigger value="관심" className="text-xs">관심</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" style={{ textAlign: 'center' }}>
+                  <TabsList className="grid w-full grid-cols-5 h-8">
+                    <TabsTrigger value="원화" className="text-xs">원화</TabsTrigger>
+                    <TabsTrigger value="BTC" className="text-xs">BTC</TabsTrigger>
+                    <TabsTrigger value="USDT" className="text-xs">USDT</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </CardHeader>
+            <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: combinedHeight }}>
               {/* 컬럼 헤더 */}
               <div className="grid grid-cols-4 gap-2 px-4 py-2 text-xs font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10">
                 <div className="flex items-center gap-1 cursor-pointer">한글명 <span className="text-[10px]">▼</span></div>
@@ -219,148 +307,84 @@ export const TradingInterface = () => {
                 <div className="text-right flex items-center gap-1 cursor-pointer">전일대비 <span className="text-[10px]">▼</span></div>
                 <div className="text-right flex items-center gap-1 cursor-pointer">거래대금 <span className="text-[10px]">▼</span></div>
               </div>
-              <div className="max-h-[500px] overflow-y-auto flex-1 min-h-0">
-                {updatedCoinList.map((coin, index) => (
-                  <div
-                    key={coin.symbol}
-                    onClick={() => setSelectedCoin(coin.symbol)}
-                    className={`grid grid-cols-4 gap-1 p-2 text-xs cursor-pointer border-b items-center
-                      ${selectedCoin === coin.symbol ? 'bg-blue-50 border-blue-200' : ''}`}
-                  >
-                    {/* 한글명/심볼/관심 */}
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3 text-muted-foreground mr-1" />
-                      <div>
-                        <div
-                          className={`font-semibold text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
-                        >
-                          {coin.name}
-                          {/* 🚨 실시간 표시 추가 */}
-                          {realTimeData[coin.symbol + '_KRW'] && (
-                            <span className="ml-1 text-green-500 text-[8px]">●</span>
-                          )}
+              <div className="overflow-y-auto flex-1 min-h-0" style={{ height: combinedHeight  }}>
+                {loading ? (
+                  <div className="p-4 text-center text-gray-500">로딩 중...</div>
+                ) : updatedCoinList.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">코인 목록이 없습니다.</div>
+                ) : (
+                  updatedCoinList.map((coin, index) => (
+                    <div
+                      key={coin.symbol}
+                      onClick={() => setSelectedCoin(coin.symbol)}
+                      className={`grid grid-cols-4 gap-1 p-2 text-xs cursor-pointer border-b items-center
+                        ${selectedCoin === coin.symbol ? 'bg-blue-50 border-blue-200' : ''}`}
+                    >
+                      {/* 한글명/심볼/관심 */}
+                      <div className="flex items-center gap-1">
+                        {/* <Star className="h-3 w-3 text-muted-foreground mr-1" /> */}
+                        <div>
+                          <div
+                            className={`font-semibold text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                          >
+                            {coin.name}
+                            {/* 🚨 실시간 표시 추가 */}
+                            {realTimeData[coin.symbol + '_KRW'] && (
+                              <span className="ml-1 text-green-500 text-[8px]">●</span>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground text-[11px]">{coin.symbol}/KRW</div>
                         </div>
-                        <div className="text-muted-foreground text-[11px]">{coin.symbol}/KRW</div>
+                      </div>
+                      {/* 현재가 */}
+                      <div
+                        className={`text-right font-mono font-semibold text-base ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                      >
+                        {coin.price.toLocaleString()}
+                      </div>
+                      {/* 전일대비 */}
+                      <div className={`text-right font-semibold ${coin.trend === 'up' ? 'text-red-600' : 'text-blue-600'}`}>
+                        <div>{coin.trend === 'up' ? '+' : ''}{coin.change.toFixed(2)}%</div>
+                        <div className="text-xs">
+                          {coin.changeAmount > 0 ? '+' : ''}
+                          {coin.changeAmount.toLocaleString()}
+                        </div>
+                      </div>
+                      {/* 거래대금 */}
+                      <div
+                        className={`text-right text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                      >
+                        {coin.volume}
                       </div>
                     </div>
-                    {/* 현재가 */}
-                    <div
-                      className={`text-right font-mono font-semibold text-base ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
-                    >
-                      {coin.price.toLocaleString()}
-                    </div>
-                    {/* 전일대비 */}
-                    <div className={`text-right font-semibold ${coin.trend === 'up' ? 'text-red-600' : 'text-blue-600'}`}>
-                      <div>{coin.trend === 'up' ? '+' : ''}{coin.change.toFixed(2)}%</div>
-                      <div className="text-xs">{coin.changeAmount > 0 ? '+' : ''}{coin.changeAmount}</div>
-                    </div>
-                    {/* 거래대금 */}
-                    <div
-                      className={`text-right text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
-                    >
-                      {coin.volume}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
         {/* 우측: Chart + Order Book + Trading Form (New Layout) */}
-        <div className="flex flex-col min-h-0 gap-4 h-full flex-1">
-          {/* 상단: 시세/코인정보 탭 */}
-          <div className="flex gap-2 mb-2 mt-2">
-            <button
-              className={`px-4 py-1 text-xs font-semibold ${view === "chart" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-400"}`}
-              onClick={() => setView("chart")}
-            >시세</button>
-            <button
-              className={`px-4 py-1 text-xs font-semibold ${view === "info" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-400"}`}
-              onClick={() => setView("info")}
-            >코인정보</button>
-          </div>
+          <div className="flex flex-col min-h-0 gap-4 h-full flex-1" ref={mainPanelRef}>
           {/* 차트 or 코인정보 */}
-          <div className="min-h-0 w-full">
-            <Card className="h-[800px]">
-              <CardContent className="p-4 h-full">
-                {view === "chart" ? (
-                  <>
-                    {/* 상단 가격 정보 */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">₿</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg">
-                            {updatedCoinList.find(c => c.symbol === selectedCoin)?.name || "비트코인"} {selectedCoin || "BTC"}/KRW
-                          </h3>
-                          <div className="flex items-center gap-4">
-                            <div>
-                              <div className="text-2xl font-bold text-red-600">
-                                {/* 🚨 실시간 가격 표시 */}
-                                {realTimeData[selectedCoin + '_KRW'] ? 
-                                  parseInt(realTimeData[selectedCoin + '_KRW'].closePrice).toLocaleString() : 
-                                  '163,172,000'
-                                } 
-                                <span className="text-sm">KRW</span>
-                                {/* 실시간 표시 */}
-                                {realTimeData[selectedCoin + '_KRW'] && (
-                                  <span className="ml-2 text-xs text-green-500">● LIVE</span>
-                                )}                                  
-                              </div>
-                              <div className="text-sm text-red-600">
-                                {/* 🚨 실시간 변동률 표시 */}
-                                {realTimeData[selectedCoin + '_KRW'] ? 
-                                  `${parseFloat(realTimeData[selectedCoin + '_KRW'].chgRate) > 0 ? '+' : ''}${parseFloat(realTimeData[selectedCoin + '_KRW'].chgRate).toFixed(2)}% ${parseFloat(realTimeData[selectedCoin + '_KRW'].chgAmt) > 0 ? '▲' : '▼'}${Math.abs(parseInt(realTimeData[selectedCoin + '_KRW'].chgAmt)).toLocaleString()}` :
-                                  '+0.03% ▲54,000'
-                                }
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-6 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">고가</p>
-                          <p className="font-semibold text-red-600">
-                            {realTimeData[selectedCoin + '_KRW']?.maxPrice
-                              ? parseInt(realTimeData[selectedCoin + '_KRW'].maxPrice).toLocaleString()
-                              : '163,627,000'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">저가</p>
-                          <p className="font-semibold text-blue-600">
-                            {realTimeData[selectedCoin + '_KRW']?.minPrice
-                              ? parseInt(realTimeData[selectedCoin + '_KRW'].minPrice).toLocaleString()
-                              : '162,916,000'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">거래량(24H)</p>
-                          <p className="font-semibold">
-                            {realTimeData[selectedCoin + '_KRW']?.unitsTraded
-                              ? `${parseFloat(realTimeData[selectedCoin + '_KRW'].unitsTraded).toLocaleString()} ${selectedCoin}`
-                              : '1,231.795 BTC'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    {/* 차트 영역 */}
-                    <div className="h-[670px] w-full">
-                      <TradingChart symbol="BTC/KRW" height={400} />
-                    </div>
-                  </>
-                ) : (
-                  <CoinInfoPanel coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} />
-                )}
-              </CardContent>
-            </Card>
+          <div className="w-full" style={{ height: combinedHeight }}>
+            {view === "chart" ? (
+              <TradingChart
+                symbol={`${selectedCoin}/KRW`}
+                height={combinedHeight}
+                theme="light"
+                realTimeData={realTimeData[selectedCoin + '_KRW']}
+                currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice
+                  ? parseInt(realTimeData[selectedCoin + '_KRW'].closePrice)
+                  : updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 163172000
+                }
+              />
+            ) : (
+              <CoinInfoPanel coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} />
+            )}
           </div>
 
           {/* 하단: 오더북/체결강도/정보패널/주문 (이미지와 동일하게 4단 배치) */}
-          <div className="flex flex-row min-h-0 h-[600px] gap-0">
+          <div className="w-full flex flex-row" style={{ height: 600 }}>
             {/* 오더북 (매수/매도) */}
             <div className="flex flex-col w-[230px] border-r border-gray-200 bg-blue-50">
               {/* 상단 매도호가 */}
@@ -509,7 +533,7 @@ export const TradingInterface = () => {
         </div>
       </div>
   </div>
-  )  
+  );
 }
 
 export default TradingInterface;
