@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 from utils.jwt_helper import create_access_token
 from fastapi.security import OAuth2PasswordBearer
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import jwt
 
@@ -41,9 +41,12 @@ async def register(request:Request, email: str = Form(...), password: str = Form
         # 비밀번호 해싱
         hashed_pw = pwd_context.hash(password)
 
+        created_at = datetime.now()
+        expires_at = created_at + timedelta(minutes=5)
+
         # 사용자 등록
-        insert_sql = "INSERT INTO users(email, password, name, role, is_verified, created_at) VALUES(%s, %s, %s, %s, %s, %s)"
-        user_data = (email, hashed_pw, name, Role.ADMIN.value, True, datetime.today().date())
+        insert_sql = "INSERT INTO users(email, password, name, role, is_verified, created_at, expires_at) VALUES(%s, %s, %s, %s, %s, %s, %s)"
+        user_data = (email, hashed_pw, name, Role.ADMIN.value, True, created_at, expires_at)
         cursor.execute(insert_sql, user_data)
         conn.commit()
     except Exception as e:
