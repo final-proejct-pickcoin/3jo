@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from utils.jwt_helper import create_access_token
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
+import pytz
 import os
 import jwt
 
@@ -41,8 +42,12 @@ async def register(request:Request, email: str = Form(...), password: str = Form
         # 비밀번호 해싱
         hashed_pw = pwd_context.hash(password)
 
-        created_at = datetime.now()
-        expires_at = created_at + timedelta(minutes=5)
+        # 한국 시간으로 변환
+        utc = pytz.timezone('UTC')
+        kst = pytz.timezone('Asia/Seoul')
+        created_at_uct = datetime.utcnow().replace(microsecond=0)
+        created_at = utc.localize(created_at_uct).astimezone(kst)
+        expires_at = (created_at + timedelta(minutes=5)).replace(microsecond=0)
 
         # 사용자 등록
         insert_sql = "INSERT INTO users(email, password, name, role, is_verified, created_at, expires_at) VALUES(%s, %s, %s, %s, %s, %s, %s)"
