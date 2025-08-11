@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, TrendingUp, TrendingDown, Search, Star, Settings } from "lucide-react"
+import { BarChart3, TrendingUp, TrendingDown, Search, Star, Settings, AlignCenter } from "lucide-react"
 import { toast } from "sonner"
-import { TradingChart } from "@/components/trading-chart"
+import TradingChart from "@/components/trading-chart"
 import { CurrencyToggle } from "@/components/currency-toggle"
 
 // 임시 코인 정보 패널 컴포넌트
@@ -291,13 +291,11 @@ export const TradingInterface = () => {
                     )}
                   </div>
                 </div>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" style={{ textAlign: 'center' }}>
                   <TabsList className="grid w-full grid-cols-5 h-8">
                     <TabsTrigger value="원화" className="text-xs">원화</TabsTrigger>
                     <TabsTrigger value="BTC" className="text-xs">BTC</TabsTrigger>
                     <TabsTrigger value="USDT" className="text-xs">USDT</TabsTrigger>
-                    <TabsTrigger value="보유" className="text-xs">보유</TabsTrigger>
-                    <TabsTrigger value="관심" className="text-xs">관심</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </CardHeader>
@@ -368,34 +366,25 @@ export const TradingInterface = () => {
         {/* 우측: Chart + Order Book + Trading Form (New Layout) */}
           <div className="flex flex-col min-h-0 gap-4 h-full flex-1" ref={mainPanelRef}>
           {/* 차트 or 코인정보 */}
-          <div className="min-h-0 w-full">
-            <Card className="h-[800px]">
-              <CardContent className="p-4 h-full">
-                {view === "chart" ? (
-                  <>
-                    {/* 차트 영역 */}
-                    <div className="h-[670px] w-full">
-                      <TradingChart 
-                        symbol={`${selectedCoin}/KRW`}
-                        height={700}
-                        realTimeData={realTimeData[selectedCoin + '_KRW']}
-                        currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice
-                          ? parseInt(realTimeData[selectedCoin + '_KRW'].closePrice)
-                          : updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 163172000
-                        }
-                        coinInfo={updatedCoinList.find(c => c.symbol === selectedCoin)}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <CoinInfoPanel coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} />
-                )}
-              </CardContent>
-            </Card>
+          <div className="w-full" style={{ height: combinedHeight }}>
+            {view === "chart" ? (
+              <TradingChart
+                symbol={`${selectedCoin}/KRW`}
+                height={combinedHeight}
+                theme="light"
+                realTimeData={realTimeData[selectedCoin + '_KRW']}
+                currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice
+                  ? parseInt(realTimeData[selectedCoin + '_KRW'].closePrice)
+                  : updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 163172000
+                }
+              />
+            ) : (
+              <CoinInfoPanel coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} />
+            )}
           </div>
 
           {/* 하단: 오더북/체결강도/정보패널/주문 (이미지와 동일하게 4단 배치) */}
-          <div className="flex flex-row min-h-0 h-[600px] gap-0">
+          <div className="w-full flex flex-row" style={{ height: 600 }}>
             {/* 오더북 (매수/매도) */}
             <div className="flex flex-col w-[230px] border-r border-gray-200 bg-blue-50">
               {/* 상단 매도호가 */}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Star, Plus, Activity, Globe, BarChart3 } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
-import { TradingChart } from "@/components/trading-chart"
+import TradingChart from '@/components/trading-chart';
 import {bookmarked,toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
 
 const marketData = [

@@ -58,7 +58,14 @@ const TradingChart = dynamic(()=> import('@/components/trading-chart').then(
 });  
 
 // TradingInterface도 동적 임포트
-const TradingInterface = dynamic(() => import('@/components/trading-clean'), { 
+import { Suspense } from 'react';
+
+const TradingInterface = dynamic(() => import('@/components/trading-clean'), {   
   ssr: false,
   loading: () => <div>인터페이스 로딩 중...</div>
 });
+
+// 사용할 때
+<Suspense fallback={<div>로딩 중...</div>}>
+  <TradingInterface />
+</Suspense>
