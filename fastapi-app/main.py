@@ -22,9 +22,10 @@ from api.auth import router as auth_router
 from api.admin_user import router as admin_user_router
 from api.admin import router as admin_router
 
-# --- 음성 AI 관련 모듈 추가 ---
+# --- 음성 AI 관련 모듈 추가  Google Cloud 관련 모듈 추가 ---
 import google.generativeai as genai
 from api.voice_router import router as voice_ai_router
+from google.cloud import speech # 인증 확인을 위해 speech 클라이언트 임포트
 # ---------------------------------
 
 
@@ -36,6 +37,8 @@ import websockets
 import json
  
 load_dotenv()
+
+
 
 # --- Gemini API 설정 추가 ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -90,6 +93,10 @@ app.include_router(admin_router)
 
 manager = ConnectionManager()
 alert_manager = AlertManager()
+
+# --- 음성 AI 라우터 추가 ---
+app.include_router(voice_ai_router, prefix="/api")
+# -----------------------------
 
 # 웹 채팅 페이지
 @app.get("/", response_class=HTMLResponse)

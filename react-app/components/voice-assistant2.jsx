@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Mic, MicOff, Volume2, X, Send } from "lucide-react";
+import { Mic, MicOff, Volume2, X, Send, AlertTriangle } from "lucide-react"; // AlertTriangle : 아이콘 
 
 // 애니메이션을 위한 CSS
 const styles = `
@@ -25,13 +25,14 @@ const styles = `
 
 export const VoiceAssistant2 = () => {
   // --- 상태 관리 ---
+  const [permissionStatus, setPermissionStatus] = useState('prompt'); // 마이크 권한 상태 'granted', 'prompt', 'denied'
   const [isVisible, setIsVisible] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [statusMessage, setStatusMessage] = useState("대기 중");
   const [userTranscript, setUserTranscript] = useState("");
   const [botResponse, setBotResponse] = useState("");
-  const [textInput, setTextInput] = useState(""); // 텍스트 입력 상태 추가
+  const [textInput, setTextInput] = useState(""); // 텍스트 입력 상태 
 
   // --- 참조 관리 ---
   const socketRef = useRef(null);
@@ -41,16 +42,32 @@ export const VoiceAssistant2 = () => {
 
   // --- 생명주기 및 정리 ---
   useEffect(() => {
+    
     const styleSheet = document.createElement("style");
     styleSheet.innerText = styles;
     document.head.appendChild(styleSheet);
+
+    // Permissions API를 사용한 권한 상태 확인 로직 추가
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'microphone' }).then((result) => {
+        setPermissionStatus(result.state);
+        // 사용자가 브라우저 설정에서 직접 권한을 변경하는 것을 감지
+        result.onchange = () => {
+          setPermissionStatus(result.state);
+          if(result.state === 'denied') {
+              setStatusMessage("마이크 권한이 차단되었습니다.");
+              if(isListening) stopListening(); // 듣고 있었다면 중지
+          }
+        };
+      });
+    }
 
     return () => {
       document.head.removeChild(styleSheet);
       if (socketRef.current) socketRef.current.close();
       if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(track => track.stop());
     };
-  }, []);
+  }, []); // 최초 한 번만 실행
 
   // 채팅 로그가 업데이트될 때마다 스크롤을 맨 아래로 이동
   useEffect(() => {
@@ -58,7 +75,6 @@ export const VoiceAssistant2 = () => {
         chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
     }
   }, [userTranscript, botResponse]);
-
 
   // --- 웹소켓 로직 ---
   const ensureWebSocketConnection = () => {
@@ -124,39 +140,88 @@ export const VoiceAssistant2 = () => {
   };
 
   // --- 컨트롤 핸들러 ---
-  const handleStartListening = async () => {
-    setUserTranscript("");
-    setBotResponse("");
+  // --- handleMicButtonClick(권한 처리)와 startRecording(실제 녹음) ---
+
+  // 실제 녹음 시작 로직만 담당하는 헬퍼 함수
+  const startRecording = (stream) => {
+    audioStreamRef.current = stream;
+    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    
+    mediaRecorderRef.current.ondataavailable = (event) => {
+      if (event.data.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(event.data);
+      }
+    };
+
+    // stopListening 호출 시 스트림도 함께 종료되도록 onstop 이벤트 핸들러 추가
+    mediaRecorderRef.current.onstop = () => {
+        if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach(track => track.stop());
+        }
+        setIsListening(false);
+        if (statusMessage.startsWith('듣는 중') || statusMessage.startsWith('"')) {
+            setStatusMessage('음성 처리 중...');
+        }
+    };
+    
+    mediaRecorderRef.current.start(250);
+    setIsListening(true);
+    setStatusMessage('듣는 중...');
+  };
+
+  // stopListening 함수는 MediaRecorder를 중지하는 역할만 
+  const stopListening = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  // 모든 마이크 관련 클릭 이벤트를 제어하는 통합 핸들러
+  const handleMicButtonClick = async () => {
+    // 1. 이미 듣고 있는 경우: 녹음 중지
+    if (isListening) {
+      stopListening();
+      return;
+    }
+
+    // 2. 웹소켓 연결 보장 (필수)
     try {
       await ensureWebSocketConnection();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStreamRef.current = stream;
-
-      setIsListening(true);
-      setStatusMessage('듣는 중...');
-      
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
-          socketRef.current.send(event.data);
-        }
-      };
-      mediaRecorderRef.current.start(250);
     } catch (error) {
-      console.error('Recording failed:', error);
-      setStatusMessage('음성 녹음을 시작할 수 없습니다.');
-      setIsListening(false);
+      setStatusMessage('서버 연결에 실패했습니다.');
+      return;
+    }
+    
+    // 3. 권한 상태에 따른 분기 처리
+    if (permissionStatus === 'denied') {
+      alert("마이크 권한이 차단되었습니다.\n브라우저 주소창의 자물쇠 🔒 아이콘을 클릭하여 권한을 '허용'으로 변경해주세요.");
+      return;
+    }
+
+    // 4. 권한이 허용되었거나 아직 묻지 않은 상태: 마이크 사용 시도
+    try {
+      setUserTranscript("");
+      setBotResponse("");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      startRecording(stream); // 성공 시 녹음 시작
+      
+    } catch (err) {
+        console.error("마이크 접근 오류:", err); // 콘솔에 실제 오류 객체 기록
+
+        // 오류 유형에 따른 상세 메시지 표시 (catch 블록 로직 재활용)
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setStatusMessage("오류: 마이크 접근 권한이 거부되었습니다.");
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setStatusMessage("오류: 사용 가능한 마이크 장치가 없습니다.");
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setStatusMessage("오류: 마이크를 사용할 수 없습니다. 다른 프로그램이 사용 중인지 확인하세요.");
+        } else {
+          // 기타 예측하지 못한 오류
+          setStatusMessage('오류: 마이크를 시작할 수 없습니다.');
+        }
     }
   };
-  
-  const stopListening = () => {
-    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
-    if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(track => track.stop());
-    setIsListening(false);
-    if (statusMessage.startsWith('듣는 중') || statusMessage.startsWith('"')) {
-      setStatusMessage('음성 처리 중...');
-    }
-  };
+
 
   // 텍스트 제출 핸들러 추가
   const handleSubmitText = async (e) => {
@@ -269,15 +334,22 @@ export const VoiceAssistant2 = () => {
 
         <CardFooter className="p-4 border-t">
             <form onSubmit={handleSubmitText} className="w-full flex items-center gap-2">
+                {/* 마이크 버튼이 권한 상태까지 고려하여 동적으로 렌더링되도록 변경 */}
                 <Button
                     type="button"
-                    onClick={isListening ? stopListening : handleStartListening}
+                    onClick={handleMicButtonClick} // 통합 핸들러로 변경
                     disabled={isSpeaking || !!textInput}
                     variant={isListening ? "destructive" : "secondary"}
                     size="icon"
                     className="rounded-full flex-shrink-0"
                 >
-                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                  {isListening ? (
+                    <MicOff className="h-5 w-5" />
+                  ) : permissionStatus === 'denied' ? (
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}   
                 </Button>
                 <Input 
                     placeholder="메시지를 입력하거나 마이크를 누르세요..."
