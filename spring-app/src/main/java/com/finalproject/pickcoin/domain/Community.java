@@ -2,7 +2,6 @@ package com.finalproject.pickcoin.domain;
 
 import java.util.Date;
 
-import com.finalproject.pickcoin.enums.PostStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -31,7 +30,7 @@ public class Community {
     private Integer cnt;
     private Integer reply_count;
     
-    private PostStatus status;
+    private String status;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", updatable = false)
