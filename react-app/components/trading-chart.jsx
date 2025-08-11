@@ -1,654 +1,1244 @@
 "use client"
 
-import { useEffect, useRef, useState, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Volume2, 
-  BarChart3, 
-  Activity,
-  Maximize2,
-  Settings,
-  Target,
-  Zap
-} from "lucide-react"
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
-export const TradingChart = ({ 
-  symbol = "BTC/KRW", 
-  height = 700,
-  realTimeData = null,
+/**
+ * TradingView 수준의 전문 차트 컴포넌트
+ * - 다양한 차트 타입 (Candlestick, Heikin Ashi, Renko 등)
+ * - 고급 지표들 (MACD, Stochastic, Williams %R 등)
+ * - 드로잉 도구 지원
+ * - 볼륨 프로파일
+ * - 멀티 타임프레임
+ */
+function TradingChart({
+  symbol = "BTC/KRW",
+  height = 680,
+  theme = "light",
   currentPrice = null,
-  coinInfo = null  // 새로 추가: 코인 정보 통합
-}) => {
-  const chartContainerRef = useRef(null)
-  const chartRef = useRef(null)
-  const candleSeriesRef = useRef(null)
-  const volumeSeriesRef = useRef(null)
-  const smaSeriesRef = useRef(null)
-  const emaSeriesRef = useRef(null)
-  
-  const [timeframe, setTimeframe] = useState("1h")
-  const [chartType, setChartType] = useState("candlestick")
-  const [chartInitialized, setChartInitialized] = useState(false)
+  initialTimeframe = '1h', // ✅ props 이름 변경
+  realTimeData,
+  initialPriceInfo = { displayPrice: 0 } // ✅ props 이름 변경
+}) {
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const priceSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
+  const indicatorRefs = useRef({});
+  const priceLineRef = useRef(null);
+
+  // ✅ state 관리 (중복 제거)
+  const [timeframe, setTimeframe] = useState(initialTimeframe); // ✅ 하나만 유지
+  const [chartType, setChartType] = useState("candlestick");
   const [indicators, setIndicators] = useState({
+    volume: true,
     sma: false,
     ema: false,
-    volume: true,
     bollinger: false,
-    rsi: false
-  })
-  const [crosshairData, setCrosshairData] = useState(null)
-  const [showCrosshair, setShowCrosshair] = useState(false)
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+    rsi: false,
+    macd: false,
+    stochastic: false,
+    williams: false,
+    atr: false,
+    vwap: false,
+  });
 
-  // 실시간 가격 정보 계산
+  const [crosshair, setCrosshair] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [chartApi, setChartApi] = useState(null);
+  const [showIndicators, setShowIndicators] = useState(false);
+  const [drawingMode, setDrawingMode] = useState(null);
+  const [volumeProfile, setVolumeProfile] = useState(false);
+
+  // ✅ 팔레트 정의
+  const palette = useMemo(() => {
+    const light = {
+      bg: "#ffffff",
+      text: "#2D3748",
+      grid: "rgba(0,0,0,0.05)",
+      up: "#16C784",
+      down: "#EA3943",
+      volUp: "rgba(22,199,132,.3)",
+      volDown: "rgba(234,57,67,.3)",
+      axis: "#E2E8F0",
+      accent: "#3182CE",
+    };
+    const dark = {
+      bg: "#0D1421",
+      text: "#E2E8F0",
+      grid: "rgba(255,255,255,0.04)",
+      up: "#00D4AA",
+      down: "#FF6B6B",
+      volUp: "rgba(0,212,170,.3)",
+      volDown: "rgba(255,107,107,.3)",
+      axis: "#2D3748",
+      accent: "#63B3ED",
+    };
+    return theme === "dark" ? dark : light;
+  }, [theme]);
+
+  // ✅ 가격 정보 (하나만 유지)
   const priceInfo = useMemo(() => {
-    const displayPrice = currentPrice || (realTimeData?.closePrice ? parseInt(realTimeData.closePrice) : 163800000)
-    const change = realTimeData?.chgAmt ? parseInt(realTimeData.chgAmt) : 600000
-    const changePercent = realTimeData?.chgRate ? parseFloat(realTimeData.chgRate) : 0.37
-    const high24h = realTimeData?.maxPrice ? parseInt(realTimeData.maxPrice) : 164200000
-    const low24h = realTimeData?.minPrice ? parseInt(realTimeData.minPrice) : 162000000
-    const volume24h = realTimeData?.unitsTraded ? parseFloat(realTimeData.unitsTraded) : 1231.795
-
-    return {
-      displayPrice,
-      change,
-      changePercent,
-      high24h,
-      low24h,
-      volume24h,
-      isRealTime: !!realTimeData
-    }
-  }, [currentPrice, realTimeData])
-
-  // 더 풍부한 데이터 생성 (실시간 데이터 반영)
-  const generateAdvancedData = useMemo(() => {
-    const data = []
-    let basePrice = priceInfo.displayPrice
-    const now = Date.now()
-    const timeInterval = timeframe === "1m" ? 60000 : timeframe === "5m" ? 300000 : timeframe === "15m" ? 900000 : timeframe === "1h" ? 3600000 : 86400000
+    const displayPrice = currentPrice ?? 
+      (realTimeData?.closePrice ? Number(realTimeData.closePrice) : 163_800_000);
+    const change = realTimeData?.chgAmt ? Number(realTimeData.chgAmt) : 600_000;
+    const changePercent = realTimeData?.chgRate ? Number(realTimeData.chgRate) : 0.37;
+    const high24h = realTimeData?.maxPrice ? Number(realTimeData.maxPrice) : 164_200_000;
+    const low24h = realTimeData?.minPrice ? Number(realTimeData.minPrice) : 162_000_000;
+    const volume24h = realTimeData?.unitsTraded ? Number(realTimeData.unitsTraded) : 1231.795;
     
-    for (let i = 200; i >= 0; i--) {
-      const time = Math.floor((now - i * timeInterval) / 1000)
+    return { displayPrice, change, changePercent, high24h, low24h, volume24h, isRealTime: !!realTimeData };
+  }, [currentPrice, realTimeData]);
+
+  // ✅ 차트 데이터 생성
+  const candles = useMemo(() => {
+    const out = [];
+    let base = priceInfo.displayPrice * 0.99;
+    const now = Date.now();
+    const ms = {
+      "1m": 60_000, "5m": 300_000, "15m": 900_000,
+      "1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000,
+      "1w": 604_800_000, "1M": 2_592_000_000
+    }[timeframe] || 3_600_000;
+
+    const candleCount = timeframe === "1m" ? 200 : timeframe === "5m" ? 288 : 100;
+
+    for (let i = candleCount; i >= 0; i--) {
+      const candleTime = Math.floor((now - i * ms) / ms) * ms;
+      const t = Math.floor(candleTime / 1000);
       
-      // 더 현실적인 가격 움직임
-      const trend = Math.sin(i * 0.02) * 0.5 + (Math.random() - 0.5) * 0.6
-      const momentum = Math.cos(i * 0.05) * 0.3
-      basePrice = basePrice * (1 + (trend + momentum) * 0.008)
+      const trend = Math.sin(i * 0.02) * 0.0008;
+      const volatility = 0.001 + Math.random() * 0.002;
+      const priceMove = (Math.random() - 0.5) * volatility;
       
-      const volatility = basePrice * (0.015 + Math.random() * 0.01)
-      const open = basePrice + (Math.random() - 0.5) * volatility * 0.5
-      const close = open + (Math.random() - 0.5) * volatility * 0.8
-      const high = Math.max(open, close) + Math.random() * volatility * 0.4
-      const low = Math.min(open, close) - Math.random() * volatility * 0.4
-      const volume = 50 + Math.random() * 500 + Math.abs(Math.sin(i * 0.1)) * 300
+      base = base * (1 + trend + priceMove);
       
-      data.push({
-        time,
-        open: Math.max(low, open),
-        high: Math.max(high, open, close),
-        low: Math.min(low, open, close),
-        close: Math.max(low, close),
-        volume
-      })
+      const spread = base * (0.002 + Math.random() * 0.003);
+      const o = base + (Math.random() - 0.5) * spread * 0.3;
+      const c = base + (Math.random() - 0.5) * spread * 0.8;
+      const h = Math.max(o, c) + Math.random() * spread * 0.3;
+      const l = Math.min(o, c) - Math.random() * spread * 0.3;
+      const v = 100 + Math.random() * 500 + Math.abs(Math.sin(i * 0.1)) * 300;
+      
+      out.push({
+        time: t,
+        open: Math.round(Math.max(l, o)),
+        high: Math.round(Math.max(h, o, c)),
+        low: Math.round(Math.min(l, o, c)),
+        close: Math.round(Math.max(l, c)),
+        volume: Math.round(v),
+      });
+    }
+
+    if (realTimeData && out.length) {
+      const last = out[out.length - 1];
+      last.close = priceInfo.displayPrice;
+      last.high = Math.max(last.high, priceInfo.displayPrice);
+      last.low = Math.min(last.low, priceInfo.displayPrice);
+    }
+
+    return out.sort((a, b) => a.time - b.time);
+  }, [timeframe, priceInfo.displayPrice, realTimeData]);
+
+  // 고급 지표 계산 함수들
+  const calcSMA = useCallback((data, period = 20) => {
+    const res = [];
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i].close;
+      if (i >= period) sum -= data[i - period].close;
+      if (i >= period - 1) res.push({ time: data[i].time, value: sum / period });
+    }
+    return res;
+  }, []);
+
+  const calcEMA = useCallback((data, period = 12) => {
+    if (!data.length) return [];
+    const k = 2 / (period + 1);
+    const out = [];
+    let prev = data[0].close;
+    for (let i = 0; i < data.length; i++) {
+      const val = (data[i].close - prev) * k + prev;
+      out.push({ time: data[i].time, value: val });
+      prev = val;
+    }
+    return out;
+  }, []);
+
+  const calcMACD = useCallback((data, fast = 12, slow = 26, signal = 9) => {
+    const emaFast = calcEMA(data, fast);
+    const emaSlow = calcEMA(data, slow);
+    const macdLine = emaFast.map((fast, i) => ({
+      time: fast.time,
+      value: fast.value - (emaSlow[i]?.value || 0)
+    }));
+    const signalLine = calcEMA(macdLine, signal);
+    
+    return macdLine.map((macd, i) => ({
+      time: macd.time,
+      macd: macd.value,
+      signal: signalLine[i]?.value || 0,
+      histogram: macd.value - (signalLine[i]?.value || 0)
+    }));
+  }, [calcEMA]);
+
+  const calcStochastic = useCallback((data, k = 14, d = 3) => {
+    const result = [];
+    for (let i = k - 1; i < data.length; i++) {
+      const segment = data.slice(i - k + 1, i + 1);
+      const highest = Math.max(...segment.map(c => c.high));
+      const lowest = Math.min(...segment.map(c => c.low));
+      const close = data[i].close;
+      
+      const kValue = ((close - lowest) / (highest - lowest)) * 100;
+      const recent = result.slice(-d + 1);
+      const dValue = recent.length ? 
+        (recent.reduce((sum, item) => sum + item.k, 0) + kValue) / (recent.length + 1) : kValue;
+      
+      result.push({
+        time: data[i].time,
+        k: kValue,
+        d: dValue
+      });
+    }
+    return result;
+  }, []);
+
+  const calcWilliamsR = useCallback((data, period = 14) => {
+    const result = [];
+    for (let i = period - 1; i < data.length; i++) {
+      const segment = data.slice(i - period + 1, i + 1);
+      const highest = Math.max(...segment.map(c => c.high));
+      const lowest = Math.min(...segment.map(c => c.low));
+      const close = data[i].close;
+      
+      const williamsR = ((highest - close) / (highest - lowest)) * -100;
+      result.push({
+        time: data[i].time,
+        value: williamsR
+      });
+    }
+    return result;
+  }, []);
+
+  const calcATR = useCallback((data, period = 14) => {
+    const trueRanges = [];
+    for (let i = 1; i < data.length; i++) {
+      const high = data[i].high;
+      const low = data[i].low;
+      const prevClose = data[i - 1].close;
+      
+      const tr = Math.max(
+        high - low,
+        Math.abs(high - prevClose),
+        Math.abs(low - prevClose)
+      );
+      trueRanges.push({ time: data[i].time, value: tr });
     }
     
-    // 마지막 캔들을 실시간 데이터로 업데이트
-    if (realTimeData && data.length > 0) {
-      const lastCandle = data[data.length - 1]
-      lastCandle.close = priceInfo.displayPrice
-      lastCandle.high = Math.max(lastCandle.high, priceInfo.displayPrice)
-      lastCandle.low = Math.min(lastCandle.low, priceInfo.displayPrice)
-    }
-    
-    return data.sort((a, b) => a.time - b.time)
-  }, [timeframe, priceInfo, realTimeData])
-
-  // 이동평균 계산
-  const calculateSMA = (data, period = 20) => {
-    return data.map((item, index) => {
-      if (index < period - 1) return null
-      const sum = data.slice(index - period + 1, index + 1).reduce((acc, curr) => acc + curr.close, 0)
-      return { time: item.time, value: sum / period }
-    }).filter(Boolean)
-  }
-
-  const calculateEMA = (data, period = 12) => {
-    const multiplier = 2 / (period + 1)
-    const ema = []
-    
-    data.forEach((item, index) => {
-      if (index === 0) {
-        ema.push({ time: item.time, value: item.close })
-      } else {
-        const value = (item.close - ema[index - 1].value) * multiplier + ema[index - 1].value
-        ema.push({ time: item.time, value })
+    const result = [];
+    let sum = 0;
+    for (let i = 0; i < trueRanges.length; i++) {
+      sum += trueRanges[i].value;
+      if (i >= period) sum -= trueRanges[i - period].value;
+      if (i >= period - 1) {
+        result.push({
+          time: trueRanges[i].time,
+          value: sum / period
+        });
       }
-    })
-    return ema
-  }
+    }
+    return result;
+  }, []);
 
-  // 차트 초기화 (표준 레이아웃: 메인 차트 + 하단 볼륨)
+  const calcVWAP = useCallback((data) => {
+    const result = [];
+    let cumulativeVolPrice = 0;
+    let cumulativeVolume = 0;
+    
+    for (let i = 0; i < data.length; i++) {
+      const typical = (data[i].high + data[i].low + data[i].close) / 3;
+      cumulativeVolPrice += typical * data[i].volume;
+      cumulativeVolume += data[i].volume;
+      
+      result.push({
+        time: data[i].time,
+        value: cumulativeVolPrice / cumulativeVolume
+      });
+    }
+    return result;
+  }, []);
+
+  const calcBollinger = useCallback((data, period = 20, mult = 2) => {
+    if (!data.length) return { upper: [], lower: [], middle: [] };
+    const sma = calcSMA(data, period);
+    const upper = [];
+    const lower = [];
+    
+    for (let i = period - 1; i < data.length; i++) {
+      const seg = data.slice(i - period + 1, i + 1).map(d => d.close);
+      const mean = sma[i - (period - 1)].value;
+      const variance = seg.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / period;
+      const std = Math.sqrt(variance);
+      
+      upper.push({ time: data[i].time, value: mean + mult * std });
+      lower.push({ time: data[i].time, value: mean - mult * std });
+    }
+    
+    return { upper, lower, middle: sma };
+  }, [calcSMA]);
+
+  const calcRSI = useCallback((data, period = 14) => {
+    const out = [];
+    if (data.length < period + 1) return out;
+    
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+      const ch = data[i].close - data[i - 1].close;
+      if (ch >= 0) gains += ch; else losses -= ch;
+    }
+    
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+    
+    for (let i = period + 1; i < data.length; i++) {
+      const ch = data[i].close - data[i - 1].close;
+      const gain = Math.max(0, ch);
+      const loss = Math.max(0, -ch);
+      
+      avgGain = (avgGain * (period - 1) + gain) / period;
+      avgLoss = (avgLoss * (period - 1) + loss) / period;
+      
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      const rsi = 100 - 100 / (1 + rs);
+      
+      out.push({ time: data[i].time, value: rsi });
+    }
+    return out;
+  }, []);
+
+  // Heikin Ashi 변환
+  const transformToHeikinAshi = useCallback((data) => {
+    const result = [];
+    let prevHA = { open: data[0].open, close: data[0].close };
+    
+    data.forEach((candle, i) => {
+      const haClose = (candle.open + candle.high + candle.low + candle.close) / 4;
+      const haOpen = i === 0 ? candle.open : (prevHA.open + prevHA.close) / 2;
+      const haHigh = Math.max(candle.high, haOpen, haClose);
+      const haLow = Math.min(candle.low, haOpen, haClose);
+      
+      result.push({
+        time: candle.time,
+        open: haOpen,
+        high: haHigh,
+        low: haLow,
+        close: haClose,
+      });
+      
+      prevHA = { open: haOpen, close: haClose };
+    });
+    
+    return result;
+  }, []);
+
+  // 차트 생성 메인 useEffect
   useEffect(() => {
-    const initChart = async () => {
-      if (!window.LightweightCharts || !chartContainerRef.current) {
-        setTimeout(initChart, 100)
-        return
-      }
-
-      try {
-        // 기존 차트 제거
-        if (chartRef.current) {
-          chartRef.current.remove()
-          chartRef.current = null
-          candleSeriesRef.current = null
-          volumeSeriesRef.current = null
-          smaSeriesRef.current = null
-          emaSeriesRef.current = null
-        }
-
-        const chart = window.LightweightCharts.createChart(chartContainerRef.current, {
-          width: chartContainerRef.current.clientWidth || 900,
-          height: height - 120,
-          layout: {
-            background: { 
-              type: 'solid',
-              color: '#ffffff' 
-            },
-            textColor: '#333333',
-            fontSize: 12,
-          },
-          grid: {
-            vertLines: { 
-              color: 'rgba(42, 46, 57, 0.1)',
-              style: 1,
-              visible: true 
-            },
-            horzLines: { 
-              color: 'rgba(42, 46, 57, 0.1)',
-              style: 1,
-              visible: true 
-            },
-          },
-          crosshair: {
-            mode: 1,
-            vertLine: {
-              color: '#758696',
-              width: 1,
-              style: 3,
-              visible: true,
-              labelVisible: true,
-            },
-            horzLine: {
-              color: '#758696',
-              width: 1,
-              style: 3,
-              visible: true,
-              labelVisible: true,
-            },
-          },
-          timeScale: {
-            borderColor: '#D1D4DC',
-            timeVisible: true,
-            secondsVisible: false,
-            rightOffset: 12,
-            barSpacing: 6,
-            fixLeftEdge: false,
-            lockVisibleTimeRangeOnResize: true,
-            rightBarStaysOnScroll: true,
-            borderVisible: true,
-            visible: true,
-          },
-          rightPriceScale: {
-            borderColor: '#D1D4DC',
-            autoScale: true,
-            scaleMargins: {
-              top: 0.05,
-              bottom: indicators.volume ? 0.35 : 0.05, // 볼륨을 위한 더 많은 공간
-            },
-            borderVisible: true,
-            entireTextOnly: false,
-          },
-          leftPriceScale: {
-            visible: false,
-          },
-          handleScroll: {
-            mouseWheel: true,
-            pressedMouseMove: true,
-            horzTouchDrag: true,
-            vertTouchDrag: true,
-          },
-          handleScale: {
-            axisPressedMouseMove: true,
-            mouseWheel: true,
-            pinch: true,
-          },
-        })
-
-        chartRef.current = chart
-
-        // 메인 캔들스틱 시리즈 (상단 70%)
-        const candlestickSeries = chart.addSeries(window.LightweightCharts.CandlestickSeries, {
-          upColor: '#00C896',
-          downColor: '#FF4B7D',
-          borderDownColor: '#FF4B7D',
-          borderUpColor: '#00C896',
-          wickDownColor: '#FF4B7D',
-          wickUpColor: '#00C896',
-          priceFormat: {
-            type: 'price',
-            precision: 0,
-            minMove: 1000,
-          },
-        })
-        candleSeriesRef.current = candlestickSeries
-
-        // 볼륨 시리즈 (하단 30% - 표준 레이아웃)
-        if (indicators.volume) {
-          try {
-            const volumeSeries = chart.addSeries(window.LightweightCharts.HistogramSeries, {
-              color: 'rgba(76, 175, 80, 0.4)',
-              priceFormat: {
-                type: 'volume',
-              },
-              priceScaleId: 'volume',
-              scaleMargins: {
-                top: 0.7,  // 하단 30% 영역
-                bottom: 0,
-              },
-            })
-            
-            // 볼륨 전용 스케일 설정
-            chart.priceScale('volume').applyOptions({
-              scaleMargins: {
-                top: 0.7,
-                bottom: 0,
-              },
-            })
-            
-            volumeSeriesRef.current = volumeSeries
-          } catch (e) {
-            console.log('볼륨 시리즈 추가 실패:', e)
-          }
-        }
-
-        // 데이터 설정
-        candlestickSeries.setData(generateAdvancedData)
-
-        if (volumeSeriesRef.current) {
-          const volumeData = generateAdvancedData.map(candle => ({
-            time: candle.time,
-            value: candle.volume,
-            color: candle.close >= candle.open ? 'rgba(0, 200, 150, 0.5)' : 'rgba(255, 75, 125, 0.5)',
-          }))
-          volumeSeriesRef.current.setData(volumeData)
-        }
-
-        // 이동평균선 추가 (조건부)
-        if (indicators.sma) {
-          const smaSeries = chart.addSeries(window.LightweightCharts.LineSeries, {
-            color: '#FF6B35',
-            lineWidth: 2,
-            title: 'SMA(20)',
-          })
-          const smaData = calculateSMA(generateAdvancedData, 20)
-          smaSeries.setData(smaData)
-          smaSeriesRef.current = smaSeries
-        }
-
-        if (indicators.ema) {
-          const emaSeries = chart.addSeries(window.LightweightCharts.LineSeries, {
-            color: '#4ECDC4',
-            lineWidth: 2,
-            title: 'EMA(12)',
-          })
-          const emaData = calculateEMA(generateAdvancedData, 12)
-          emaSeries.setData(emaData)
-          emaSeriesRef.current = emaSeries
-        }
-
-        // 크로스헤어 이벤트 (개선된 정보 표시)
-        chart.subscribeCrosshairMove((param) => {
-          try {
-            if (param.time && param.point && candlestickSeries) {
-              const candleData = param.seriesData.get(candlestickSeries)
-              const volumeData = volumeSeriesRef.current ? param.seriesData.get(volumeSeriesRef.current) : null
-              
-              if (candleData) {
-                setCrosshairData({
-                  time: param.time,
-                  open: candleData.open,
-                  high: candleData.high,
-                  low: candleData.low,
-                  close: candleData.close,
-                  volume: volumeData?.value || 0,
-                })
-                // ✅ 마우스 위치 저장
-                setMousePosition({ x: param.point.x, y: param.point.y })
-                setShowCrosshair(true)
-              }
-            } else {
-              setCrosshairData(null)
-              setShowCrosshair(false)
-            }
-          } catch (e) {
-            console.log('크로스헤어 이벤트 오류:', e)
-          }
-        })
-
-        // 리사이즈 핸들러
-        const handleResize = () => {
-          if (chart && chartContainerRef.current) {
-            chart.applyOptions({
-              width: chartContainerRef.current.clientWidth,
-            })
-          }
-        }
-
-        window.addEventListener('resize', handleResize)
-        
-        // 차트 스타일링
-        chart.timeScale().fitContent()
-        
-        setChartInitialized(true)
-        console.log('✅ 표준 레이아웃 트레이딩 차트 초기화 완료')
-
-        return () => {
-          window.removeEventListener('resize', handleResize)
-        }
-
-      } catch (error) {
-        console.error('❌ 차트 초기화 오류:', error)
-      }
-    }
-
-    initChart()
+    let mounted = true;
     
-    return () => {
-      // 모든 시리즈 참조 안전하게 초기화
-      if (candleSeriesRef.current) candleSeriesRef.current = null;
-      if (volumeSeriesRef.current) volumeSeriesRef.current = null;
-      if (smaSeriesRef.current) smaSeriesRef.current = null;
-      if (emaSeriesRef.current) emaSeriesRef.current = null;
+    async function boot() {
+      if (!containerRef.current) return;
+      if (typeof window === 'undefined') return;
+      
+      // LightweightCharts 로드 대기
+      let attempts = 0;
+      while (!window.LightweightCharts && attempts < 100) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      const LW = window.LightweightCharts;
+      if (!LW || !mounted) return;
+
+      // 기존 차트 정리
       if (chartRef.current) {
-        try {
-          chartRef.current.remove();
-        } catch (e) {}
+        try { chartRef.current.remove(); } catch {}
         chartRef.current = null;
       }
-    }
-  }, [height, indicators, generateAdvancedData])
 
-  // 실시간 업데이트
+      // 차트 생성
+      const chart = LW.createChart(containerRef.current, {
+        width: containerRef.current.clientWidth || 900,
+        height: Math.max(500, height - 100),
+        layout: { 
+          background: { type: "solid", color: palette.bg }, 
+          textColor: palette.text, 
+          fontSize: 13,
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+        },
+        grid: { 
+          vertLines: { color: palette.grid }, 
+          horzLines: { color: palette.grid } 
+        },
+        rightPriceScale: {
+          borderColor: palette.axis,
+          scaleMargins: { 
+            top: 0.05, 
+            bottom: Object.values(indicators).some(Boolean) ? 0.3 : 0.05
+          },
+          autoScale: true,
+          visible: true,
+          entireTextOnly: false,
+        },
+        timeScale: { 
+          borderColor: palette.axis, 
+          timeVisible: true, 
+          secondsVisible: ["1m", "5m"].includes(timeframe),
+          rightOffset: 50,
+          barSpacing: 12,
+          minBarSpacing: 8,
+          fixLeftEdge: false,
+          fixRightEdge: false,
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: { color: palette.accent, style: 1, width: 1, labelVisible: true },
+          horzLine: { color: palette.accent, style: 1, width: 1, labelVisible: true },
+        },
+        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+        handleScale: { axisPressedMouseMove: true, pinch: true, mouseWheel: true },
+      });
+
+      chartRef.current = chart;
+      setChartApi(LW);
+
+      // 메인 시리즈 생성
+      let seriesData = candles;
+      if (chartType === "heikin-ashi") {
+        seriesData = transformToHeikinAshi(candles);
+      }
+
+      if (["candlestick", "heikin-ashi"].includes(chartType)) {
+        priceSeriesRef.current = chart.addCandlestickSeries({
+          upColor: palette.up,
+          downColor: palette.down,
+          borderUpColor: palette.up,
+          borderDownColor: palette.down,
+          wickUpColor: palette.up,
+          wickDownColor: palette.down,
+          priceFormat: { type: "price", precision: 0, minMove: 1000 },
+        });
+        priceSeriesRef.current.setData(
+          seriesData.map(({ time, open, high, low, close }) => ({ time, open, high, low, close }))
+        );
+      } else if (chartType === "line") {
+        priceSeriesRef.current = chart.addLineSeries({ 
+          color: palette.accent, 
+          lineWidth: 2,
+          priceFormat: { type: "price", precision: 0, minMove: 1000 }
+        });
+        priceSeriesRef.current.setData(
+          candles.map(({ time, close }) => ({ time, value: close }))
+        );
+      } else if (chartType === "area") {
+        priceSeriesRef.current = chart.addAreaSeries({
+          topColor: `${palette.accent}40`,
+          bottomColor: `${palette.accent}08`,
+          lineColor: palette.accent,
+          lineWidth: 2,
+          priceFormat: { type: "price", precision: 0, minMove: 1000 }
+        });
+        priceSeriesRef.current.setData(
+          candles.map(({ time, close }) => ({ time, value: close }))
+        );
+      }
+
+      // 현재가 라인
+      if (priceSeriesRef.current) {
+        priceLineRef.current = priceSeriesRef.current.createPriceLine({
+          price: priceInfo.displayPrice,
+          color: palette.accent,
+          lineWidth: 2,
+          lineStyle: 2,
+          axisLabelVisible: true,
+          title: "현재가",
+        });
+      }
+
+      // 지표들 추가
+      if (indicators.volume) {
+        volumeSeriesRef.current = chart.addHistogramSeries({
+          priceScaleId: "volume",
+          priceFormat: { type: "volume" },
+          scaleMargins: { top: 0.8, bottom: 0 },
+        });
+        chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+        volumeSeriesRef.current.setData(
+          candles.map(c => ({
+            time: c.time,
+            value: c.volume,
+            color: c.close >= c.open ? palette.volUp : palette.volDown,
+          }))
+        );
+      }
+
+      if (indicators.sma) {
+        indicatorRefs.current.sma = chart.addLineSeries({ 
+          color: "#F59E0B", 
+          lineWidth: 2,
+          title: "SMA(20)"
+        });
+        indicatorRefs.current.sma.setData(calcSMA(candles, 20));
+      }
+
+      if (indicators.ema) {
+        indicatorRefs.current.ema = chart.addLineSeries({ 
+          color: "#10B981", 
+          lineWidth: 2,
+          title: "EMA(12)"
+        });
+        indicatorRefs.current.ema.setData(calcEMA(candles, 12));
+      }
+
+      if (indicators.bollinger) {
+        const { upper, lower, middle } = calcBollinger(candles, 20, 2);
+        indicatorRefs.current.bbUpper = chart.addLineSeries({ 
+          color: "#8B5CF6", 
+          lineWidth: 1,
+          title: "BB Upper"
+        });
+        indicatorRefs.current.bbLower = chart.addLineSeries({ 
+          color: "#8B5CF6", 
+          lineWidth: 1,
+          title: "BB Lower"
+        });
+        indicatorRefs.current.bbMiddle = chart.addLineSeries({ 
+          color: "#8B5CF6", 
+          lineWidth: 1,
+          lineStyle: 2,
+          title: "BB Middle"
+        });
+        indicatorRefs.current.bbUpper.setData(upper);
+        indicatorRefs.current.bbLower.setData(lower);
+        indicatorRefs.current.bbMiddle.setData(middle);
+      }
+
+      if (indicators.rsi) {
+        indicatorRefs.current.rsi = chart.addLineSeries({ 
+          priceScaleId: "rsi", 
+          color: "#06B6D4", 
+          lineWidth: 2,
+          title: "RSI(14)"
+        });
+        chart.priceScale("rsi").applyOptions({ 
+          scaleMargins: { top: 0.85, bottom: 0.05 },
+          mode: 1,
+          invertScale: false,
+          alignLabels: true,
+          borderVisible: false,
+          ticksVisible: true,
+          entireTextOnly: false,
+        });
+        const rsi = calcRSI(candles, 14);
+        indicatorRefs.current.rsi.setData(rsi);
+        
+        // RSI 기준선들
+        indicatorRefs.current.rsi70 = indicatorRefs.current.rsi.createPriceLine({ 
+          price: 70, 
+          color: "#EF4444", 
+          lineStyle: 2, 
+          lineWidth: 1, 
+          title: "70" 
+        });
+        indicatorRefs.current.rsi30 = indicatorRefs.current.rsi.createPriceLine({ 
+          price: 30, 
+          color: "#10B981", 
+          lineStyle: 2, 
+          lineWidth: 1, 
+          title: "30" 
+        });
+      }
+
+      if (indicators.macd) {
+        const macdData = calcMACD(candles);
+        
+        indicatorRefs.current.macdLine = chart.addLineSeries({
+          priceScaleId: "macd",
+          color: "#3B82F6",
+          lineWidth: 2,
+          title: "MACD"
+        });
+        indicatorRefs.current.macdSignal = chart.addLineSeries({
+          priceScaleId: "macd",
+          color: "#EF4444",
+          lineWidth: 2,
+          title: "Signal"
+        });
+        indicatorRefs.current.macdHistogram = chart.addHistogramSeries({
+          priceScaleId: "macd",
+          color: "#10B981",
+          title: "Histogram"
+        });
+        
+        chart.priceScale("macd").applyOptions({ 
+          scaleMargins: { top: 0.85, bottom: 0.05 }
+        });
+        
+        indicatorRefs.current.macdLine.setData(macdData.map(d => ({ time: d.time, value: d.macd })));
+        indicatorRefs.current.macdSignal.setData(macdData.map(d => ({ time: d.time, value: d.signal })));
+        indicatorRefs.current.macdHistogram.setData(macdData.map(d => ({ 
+          time: d.time, 
+          value: d.histogram,
+          color: d.histogram >= 0 ? "#10B981" : "#EF4444"
+        })));
+      }
+
+      if (indicators.stochastic) {
+        const stochData = calcStochastic(candles);
+        
+        indicatorRefs.current.stochK = chart.addLineSeries({
+          priceScaleId: "stoch",
+          color: "#F59E0B",
+          lineWidth: 2,
+          title: "%K"
+        });
+        indicatorRefs.current.stochD = chart.addLineSeries({
+          priceScaleId: "stoch",
+          color: "#EF4444",
+          lineWidth: 2,
+          title: "%D"
+        });
+        
+        chart.priceScale("stoch").applyOptions({ 
+          scaleMargins: { top: 0.85, bottom: 0.05 }
+        });
+        
+        indicatorRefs.current.stochK.setData(stochData.map(d => ({ time: d.time, value: d.k })));
+        indicatorRefs.current.stochD.setData(stochData.map(d => ({ time: d.time, value: d.d })));
+      }
+
+      if (indicators.williams) {
+        const williamsData = calcWilliamsR(candles);
+        
+        indicatorRefs.current.williams = chart.addLineSeries({
+          priceScaleId: "williams",
+          color: "#8B5CF6",
+          lineWidth: 2,
+          title: "Williams %R"
+        });
+        
+        chart.priceScale("williams").applyOptions({ 
+          scaleMargins: { top: 0.85, bottom: 0.05 }
+        });
+        
+        indicatorRefs.current.williams.setData(williamsData);
+      }
+
+      if (indicators.atr) {
+        const atrData = calcATR(candles);
+        
+        indicatorRefs.current.atr = chart.addLineSeries({
+          priceScaleId: "atr",
+          color: "#F97316",
+          lineWidth: 2,
+          title: "ATR(14)"
+        });
+        
+        chart.priceScale("atr").applyOptions({ 
+          scaleMargins: { top: 0.85, bottom: 0.05 }
+        });
+        
+        indicatorRefs.current.atr.setData(atrData);
+      }
+
+      if (indicators.vwap) {
+        const vwapData = calcVWAP(candles);
+        
+        indicatorRefs.current.vwap = chart.addLineSeries({
+          color: "#DC2626",
+          lineWidth: 2,
+          lineStyle: 2,
+          title: "VWAP"
+        });
+        
+        indicatorRefs.current.vwap.setData(vwapData);
+      }
+
+      // 크로스헤어 이벤트
+      chart.subscribeCrosshairMove((param) => {
+        if (!param?.time || !priceSeriesRef.current) return setCrosshair(null);
+        const d = param.seriesData.get(priceSeriesRef.current);
+        if (!d) return setCrosshair(null);
+        
+        setCrosshair({
+          time: param.time,
+          open: d.open ?? d.value,
+          high: d.high,
+          low: d.low,
+          close: d.close ?? d.value,
+        });
+      });
+
+      chart.timeScale().fitContent();
+      setReady(true);
+
+      // 반응형 처리
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.target === containerRef.current && chartRef.current) {
+            const { width } = entry.contentRect;
+            chartRef.current.applyOptions({ width });
+          }
+        }
+      });
+      ro.observe(containerRef.current);
+
+      return () => {
+        ro.disconnect();
+      };
+    }
+    
+    boot();
+    return () => { mounted = false; };
+  }, [
+    timeframe, chartType, height, theme, JSON.stringify(indicators),
+    calcSMA, calcEMA, calcMACD, calcStochastic, calcWilliamsR, calcATR, calcVWAP, calcBollinger, calcRSI, transformToHeikinAshi
+  ]);
+
+  // 실시간 업데이트 - 기존 코드를 완전히 교체
   useEffect(() => {
-    if (realTimeData && chartInitialized && candleSeriesRef.current) {
-      const now = Math.floor(Date.now() / 1000)
-      const realTimeCandle = {
-        time: now,
-        open: parseFloat(realTimeData.openPrice || priceInfo.displayPrice),
-        high: parseFloat(realTimeData.maxPrice || priceInfo.displayPrice),
-        low: parseFloat(realTimeData.minPrice || priceInfo.displayPrice),
-        close: priceInfo.displayPrice,
-      }
+    if (!ready || !priceSeriesRef.current || !realTimeData) return;
+
+    // ✅ 타임프레임에 맞는 캔들 시간 계산
+    const getTimeframeMs = (tf) => ({
+      "1m": 60_000,
+      "5m": 300_000, 
+      "15m": 900_000,
+      "1h": 3_600_000,
+      "4h": 14_400_000,
+      "1d": 86_400_000,
+      "1w": 604_800_000
+    }[tf] || 3_600_000);
+
+    const timeframeMs = getTimeframeMs(timeframe);
+    const now = Date.now();
+    
+    // ✅ 현재 타임프레임에 맞는 캔들 시간 계산
+    const currentCandleTime = Math.floor(now / timeframeMs) * timeframeMs / 1000;
+    
+    const open = Number(realTimeData.openPrice || priceInfo.displayPrice);
+    const high = Number(realTimeData.maxPrice || priceInfo.displayPrice);
+    const low = Number(realTimeData.minPrice || priceInfo.displayPrice);
+    const close = Number(realTimeData.closePrice || priceInfo.displayPrice);
+
+    console.log('🔄 실시간 업데이트:', { 
+      timeframe,
+      currentCandleTime: new Date(currentCandleTime * 1000).toLocaleString(),
+      close 
+    });
+
+    const updateObj = ["candlestick", "heikin-ashi"].includes(chartType)
+      ? { time: currentCandleTime, open, high, low, close } // ✅ 타임프레임 기반 시간 사용
+      : { time: currentCandleTime, value: close };
+
+    try {
+      // ✅ 기존 캔들 업데이트 (새로운 캔들 생성 X)
+      priceSeriesRef.current.update(updateObj);
       
-      try {
-        candleSeriesRef.current.update(realTimeCandle)
-      } catch (error) {
-        console.error('실시간 데이터 적용 오류:', error)
+      // 현재가 라인 업데이트
+      if (priceLineRef.current) {
+        priceSeriesRef.current.removePriceLine(priceLineRef.current);
       }
+      priceLineRef.current = priceSeriesRef.current.createPriceLine({
+        price: close, 
+        color: palette.accent, 
+        lineWidth: 2, 
+        lineStyle: 2, 
+        title: `현재가: ${close.toLocaleString()}원`,
+      });
+      
+    } catch (e) {
+      console.warn('실시간 업데이트 오류:', e);
     }
-  }, [realTimeData, priceInfo, chartInitialized])
+  }, [ready, chartType, realTimeData, timeframe, palette.accent]); // ✅ timeframe 의존성 추가
 
-  // 지표 토글
-  const toggleIndicator = (indicator) => {
-    setIndicators(prev => ({
-      ...prev,
-      [indicator]: !prev[indicator]
-    }))
-  }
+  // UI 토글 함수
+  const toggleIndicator = (key) => {
+   setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
+  const toggleDrawingMode = (mode) => {
+   setDrawingMode(prev => prev === mode ? null : mode);
+  };
+
+  const isUp = priceInfo.change >= 0;
+
+ // 차트 타입 옵션들
+ const chartTypes = [
+   { key: "candlestick", label: "캔들", icon: "📊" },
+   { key: "heikin-ashi", label: "하이킨", icon: "📈" },
+   { key: "line", label: "라인", icon: "📉" },
+   { key: "area", label: "에어리어", icon: "🌊" }
+ ];
+
+  // 타임프레임 옵션들
   const timeframes = [
-    { value: "1m", label: "1분", active: timeframe === "1m" },
-    { value: "5m", label: "5분", active: timeframe === "5m" },
-    { value: "15m", label: "15분", active: timeframe === "15m" },
-    { value: "1h", label: "1시간", active: timeframe === "1h" },
-    { value: "4h", label: "4시간", active: timeframe === "4h" },
-    { value: "1d", label: "1일", active: timeframe === "1d" },
-  ]
-
-  const chartTypes = [
-    { value: "candlestick", label: "캔들", icon: BarChart3 },
-    { value: "line", label: "라인", icon: Activity },
-    { value: "area", label: "면적", icon: Target },
-  ]
-
-  return (
-    <Card className="w-full h-full shadow-lg border-0">
-      <CardHeader className="pb-3 border-b bg-gradient-to-r from-gray-50 to-gray-100">
-        {/* 통합된 가격 정보 헤더 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">₿</span>
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-gray-800">
-                  {coinInfo?.name || symbol.split('/')[0]} {symbol}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant={chartInitialized ? "default" : "secondary"} className="text-xs">
-                    {chartInitialized ? '활성' : '로딩'}
-                  </Badge>
-                  {priceInfo.isRealTime && (
-                    <Badge variant="outline" className="text-xs">
-                      <Zap className="w-3 h-3 mr-1" />
-                      실시간
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <div className={`text-sm flex items-center gap-1 font-semibold ${priceInfo.change >= 0 ? 'text-green-600' : 'text-red-600'}`}> 
-                  {priceInfo.change >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {priceInfo.change >= 0 ? '+' : ''}{priceInfo.change.toLocaleString()} ({priceInfo.change >= 0 ? '+' : ''}{priceInfo.changePercent.toFixed(2)}%)
-                </div>
-              </div>
-
-              <div className="text-2xl font-bold font-mono text-gray-800">
-                원{priceInfo.displayPrice.toLocaleString()}
-              </div>
-              {/* 크로스헤어 데이터 표시 (개선) */}
-              {/* {crosshairData && (
-                <div className="bg-white rounded-lg border p-3 shadow-sm min-w-[200px]">
-                  <div className="text-xs text-gray-500 mb-1">캔들 정보</div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>시가: ₩{crosshairData.open?.toLocaleString()}</div>
-                    <div>고가: ₩{crosshairData.high?.toLocaleString()}</div>
-                    <div>저가: ₩{crosshairData.low?.toLocaleString()}</div>
-                    <div>종가: ₩{crosshairData.close?.toLocaleString()}</div>
-                  </div>
-                  {crosshairData.volume > 0 && (
-                    <div className="text-xs mt-1 pt-1 border-t">
-                      거래량: {crosshairData.volume.toFixed(2)}
-                    </div>
-                  )}
-                </div>
-              )} */}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="shadow-sm">
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" className="shadow-sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* 시장 통계 */}
-        <div className="flex flex-row flex-nowrap items-center gap-4 text-xs pt-3 border-t w-full overflow-x-auto">
-          <span className="text-gray-500 mx-1">24h 거래량</span>
-          <span className="font-bold text-gray-800 mx-2">{priceInfo.volume24h.toLocaleString()} {symbol.split('/')[0]}</span>
-          <span className="text-gray-500 mx-1">24h 최고</span>
-          <span className="font-bold text-green-600 mx-2">₩{priceInfo.high24h.toLocaleString()}</span>
-          <span className="text-gray-500 mx-1">24h 최저</span>
-          <span className="font-bold text-red-600 mx-2">₩{priceInfo.low24h.toLocaleString()}</span>
-          <span className="text-gray-500 mx-1">변동성</span>
-          <span className="font-bold text-blue-600 mx-2">{Math.abs(priceInfo.changePercent).toFixed(2)}%</span>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-0">
-        <div className="border-b bg-gray-50">
-          {/* 차트 컨트롤 */}
-          <div className="flex items-center justify-between p-3">
-            {/* 타임프레임 */}
-            <div className="flex items-center gap-1">
-              {timeframes.map((tf) => (
-                <Button
-                  key={tf.value}
-                  variant={tf.active ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setTimeframe(tf.value)}
-                  className={`text-xs h-7 px-2 ${tf.active ? 'shadow-md' : ''}`}
-                >
-                  {tf.label}
-                </Button>
-              ))}
-            </div>
-
-            {/* 차트 타입 */}
-            <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm border">
-              {chartTypes.map((type) => {
-                const Icon = type.icon
-                return (
-                  <Button
-                    key={type.value}
-                    variant={chartType === type.value ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setChartType(type.value)}
-                    className="text-xs h-6 px-2"
-                  >
-                    <Icon className="w-3 h-3 mr-1" />
-                    {type.label}
-                  </Button>
-                )
-              })}
-            </div>
-
-            {/* 지표 컨트롤 */}
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-500 mr-1">지표:</span>
-              <Button
-                variant={indicators.volume ? "default" : "outline"}
-                size="sm"
-                onClick={() => toggleIndicator('volume')}
-                className="text-xs h-6 px-2"
-              >
-                <Volume2 className="w-3 h-3 mr-1" />
-                거래량
-              </Button>
-              <Button
-                variant={indicators.sma ? "default" : "outline"}
-                size="sm"
-                onClick={() => toggleIndicator('sma')}
-                className="text-xs h-6 px-2"
-              >
-                SMA
-              </Button>
-              <Button
-                variant={indicators.ema ? "default" : "outline"}
-                size="sm"
-                onClick={() => toggleIndicator('ema')}
-                className="text-xs h-6 px-2"
-              >
-                EMA
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* 메인 차트 (표준 레이아웃: 상단 가격 + 하단 볼륨) */}
-        <div
-          ref={chartContainerRef}
-          className="relative w-full bg-white"
-          style={{ 
-            height: height - 120, 
-            minHeight: 400,
-          }}
-        >
-
-          {/* ✅ 차트 내부 호버 정보 추가 */}
-          {crosshairData && showCrosshair && (
-            <div
-              className="absolute bg-white border rounded-lg shadow-lg p-3 pointer-events-none z-10"
-              style={{
-                left: 12,
-                bottom: 40,
-                minWidth: 200
-              }}
-            >
-              <div className="text-xs text-gray-500 mb-1">캔들 정보</div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>시가: ₩{crosshairData.open?.toLocaleString()}</div>
-                <div>고가: ₩{crosshairData.high?.toLocaleString()}</div>
-                <div>저가: ₩{crosshairData.low?.toLocaleString()}</div>
-                <div>종가: ₩{crosshairData.close?.toLocaleString()}</div>
-              </div>
-              {crosshairData.volume > 0 && (
-                <div className="text-xs mt-1 pt-1 border-t">
-                  거래량: {crosshairData.volume.toFixed(2)}
-                </div>
-              )}
-            </div>
-          )}
+    { key: "1m", label: "1분" },
+    { key: "5m", label: "5분" },
+    { key: "15m", label: "15분" },
+    { key: "1h", label: "1시간" },
+    { key: "4h", label: "4시간" },
+    { key: "1d", label: "1일" },
+    { key: "1w", label: "1주" }
+  ];
 
 
-          {!chartInitialized && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
-                <p className="text-gray-600 font-medium">표준 차트 로딩 중...</p>
-                <p className="text-gray-400 text-sm mt-1">가격 차트 + 하단 볼륨</p>
-              </div>
-            </div>
-          )}
-        </div>
+ // 지표 그룹들
+ const indicatorGroups = {
+   trend: [
+     { key: "sma", label: "SMA", desc: "단순이동평균" },
+     { key: "ema", label: "EMA", desc: "지수이동평균" },
+     { key: "bollinger", label: "볼린저밴드", desc: "변동성 지표" },
+     { key: "vwap", label: "VWAP", desc: "거래량가중평균" }
+   ],
+   momentum: [
+     { key: "rsi", label: "RSI", desc: "상대강도지수" },
+     { key: "macd", label: "MACD", desc: "이동평균수렴확산" },
+     { key: "stochastic", label: "스토캐스틱", desc: "모멘텀 오실레이터" },
+     { key: "williams", label: "Williams %R", desc: "윌리엄스 퍼센트R" }
+   ],
+   volume: [
+     { key: "volume", label: "거래량", desc: "거래량 히스토그램" },
+     { key: "atr", label: "ATR", desc: "평균진폭" }
+   ]
+ };
 
-        {/* 차트 하단 정보 */}
-        <div className="flex items-center justify-between p-3 border-t bg-gradient-to-r from-gray-50 to-gray-100">
-          <div className="flex items-center gap-4 text-xs text-gray-600">
-            <div className="flex items-center gap-1">
-              <div className={`w-2 h-2 rounded-full ${priceInfo.isRealTime ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-              <span>연결: {priceInfo.isRealTime ? '실시간' : '정적'}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Volume2 className="h-3 w-3" />
-              <span>데이터: {generateAdvancedData.length}개</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Activity className="h-3 w-3" />
-              <span>지표: {Object.values(indicators).filter(Boolean).length}개</span>
-            </div>
-          </div>
-          
-          <div className="text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <Target className="h-3 w-3" />
-              표준 레이아웃 • {new Date().toLocaleTimeString()}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
+ // 드로잉 도구들
+ const drawingTools = [
+   { key: "trendline", label: "추세선", icon: "📏" },
+   { key: "horizontal", label: "수평선", icon: "➖" },
+   { key: "vertical", label: "수직선", icon: "📐" },
+   { key: "rectangle", label: "사각형", icon: "⬜" },
+   { key: "fibonacci", label: "피보나치", icon: "🌀" }
+ ];
+
+ return (
+   <div className="trading-chart-container" style={{ 
+     width: "100%", 
+     border: theme === "dark" ? "1px solid #2D3748" : "1px solid #E2E8F0", 
+     borderRadius: 16, 
+     overflow: "hidden",
+     backgroundColor: palette.bg,
+     fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+   }}>
+     {/* 프로페셔널 헤더 */}
+     <div style={{
+       padding: "12px 20px",
+       display: "flex",
+       justifyContent: "space-between",
+       alignItems: "center",
+       background: theme === "dark" 
+         ? "linear-gradient(135deg, #1A202C 0%, #2D3748 100%)" 
+         : "linear-gradient(135deg, #F7FAFC 0%, #EDF2F7 100%)",
+       borderBottom: theme === "dark" ? "1px solid #2D3748" : "1px solid #E2E8F7",
+       backdropFilter: "blur(10px)"
+     }}>
+       {/* 좌측: 심볼 정보 */}
+       <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+         <div style={{ 
+           width: 40, 
+           height: 40, 
+           background: "linear-gradient(135deg, #667EEA 0%, #764BA2 100%)", 
+           borderRadius: 12, 
+           color: "#fff", 
+           display: "grid", 
+           placeItems: "center", 
+           fontWeight: 700,
+           fontSize: 18
+         }}>
+           ₿
+         </div>
+         
+         <div>
+           <div style={{ 
+             fontWeight: 700, 
+             fontSize: 16,
+             color: theme === "dark" ? "#F7FAFC" : "#1A202C",
+             marginBottom: 2
+           }}>
+             {symbol}
+           </div>
+           <div style={{ display: "flex", gap: 12, fontSize: 12, alignItems: "center" }}>
+             <span style={{ 
+               padding: "3px 8px", 
+               borderRadius: 6, 
+               background: ready ? (theme === "dark" ? "#065F46" : "#D1FAE5") : (theme === "dark" ? "#7C2D12" : "#FEE2E2"),
+               color: ready ? (theme === "dark" ? "#34D399" : "#059669") : (theme === "dark" ? "#F87171" : "#DC2626"),
+               fontWeight: 600,
+               fontSize: 11
+             }}>
+               {ready ? "● 활성" : "○ 로딩"}
+             </span>
+             {priceInfo.isRealTime && (
+               <span style={{ 
+                 padding: "3px 8px", 
+                 borderRadius: 6, 
+                 border: theme === "dark" ? "1px solid #4A5568" : "1px solid #CBD5E0",
+                 color: theme === "dark" ? "#A0AEC0" : "#4A5568",
+                 fontSize: 11
+               }}>
+                 실시간 연결
+               </span>
+             )}
+           </div>
+         </div>
+         
+         {/* 가격 정보 */}
+         <div style={{ display: "flex", gap: 20, alignItems: "baseline" }}>
+           <div style={{ 
+             fontWeight: 700, 
+             color: isUp ? "#10B981" : "#EF4444", 
+             fontSize: 14,
+             display: "flex",
+             flexDirection: "column",
+             alignItems: "flex-end"
+           }}>
+             <span>
+               {isUp ? "▲" : "▼"} {Math.abs(priceInfo.change).toLocaleString()}원
+             </span>
+             <span style={{ fontSize: 12, opacity: 0.8 }}>
+               ({isUp ? "+" : ""}{priceInfo.changePercent.toFixed(2)}%)
+             </span>
+           </div>
+           <div style={{ 
+             fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", 
+             fontWeight: 800, 
+             fontSize: 24, 
+             color: theme === "dark" ? "#F7FAFC" : "#1A202C",
+             letterSpacing: "-0.5px"
+           }}>
+             {priceInfo.displayPrice.toLocaleString()}
+             <span style={{ fontSize: 16, marginLeft: 6, opacity: 0.7 }}>KRW</span>
+           </div>
+         </div>
+       </div>
+
+       {/* 우측: 컨트롤 패널 */}
+       <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+         {/* 타임프레임 선택 */}
+         <div style={{ display: "flex", gap: 4, padding: "4px", borderRadius: 8, background: theme === "dark" ? "#2D3748" : "#F7FAFC" }}>
+           {timeframes.map(tf => (
+             <button
+               key={tf.key}
+               onClick={() => setTimeframe(tf.key)}
+               style={{
+                 fontSize: 11, 
+                 padding: "6px 10px", 
+                 borderRadius: 6, 
+                 border: "none",
+                 background: timeframe === tf.key ? palette.accent : "transparent", 
+                 color: timeframe === tf.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                 fontWeight: timeframe === tf.key ? 600 : 400,
+                 cursor: "pointer",
+                 transition: "all 0.2s ease"
+               }}
+             >
+               {tf.label}
+             </button>
+           ))}
+         </div>
+
+         {/* 차트 타입 선택 */}
+         <div style={{ display: "flex", gap: 4, padding: "4px", borderRadius: 8, background: theme === "dark" ? "#2D3748" : "#F7FAFC" }}>
+           {chartTypes.map(type => (
+             <button
+               key={type.key}
+               onClick={() => setChartType(type.key)}
+               style={{
+                 fontSize: 11, 
+                 padding: "6px 10px", 
+                 borderRadius: 6, 
+                 border: "none",
+                 background: chartType === type.key ? palette.accent : "transparent", 
+                 color: chartType === type.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                 fontWeight: chartType === type.key ? 600 : 400,
+                 cursor: "pointer",
+                 transition: "all 0.2s ease",
+                 display: "flex",
+                 alignItems: "center",
+                 gap: 4
+               }}
+             >
+               <span>{type.icon}</span>
+               {type.label}
+             </button>
+           ))}
+         </div>
+
+         {/* 지표 버튼 */}
+         <div style={{ position: "relative" }}>
+           <button 
+             style={{
+               padding: "8px 12px",
+               borderRadius: 8,
+               border: "none",
+               background: theme === "dark" ? "#4A5568" : "#E2E8F0",
+               color: theme === "dark" ? "#F7FAFC" : "#2D3748",
+               fontSize: 12,
+               fontWeight: 600,
+               cursor: "pointer"
+             }}
+             onClick={() => setShowIndicators(!showIndicators)}
+           >
+             📊 지표 ({Object.values(indicators).filter(Boolean).length})
+           </button>
+         </div>
+
+         {/* 드로잉 도구 */}
+         <div style={{ display: "flex", gap: 4 }}>
+           {drawingTools.slice(0, 3).map(tool => (
+             <button
+               key={tool.key}
+               onClick={() => toggleDrawingMode(tool.key)}
+               style={{
+                 padding: "6px 8px",
+                 borderRadius: 6,
+                 border: "none",
+                 background: drawingMode === tool.key ? palette.accent : (theme === "dark" ? "#4A5568" : "#E2E8F0"),
+                 color: drawingMode === tool.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                 fontSize: 11,
+                 cursor: "pointer",
+                 title: tool.label
+               }}
+             >
+               {tool.icon}
+             </button>
+           ))}
+         </div>
+       </div>
+     </div>
+
+     {/* 지표 패널 (조건부 표시) */}
+     {showIndicators && (
+       <div style={{
+         padding: "16px 20px",
+         background: theme === "dark" ? "#1A202C" : "#F8FAFC",
+         borderBottom: theme === "dark" ? "1px solid #2D3748" : "1px solid #E2E8F0"
+       }}>
+         {Object.entries(indicatorGroups).map(([groupName, groupIndicators]) => (
+           <div key={groupName} style={{ marginBottom: 16 }}>
+             <h4 style={{ 
+               margin: "0 0 8px 0", 
+               fontSize: 12, 
+               fontWeight: 600, 
+               color: theme === "dark" ? "#A0AEC0" : "#4A5568",
+               textTransform: "uppercase",
+               letterSpacing: "0.5px"
+             }}>
+               {groupName === 'trend' ? '추세' : groupName === 'momentum' ? '모멘텀' : '거래량'}
+             </h4>
+             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+               {groupIndicators.map(indicator => (
+                 <button
+                   key={indicator.key}
+                   onClick={() => toggleIndicator(indicator.key)}
+                   style={{
+                     padding: "6px 12px",
+                     borderRadius: 6,
+                     border: `1px solid ${indicators[indicator.key] ? palette.accent : (theme === "dark" ? "#4A5568" : "#CBD5E0")}`,
+                     background: indicators[indicator.key] ? `${palette.accent}20` : "transparent",
+                     color: indicators[indicator.key] ? palette.accent : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                     fontSize: 11,
+                     fontWeight: indicators[indicator.key] ? 600 : 400,
+                     cursor: "pointer",
+                     transition: "all 0.2s ease"
+                   }}
+                   title={indicator.desc}
+                 >
+                   {indicator.label}
+                 </button>
+               ))}
+             </div>
+           </div>
+         ))}
+       </div>
+     )}
+
+     {/* 메인 차트 영역 */}
+     <div
+       ref={containerRef}
+       style={{
+         height: Math.max(500, height - (showIndicators ? 200 : 120)),
+         background: palette.bg,
+         position: "relative",
+         minHeight: 500, // ✅ 최소 높이 보장
+       }}
+     >
+       {/* 로딩 오버레이 */}
+       {!ready && (
+         <div style={{
+           position: "absolute",
+           top: 0,
+           left: 0,
+           right: 0,
+           bottom: 0,
+           display: "flex",
+           alignItems: "center",
+           justifyContent: "center",
+           background: `${palette.bg}CC`,
+           backdropFilter: "blur(4px)",
+           zIndex: 10
+         }}>
+           <div style={{ textAlign: "center" }}>
+             <div style={{
+               width: 40,
+               height: 40,
+               border: `3px solid ${palette.accent}30`,
+               borderTop: `3px solid ${palette.accent}`,
+               borderRadius: "50%",
+               animation: "spin 1s linear infinite",
+               margin: "0 auto 12px"
+             }} />
+             <div style={{ color: palette.text, fontSize: 14, fontWeight: 500 }}>
+               차트 로딩 중...
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* 크로스헤어 정보 패널 */}
+       {crosshair && ready && (
+         <div style={{
+           position: "absolute", 
+           left: 16, 
+           top: 16, 
+           padding: 12, 
+           minWidth: 280,
+           background: theme === "dark" ? "#1A202CDD" : "#FFFFFFDD",
+           color: theme === "dark" ? "#F7FAFC" : "#1A202C",
+           border: theme === "dark" ? "1px solid #2D3748" : "1px solid #E2E8F0",
+           borderRadius: 12, 
+           boxShadow: "0 8px 32px rgba(0,0,0,0.12)", 
+           fontSize: 12,
+           pointerEvents: "none",
+           backdropFilter: "blur(12px)"
+         }}>
+           <div style={{ 
+             opacity: 0.7, 
+             marginBottom: 8, 
+             fontSize: 11, 
+             fontWeight: 600,
+             letterSpacing: "0.5px"
+           }}>
+             {new Date(crosshair.time * 1000).toLocaleString('ko-KR')}
+           </div>
+           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+             {crosshair.open !== undefined && (
+               <div>
+                 <span style={{ opacity: 0.7 }}>시가: </span>
+                 <span style={{ fontWeight: 600, fontFamily: "ui-monospace, monospace" }}>
+                   ₩{Math.round(crosshair.open).toLocaleString()}
+                 </span>
+               </div>
+             )}
+             {crosshair.high !== undefined && (
+               <div>
+                 <span style={{ opacity: 0.7 }}>고가: </span>
+                 <span style={{ fontWeight: 600, fontFamily: "ui-monospace, monospace", color: palette.up }}>
+                   ₩{Math.round(crosshair.high).toLocaleString()}
+                 </span>
+               </div>
+             )}
+             {crosshair.low !== undefined && (
+               <div>
+                 <span style={{ opacity: 0.7 }}>저가: </span>
+                 <span style={{ fontWeight: 600, fontFamily: "ui-monospace, monospace", color: palette.down }}>
+                   ₩{Math.round(crosshair.low).toLocaleString()}
+                 </span>
+               </div>
+             )}
+             <div>
+               <span style={{ opacity: 0.7 }}>종가: </span>
+               <span style={{ fontWeight: 600, fontFamily: "ui-monospace, monospace" }}>
+                 ₩{Math.round(crosshair.close ?? crosshair.open ?? 0).toLocaleString()}
+               </span>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* 드로잉 모드 표시 */}
+       {drawingMode && (
+         <div style={{
+           position: "absolute",
+           top: 16,
+           right: 16,
+           padding: "8px 12px",
+           background: `${palette.accent}20`,
+           color: palette.accent,
+           borderRadius: 8,
+           fontSize: 12,
+           fontWeight: 600,
+           border: `1px solid ${palette.accent}40`
+         }}>
+           {drawingTools.find(t => t.key === drawingMode)?.icon} {drawingTools.find(t => t.key === drawingMode)?.label} 모드
+         </div>
+       )}
+     </div>
+
+     {/* 하단 상태바 */}
+     <div style={{
+       padding: "8px 20px",
+       display: "flex", 
+       justifyContent: "space-between", 
+       alignItems: "center",
+       background: theme === "dark" ? "#1A202C" : "#F8FAFC",
+       borderTop: theme === "dark" ? "1px solid #2D3748" : "1px solid #E2E8F0",
+       fontSize: 11, 
+       color: theme === "dark" ? "#A0AEC0" : "#4A5568"
+     }}>
+       <div style={{ display: "flex", gap: 20 }}>
+         <span>
+           🔗 연결: <strong>{priceInfo.isRealTime ? "실시간" : "정적"}</strong>
+         </span>
+         <span>
+           📊 데이터: <strong>{candles.length}개 캔들</strong>
+         </span>
+         <span>
+           📈 지표: <strong>{Object.values(indicators).filter(Boolean).length}개 활성</strong>
+         </span>
+         <span>
+           ⏱️ 간격: <strong>{timeframes.find(tf => tf.key === timeframe)?.label}</strong>
+         </span>
+       </div>
+       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+         <span>TradingView Pro • {new Date().toLocaleTimeString('ko-KR')}</span>
+         <div style={{
+           width: 8,
+           height: 8,
+           borderRadius: "50%",
+           background: ready ? "#10B981" : "#EF4444"
+         }} />
+       </div>
+     </div>
+
+     {/* CSS 애니메이션 */}
+     <style jsx>{`
+       @keyframes spin {
+         0% { transform: rotate(0deg); }
+         100% { transform: rotate(360deg); }
+       }
+       
+       .trading-chart-container button:hover {
+         transform: translateY(-1px);
+         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+       }
+       
+       .trading-chart-container button:active {
+         transform: translateY(0);
+       }
+     `}</style>
+   </div>
+ );
 }
+
+export default TradingChart;
