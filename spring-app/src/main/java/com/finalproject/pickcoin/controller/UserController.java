@@ -66,6 +66,7 @@ public class UserController {
         user.setVerificationToken(token);        
         // 인증 만료 시간 5분
         user.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+        user.setProvider("pickcoin");
 
         emailService.sendVerificationEmail(email, token); // 이메일 인증 발송
         
@@ -129,6 +130,7 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
     
+    //카카오, 구글 로그인
     @PostMapping("/social-login")
     public ResponseEntity<Map<String, Object>> socialLogin(
         @RequestParam String provider,
@@ -136,6 +138,9 @@ public class UserController {
         @RequestParam(required = false) String providerId
     
     ) {
+        logger.info("[소셜 로그인] 요청 들어옴");
+        logger.info("provider: {}, email: {}, providerId: {}", provider, email, providerId);
+
         Map<String, Object> result = new HashMap<>();
 
         Optional<Users> existingUser = userService.findByEmail(email);
@@ -150,17 +155,22 @@ public class UserController {
             user.setProviderId(providerId);
             user.setVerified(true); // 소셜 로그인은 이메일 인증 생략
             user.setCreatedAt(LocalDateTime.now());
+            user.setRole(Role.USER);
+            user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); //password는 null 안되므로 임의 값 설정
 
+            logger.info("신규 유저 저장 전: {}", user);
             userService.save(user); // 신규 유저 저장
+            logger.info("신규 유저 저장 완료");
         } else {
             user = existingUser.get();
+            logger.info("기존 유저: {}", user);
         }
 
         // jwt 발급
         String token = jwtHelper.createAccessToken(user.getEmail(), Map.of("name", user.getName()));
 
         result.put("access_token", token);
-        result.put("sub", user.getEmail());
+        result.put("socialEmail", user.getEmail());
         result.put("provider", user.getProvider());
 
         return ResponseEntity.ok(result);
