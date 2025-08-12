@@ -33,6 +33,8 @@ export const VoiceAssistant2 = () => {
   const [userTranscript, setUserTranscript] = useState("");
   const [botResponse, setBotResponse] = useState("");
   const [textInput, setTextInput] = useState(""); // 텍스트 입력 상태 
+  // [추가] 대화 기록을 배열로 관리하는 새로운 상태
+  const [chatHistory, setChatHistory] = useState([]); 
 
   // --- 참조 관리 ---
   const socketRef = useRef(null);
@@ -112,11 +114,21 @@ export const VoiceAssistant2 = () => {
         setStatusMessage(`"${data.text}"`);
         break;
       case 'botResponse':
-        setUserTranscript(prev => prev + (prev ? " " : "") + data.userText); // 기존 텍스트에 추가
-        setBotResponse(data.botResponseText);
+        // setUserTranscript(prev => prev + (prev ? " " : "") + data.userText); // 기존 텍스트에 추가
+        // setBotResponse(data.botResponseText);
+        
+        // [수정] 새로운 대화(질문+답변)를 chatHistory 배열에 추가
+        setChatHistory(prevHistory => [
+          ...prevHistory,
+          {
+            user: data.userText,
+            bot: data.botResponseText
+          }
+        ]);
         speakText(data.botResponseText);
         setStatusMessage('응답 완료');
         setIsListening(false);
+        stopListening(); //실제 마이크 녹음을 중지하고 자원을 정리합니다.
         break;
       case 'error':
         console.error('Server error:', data.text);
@@ -173,55 +185,99 @@ export const VoiceAssistant2 = () => {
   const stopListening = () => {
     if (mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop();
+      // [수정] "말 끝났다"는 신호를 서버에 먼저 보냅니다.
+      // 서버의 audio_generator는 이 'None' 신호를 받고 루프를 종료합니다.
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ type: 'end_of_speech' }));
+      }
+    
     }
   };
 
-  // 모든 마이크 관련 클릭 이벤트를 제어하는 통합 핸들러
+  // // 모든 마이크 관련 클릭 이벤트를 제어하는 통합 핸들러
+  // const handleMicButtonClick = async () => {
+  //   // 1. 이미 듣고 있는 경우: 녹음 중지
+  //   if (isListening) {
+  //     stopListening();
+  //     return;
+  //   }
+
+  //   // 2. 웹소켓 연결 보장 (필수)
+  //   try {
+  //     await ensureWebSocketConnection();
+  //   } catch (error) {
+  //     setStatusMessage('서버 연결에 실패했습니다.');
+  //     return;
+  //   }
+    
+  //   // 3. 권한 상태에 따른 분기 처리
+  //   if (permissionStatus === 'denied') {
+  //     alert("마이크 권한이 차단되었습니다.\n브라우저 주소창의 자물쇠 🔒 아이콘을 클릭하여 권한을 '허용'으로 변경해주세요.");
+  //     return;
+  //   }
+
+  //   // 4. 권한이 허용되었거나 아직 묻지 않은 상태: 마이크 사용 시도
+  //   try {
+  //     setUserTranscript("");
+  //     setBotResponse("");
+  //     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  //     startRecording(stream); // 성공 시 녹음 시작
+      
+  //   } catch (err) {
+  //       console.error("마이크 접근 오류:", err); // 콘솔에 실제 오류 객체 기록
+
+  //       // 오류 유형에 따른 상세 메시지 표시 (catch 블록 로직 재활용)
+  //       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+  //         setStatusMessage("오류: 마이크 접근 권한이 거부되었습니다.");
+  //       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+  //         setStatusMessage("오류: 사용 가능한 마이크 장치가 없습니다.");
+  //       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+  //         setStatusMessage("오류: 마이크를 사용할 수 없습니다. 다른 프로그램이 사용 중인지 확인하세요.");
+  //       } else {
+  //         // 기타 예측하지 못한 오류
+  //         setStatusMessage('오류: 마이크를 시작할 수 없습니다.');
+  //       }
+  //   }
+  // };
+
+  // voice-assistant2.jsx의 handleMicButtonClick 함수
+
   const handleMicButtonClick = async () => {
-    // 1. 이미 듣고 있는 경우: 녹음 중지
+    // 1. 이미 듣고 있는 경우: 녹음 중지 신호를 보냄
     if (isListening) {
       stopListening();
       return;
     }
 
-    // 2. 웹소켓 연결 보장 (필수)
-    try {
-      await ensureWebSocketConnection();
-    } catch (error) {
-      setStatusMessage('서버 연결에 실패했습니다.');
-      return;
-    }
+    // 2. 대화 내용 초기화 및 상태 변경
+    // setUserTranscript("");
+    // setBotResponse("");
+    setStatusMessage("연결 중...");
     
-    // 3. 권한 상태에 따른 분기 처리
-    if (permissionStatus === 'denied') {
-      alert("마이크 권한이 차단되었습니다.\n브라우저 주소창의 자물쇠 🔒 아이콘을 클릭하여 권한을 '허용'으로 변경해주세요.");
-      return;
-    }
-
-    // 4. 권한이 허용되었거나 아직 묻지 않은 상태: 마이크 사용 시도
     try {
-      setUserTranscript("");
-      setBotResponse("");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      startRecording(stream); // 성공 시 녹음 시작
-      
-    } catch (err) {
-        console.error("마이크 접근 오류:", err); // 콘솔에 실제 오류 객체 기록
+      // 3. 웹소켓 연결 보장
+      const ws = await ensureWebSocketConnection();
 
-        // 오류 유형에 따른 상세 메시지 표시 (catch 블록 로직 재활용)
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setStatusMessage("오류: 마이크 접근 권한이 거부되었습니다.");
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          setStatusMessage("오류: 사용 가능한 마이크 장치가 없습니다.");
-        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-          setStatusMessage("오류: 마이크를 사용할 수 없습니다. 다른 프로그램이 사용 중인지 확인하세요.");
-        } else {
-          // 기타 예측하지 못한 오류
-          setStatusMessage('오류: 마이크를 시작할 수 없습니다.');
-        }
+      // 4. [수정된 핵심] 서버에 "이제 음성 보낼게" 라는 시작 신호를 보냄
+      ws.send(JSON.stringify({ type: 'start_speech' }));
+      
+      // 5. 마이크 권한 요청 및 녹음 시작
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      startRecording(stream);
+
+    } catch (err) {
+      console.error("마이크 접근 또는 연결 오류:", err);
+      
+      // 오류 유형에 따른 상세 메시지 표시 (기존과 동일)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setStatusMessage("오류: 마이크 접근 권한이 거부되었습니다.");
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setStatusMessage("오류: 사용 가능한 마이크 장치가 없습니다.");
+      } else {
+        setStatusMessage('오류: 마이크를 시작할 수 없습니다.');
+      }
     }
   };
-
 
   // 텍스트 제출 핸들러 추가
   const handleSubmitText = async (e) => {
@@ -289,6 +345,7 @@ export const VoiceAssistant2 = () => {
           </div>
           
           <div ref={chatLogRef} className="h-64 overflow-y-auto space-y-4 pr-2">
+
             {/* 초기 상태 또는 에러 상태 */}
             {!userTranscript && !botResponse && (
                  <div className="text-center p-4 h-full flex flex-col justify-center items-center">
@@ -298,12 +355,26 @@ export const VoiceAssistant2 = () => {
             )}
             
             {/* 상호작용 결과 표시 */}
-            {userTranscript && (
+            {/* {userTranscript && (
                 <div className="p-3 bg-muted/50 rounded-lg text-right">
                     <p className="text-sm font-medium">나의 질문:</p>
                     <p className="text-sm text-muted-foreground">"{userTranscript}"</p>
                 </div>
-            )}
+            )} */}
+            
+            {/* [수정] chatHistory 배열을 순회하며 대화 목록을 표시 */}
+            {chatHistory.map((chat, index) => (
+              <React.Fragment key={index}>
+                <div className="p-3 bg-muted/50 rounded-lg text-right">
+                  <p className="text-sm font-medium">나의 질문:</p>
+                  <p className="text-sm text-muted-foreground">"{chat.user}"</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg text-left">
+                  <p className="text-sm font-medium text-green-700">AI 답변:</p>
+                  <p className="text-sm text-green-600">{chat.bot}</p>
+                </div>
+              </React.Fragment>
+            ))}            
 
             {isListening && (
                 <div className="p-3 text-center">
