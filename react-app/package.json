@@ -1,15 +1,12 @@
 {
-  "name": "my-v0-project",
+  "name": "webapp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
     "dev": "next dev -H 0.0.0.0",
-    "lint": "next lint",
+    "build": "next build",
     "start": "next start",
-    "build:babel": "npx babel . --out-dir converted --extensions \".ts,.tsx\" --ignore \"**/*.d.ts,**/node_modules/**,.next/**\" --presets @babel/preset-react,@babel/preset-typescript",
-    "rename:jsx": "node rename-js-to-jsx.js",
-    "convert": "pnpx --package @babel/cli babel . --out-dir converted --extensions \".tsx\" --ignore \"**/*.d.ts,**/node_modules/**,.next/**\" --presets @babel/preset-react,@babel/preset-typescript"
+    "lint": "next lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -49,31 +46,24 @@
     "embla-carousel-react": "8.5.1",
     "geist": "^1.3.1",
     "input-otp": "1.4.1",
+    "lightweight-charts": "^5.0.8",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "^0.4.4",
     "react": "^19",
-    "react-day-picker": "9.8.0",
     "react-dom": "^19",
-    "react-hook-form": "^7.54.1",
-    "react-resizable-panels": "^2.1.7",
-    "recharts": "latest",
-    "sonner": "^1.7.1",
-    "tailwind-merge": "^2.5.5",
-    "tailwindcss-animate": "^1.0.7",
-    "vaul": "^0.9.6",
-    "zod": "^3.24.1"
+    "axios": "^1.11.0",
+    "lightweight-charts": "^5.0.8",
+    "lucide-react": "^0.536.0",
+    "recharts": "^3.1.2",
+    "rm": "^0.1.8",
+    "socket.io-client": "^4.8.1",
+    "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
-    "@babel/cli": "^7.28.0",
-    "@babel/core": "^7.28.0",
-    "@babel/preset-react": "^7.27.1",
-    "@babel/preset-typescript": "^7.27.1",
-    "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "postcss": "^8.5",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "@tailwindcss/forms": "^0.5.10",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.9",
+    "typescript": "^5.8.3"
   }
 }

@@ -2,7 +2,7 @@
 FROM gradle:7.5-jdk17 AS build
 
 USER root
-#작업디렉토리 설정 
+#작업디렉토리 설정
 WORKDIR /home/gradle/app
 #설정한 작업 디렉토리에 spring-app 프로젝트 폴더 통으로 복사
 COPY . .

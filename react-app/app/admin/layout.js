@@ -12,7 +12,7 @@ export default function RootLayout({children}) {
 
   function isTokenExpired(token) {
     try {
-      const [, payloadBase64] = token.split('.');
+      const [payloadBase64] = token.split('.');
       const payload = JSON.parse(atob(payloadBase64));
       const exp = payload.exp;
       return Date.now() >= exp * 1000;
