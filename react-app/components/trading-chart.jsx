@@ -749,10 +749,10 @@ function TradingChart({
         priceSeriesRef.current.removePriceLine(priceLineRef.current);
       }
       priceLineRef.current = priceSeriesRef.current.createPriceLine({
-        price: close, 
-        color: palette.accent, 
-        lineWidth: 2, 
-        lineStyle: 2, 
+        price: close,
+        color: palette.accent,
+        lineWidth: 2,
+        lineStyle: 2,
         title: `현재가: ${close.toLocaleString()}원`,
       });
       
@@ -763,22 +763,22 @@ function TradingChart({
 
   // UI 토글 함수
   const toggleIndicator = (key) => {
-   setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
+    setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const toggleDrawingMode = (mode) => {
-   setDrawingMode(prev => prev === mode ? null : mode);
+    setDrawingMode(prev => prev === mode ? null : mode);
   };
 
   const isUp = priceInfo.change >= 0;
 
  // 차트 타입 옵션들
- const chartTypes = [
-   { key: "candlestick", label: "캔들", icon: "📊" },
-   { key: "heikin-ashi", label: "하이킨", icon: "📈" },
-   { key: "line", label: "라인", icon: "📉" },
-   { key: "area", label: "에어리어", icon: "🌊" }
- ];
+  const chartTypes = [
+    { key: "candlestick", label: "캔들", icon: "📊" },
+    { key: "heikin-ashi", label: "하이킨", icon: "📈" },
+    { key: "line", label: "라인", icon: "📉" },
+    { key: "area", label: "에어리어", icon: "🌊" }
+  ];
 
   // 타임프레임 옵션들
   const timeframes = [
@@ -793,33 +793,32 @@ function TradingChart({
 
 
  // 지표 그룹들
- const indicatorGroups = {
-   trend: [
-     { key: "sma", label: "SMA", desc: "단순이동평균" },
-     { key: "ema", label: "EMA", desc: "지수이동평균" },
-     { key: "bollinger", label: "볼린저밴드", desc: "변동성 지표" },
-     { key: "vwap", label: "VWAP", desc: "거래량가중평균" }
-   ],
-   momentum: [
-     { key: "rsi", label: "RSI", desc: "상대강도지수" },
-     { key: "macd", label: "MACD", desc: "이동평균수렴확산" },
-     { key: "stochastic", label: "스토캐스틱", desc: "모멘텀 오실레이터" },
-     { key: "williams", label: "Williams %R", desc: "윌리엄스 퍼센트R" }
-   ],
-   volume: [
-     { key: "volume", label: "거래량", desc: "거래량 히스토그램" },
-     { key: "atr", label: "ATR", desc: "평균진폭" }
-   ]
- };
+const indicatorGroups = {
+  trend: [
+    { key: "sma", label: "SMA", desc: "단순이동평균" },
+    { key: "ema", label: "EMA", desc: "지수이동평균" },
+    { key: "bollinger", label: "볼린저밴드", desc: "변동성 지표" },
+    { key: "vwap", label: "VWAP", desc: "거래량가중평균" }
+  ],
+  momentum: [{ key: "rsi", label: "RSI", desc: "상대강도지수" },
+    { key: "macd", label: "MACD", desc: "이동평균수렴확산" },
+    { key: "stochastic", label: "스토캐스틱", desc: "모멘텀 오실레이터" },
+    { key: "williams", label: "Williams %R", desc: "윌리엄스 퍼센트R" }
+  ],
+  volume: [
+    { key: "volume", label: "거래량", desc: "거래량 히스토그램" },
+    { key: "atr", label: "ATR", desc: "평균진폭" }
+  ]
+};
 
  // 드로잉 도구들
  const drawingTools = [
-   { key: "trendline", label: "추세선", icon: "📏" },
-   { key: "horizontal", label: "수평선", icon: "➖" },
-   { key: "vertical", label: "수직선", icon: "📐" },
-   { key: "rectangle", label: "사각형", icon: "⬜" },
-   { key: "fibonacci", label: "피보나치", icon: "🌀" }
- ];
+  { key: "trendline", label: "추세선", icon: "📏" },
+  { key: "horizontal", label: "수평선", icon: "➖" },
+  { key: "vertical", label: "수직선", icon: "📐" },
+  { key: "rectangle", label: "사각형", icon: "⬜" },
+  { key: "fibonacci", label: "피보나치", icon: "🌀" }
+];
 
  return (
    <div className="trading-chart-container" style={{ 
@@ -1223,7 +1222,7 @@ function TradingChart({
 
      {/* CSS 애니메이션 */}
      <style jsx>{`
-       @keyframes spin {
+     @keyframes spin {
          0% { transform: rotate(0deg); }
          100% { transform: rotate(360deg); }
        }

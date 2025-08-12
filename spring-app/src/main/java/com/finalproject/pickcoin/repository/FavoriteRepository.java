@@ -1,5 +1,6 @@
 package com.finalproject.pickcoin.repository;
 
-public class FavoriteRepository {
-    
+
+public interface FavoriteRepository {
+
 }
