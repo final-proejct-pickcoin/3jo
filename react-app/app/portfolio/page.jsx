@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Navigation } from "@/components/navigation"
 import { PortfolioManager } from "@/components/portfolio-manager"
-import { WatchlistManager } from "@/components/watchlist-manager"
+import WatchlistManager from "@/components/watchlist-manager"
 
 const PortfolioPage = () => {
   const [activeTab, setActiveTab] = useState("portfolio")
@@ -21,6 +21,7 @@ const PortfolioPage = () => {
             <PortfolioManager />
           </TabsContent>
           <TabsContent value="watchlist" className="space-y-6">
+            <h1 className="text-xl font-bold">마이페이지</h1>
             <WatchlistManager />
           </TabsContent>
         </Tabs>
