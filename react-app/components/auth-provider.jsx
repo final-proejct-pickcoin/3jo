@@ -2,6 +2,25 @@
 
 import { createContext, useContext, useState, useEffect } from "react"
 
+// JWT 파서 유틸 함수
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error("JWT 파싱 실패:", e);
+    return null;
+  }
+}
+
+
 const AuthContext = createContext(undefined)
 
 export const AuthProvider = ({ children }) => {
@@ -179,6 +198,7 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
+      //API 호출
       window.Kakao.Auth.login({
         scope: "account_email",
         success: (authObj) => {
@@ -200,30 +220,67 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (provider === "google") {
-  const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  if (!window.google?.accounts?.id) {
-    alert("구글 SDK가 로드되지 않았습니다.")
-    return
+      const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim()
+      console.log("🟢 [Google Login] CID from .env:", cid)
+
+    if (!cid) {
+      console.error("❌ Google Client ID가 비어있습니다. (.env 확인 필요)")
+      return
+    }
+
+    if (!window.google?.accounts?.id) {
+      console.error("❌ Google SDK가 로드되지 않았습니다.")
+      return
+    }
+
+    if (!window.__gsiInitialized) {
+      console.log("GSI init start!!!")
+      window.google.accounts.id.initialize({
+        client_id: cid,
+        callback: async ({ credential }) => {
+          console.log("📌 [Step 1] Credential 수신 여부:", credential)
+
+          if (!credential) {
+            console.warn("⚠️ credential이 비어있음. Google 로그인 실패")
+            return
+          }
+
+          try {
+            // JWT payload 디코딩
+            const payload = parseJwt(credential)
+            console.log("📌 [Step 2] Google Payload:", payload)
+
+            if (!payload?.email) {
+              console.error("❌ 이메일 정보 없음");
+              return;
+            }
+
+            // 백엔드로 전송
+            console.log("📌 [Step 3] 백엔드로 social-login 요청 시작")
+            await socialLogin("google", payload.email, payload.sub)
+            console.log("✅ [Step 4] 백엔드 요청 완료")
+          } catch (e) {
+            console.error("❌ Google callback error:", e)
+          }
+        },
+      })
+    }
+
+  // 버튼 렌더링
+  const btn = document.getElementById("googleLoginBtn")
+  if (btn) {
+    console.log("🟢 renderButton on #googleLoginBtn")
+    window.google.accounts.id.renderButton(btn, { theme: "outline", size: "large" })
+
+    window.google.accounts.id.prompt((notification) => {
+    console.log("🟢 prompt notification:", notification)
+    })
+  } else {
+    console.warn("⚠️ #googleLoginBtn 요소 없음. DOM에 div 추가 필요")
   }
 
-  if (!window.__gsiInitialized) {
-    window.google.accounts.id.initialize({
-      client_id: cid,
-      callback: async ({ credential }) => {
-        if (!credential) return
-        const payload = JSON.parse(atob(credential.split(".")[1]))
-        // ✅ 여기서 동일 엔드포인트로 통합 호출
-        await socialLogin("google", payload.email, payload.sub)
-      },
-    })
-    // 버튼 렌더링 (이미 있는 div#googleLoginBtn에)
-    const btn = document.getElementById("googleLoginBtn")
-    if (btn){ window.google.accounts.id.renderButton(btn, { theme: "outline", size: "large" })
-    }
-    window.__gsiInitialized = true
-  }
-  
-  return
+  window.__gsiInitialized = true
+  console.log("🟢 GSI init done")
 }
 
   }
