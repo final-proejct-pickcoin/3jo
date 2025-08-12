@@ -4,7 +4,7 @@ export default function Document() {
   return (
     <Html lang="ko">
       <Head>
-        {/* 여기에 Google SDK <script> 절대 넣지 않음 */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </Head>
       <body>
         <Main />
