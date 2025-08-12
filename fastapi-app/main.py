@@ -48,8 +48,14 @@ else:
     print("경고: .env 파일에 GEMINI_API_KEY가 설정되지 않았습니다.")
 # -----------------------------
 
-# docker-compose.yml의 서비스명이 redis이면
+# docker-compose.yml의 서비스명 redis를 
 redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+
+#____________빗썸+제미나이 연동____________
+# 전역 변수로 설정하여 다른 모듈에서 임포트 가능하게 함
+# __all__ = ["redis_client"]
+#______________________________________________
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))

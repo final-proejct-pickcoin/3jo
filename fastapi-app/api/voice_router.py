@@ -9,6 +9,8 @@ from google.cloud.speech_v1.services import speech
 from google.cloud.speech_v1.types import RecognitionConfig, StreamingRecognitionConfig, StreamingRecognizeRequest
 import google.generativeai as genai
 
+# from main import redis_client
+
 router = APIRouter()
 
 CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -27,6 +29,87 @@ try:
 except Exception as e:
     print(f"🚨 Gemini 모델 초기화 실패: {e}")
     gemini_model = None
+
+# ------------------------------------
+
+
+# ### ------------------------------------------------------####
+# # [추가] 코인 이름과 심볼을 매핑하는 간단한 딕셔너리
+# COIN_MAP = {
+#     "비트코인": "BTC_KRW",
+#     "이더리움": "ETH_KRW",
+#     "리플": "XRP_KRW",
+#     "도지": "DOGE_KRW",
+#     "도지코인": "DOGE_KRW",
+#     "솔라나": "SOL_KRW",
+# }
+
+# # [추가] Redis에서 실시간 가격을 가져오는 헬퍼 함수
+# def get_realtime_price(symbol: str) -> dict | None:
+#     """Redis 캐시에서 코인 시세 정보를 가져옵니다."""
+#     try:
+#         cached_data = redis_client.get(f"ticker:{symbol}")
+#         if cached_data:
+#             return json.loads(cached_data)
+#     except Exception as e:
+#         print(f"Redis 조회 오류: {e}")
+#     return None
+
+# async def send_error_message(ws: WebSocket, text: str):
+#     try: await ws.send_text(json.dumps({"type": "error", "text": text}))
+#     except Exception: pass
+
+# # [수정] Gemini 응답 생성 함수에 실시간 데이터 조회 로직 추가
+# async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
+#     if not gemini_model:
+#         await send_error_message(ws, "Gemini API가 설정되지 않았습니다.")
+#         return
+
+#     final_prompt = user_text
+    
+#     # 1. 사용자의 질문에 가격 관련 키워드가 있는지 확인
+#     price_keywords = ["가격", "얼마", "시세", "현재가"]
+#     if any(keyword in user_text for keyword in price_keywords):
+        
+#         # 2. 질문에서 코인 이름 찾기
+#         found_coin_symbol = None
+#         for kor_name, symbol in COIN_MAP.items():
+#             if kor_name in user_text:
+#                 found_coin_symbol = symbol
+#                 break
+        
+#         # 3. 코인 이름을 찾았다면, Redis에서 실시간 가격 조회
+#         if found_coin_symbol:
+#             ticker_data = get_realtime_price(found_coin_symbol)
+#             if ticker_data:
+#                 current_price = ticker_data.get("closing_price", "N/A")
+                
+#                 # 4. Gemini에게 전달할 프롬프트를 실시간 정보와 함께 재구성
+#                 final_prompt = f"""
+#                 [실시간 정보]
+#                 - 코인: {found_coin_symbol.replace('_KRW', '')}
+#                 - 현재 가격: {current_price} KRW
+
+#                 위 실시간 정보를 바탕으로 다음 사용자 질문에 대해 친절하게 답변해줘: "{user_text}"
+#                 """
+#                 print(f"정보 보강 완료: {found_coin_symbol} 가격은 {current_price} KRW")
+
+#     try:
+#         print(f"🚀 Calling Gemini API with prompt: {final_prompt}")
+#         response = await asyncio.to_thread(gemini_model.generate_content, final_prompt)
+#         bot_response_text = response.text.strip()
+#         print(f"🤖 Gemini API Response: {bot_response_text}")
+#         response_message = {"type": "botResponse", "userText": user_text, "botResponseText": bot_response_text}
+#         await ws.send_text(json.dumps(response_message))
+#     except Exception as e:
+#         print(f"Error during Gemini processing: {e}")
+#         await send_error_message(ws, "챗봇 응답 생성 중 오류가 발생했습니다.")
+
+
+# # --- (이하 transcribe_audio_stream, websocket_endpoint 함수는 이전과 동일) ---
+
+
+
 
 async def send_error_message(ws: WebSocket, text: str):
     try: await ws.send_text(json.dumps({"type": "error", "text": text}))
