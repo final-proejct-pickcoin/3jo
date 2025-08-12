@@ -158,13 +158,33 @@ public class UserController {
             user.setRole(Role.USER);
             user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); //password는 null 안되므로 임의 값 설정
 
+                // 🔹 provider별 추가 로직
+            if ("google".equalsIgnoreCase(provider)) {
+                logger.info("구글 신규 가입 처리 로직 실행");
+                // 필요하면 구글 전용 처리 추가
+            } else if ("kakao".equalsIgnoreCase(provider)) {
+                logger.info("카카오 신규 가입 처리 로직 실행");
+                // 필요하면 카카오 전용 처리 추가
+            }
+
             logger.info("신규 유저 저장 전: {}", user);
-            userService.save(user); // 신규 유저 저장
+            userService.save(user);
             logger.info("신규 유저 저장 완료");
         } else {
+            // 기존 유저
             user = existingUser.get();
             logger.info("기존 유저: {}", user);
+
+            // 🔹 provider 정보가 다르면 업데이트
+            if (!provider.equalsIgnoreCase(user.getProvider())) {
+                user.setProvider(provider);
+                user.setProviderId(providerId);
+                userService.save(user);
+                logger.info("기존 유저 provider 정보 업데이트 완료");
+            }
         }
+
+
 
         // jwt 발급
         String token = jwtHelper.createAccessToken(user.getEmail(), Map.of("name", user.getName()));
