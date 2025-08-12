@@ -12,6 +12,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
  */
 function TradingChart({
   symbol = "BTC/KRW",
+  koreanName = "", // ✅ 이거 추가  
   height = 680,
   theme = "light",
   currentPrice = null,
@@ -859,36 +860,33 @@ function TradingChart({
          </div>
          
          <div>
-           <div style={{ 
-             fontWeight: 700, 
-             fontSize: 16,
-             color: theme === "dark" ? "#F7FAFC" : "#1A202C",
-             marginBottom: 2
-           }}>
-             {symbol}
-           </div>
-           <div style={{ display: "flex", gap: 12, fontSize: 12, alignItems: "center" }}>
-             <span style={{ 
-               padding: "3px 8px", 
-               borderRadius: 6, 
-               background: ready ? (theme === "dark" ? "#065F46" : "#D1FAE5") : (theme === "dark" ? "#7C2D12" : "#FEE2E2"),
-               color: ready ? (theme === "dark" ? "#34D399" : "#059669") : (theme === "dark" ? "#F87171" : "#DC2626"),
-               fontWeight: 600,
-               fontSize: 11
+           {/* 헤더 영역 */}
+           <div>
+             <div style={{ 
+               fontWeight: 700, 
+               fontSize: 16,
+               color: theme === "dark" ? "#F7FAFC" : "#1A202C",
+               marginBottom: 2
              }}>
-               {ready ? "● 활성" : "○ 로딩"}
-             </span>
-             {priceInfo.isRealTime && (
-               <span style={{ 
-                 padding: "3px 8px", 
-                 borderRadius: 6, 
-                 border: theme === "dark" ? "1px solid #4A5568" : "1px solid #CBD5E0",
-                 color: theme === "dark" ? "#A0AEC0" : "#4A5568",
-                 fontSize: 11
-               }}>
-                 실시간 연결
-               </span>
-             )}
+               {koreanName || symbol}
+               {koreanName && (
+                 <span style={{ 
+                   fontWeight: 400, 
+                   fontSize: 14, 
+                   opacity: 0.7,
+                   marginLeft: 8 
+                 }}>
+                   / {symbol.replace('/KRW', '')}
+                 </span>
+               )}
+             </div>
+             <div style={{ 
+               fontSize: 12, 
+               opacity: 0.7,
+               color: theme === "dark" ? "#A0AEC0" : "#4A5568"
+             }}>
+               {symbol}
+             </div>
            </div>
          </div>
          
@@ -899,7 +897,7 @@ function TradingChart({
              color: isUp ? "#10B981" : "#EF4444", 
              fontSize: 14,
              display: "flex",
-             flexDirection: "column",
+             aflexDirection: "column",
              alignItems: "flex-end"
            }}>
              <span>
