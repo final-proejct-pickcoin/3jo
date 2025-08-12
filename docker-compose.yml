@@ -4,7 +4,7 @@ services:
     build: ./fastapi-app
     volumes:
       - ./fastapi-app:/app
-      - ../key/pickcoin-687a99cb3128.json:/app/pickcoin-687a99cb3128.json
+      - ../key/pickcoin-687a99cb3128.json:/app/secrets/pickcoin-687a99cb3128.json
     ports:
       - "8000:8000"
     env_file:
@@ -43,7 +43,7 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
-    restart: always 
+    restart: always
   spring-app:
     build:
       #이미지빌드 할 폴더위치 설정
