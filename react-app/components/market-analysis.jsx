@@ -7,51 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Star, Plus, Activity, Globe, BarChart3 } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
-import { TradingChart } from "@/components/trading-chart"
+import TradingChart  from "@/components/trading-chart"
+import axios from "axios"
 import {bookmarked,toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
-
-const marketData = [
-  { symbol: "BTC", name: "Bitcoin", price: 43000, change: 2.5, volume: "28.5B", marketCap: "840B", rank: 1 },
-  { symbol: "ETH", name: "Ethereum", price: 1600, change: -1.2, volume: "12.3B", marketCap: "192B", rank: 2 },
-  { symbol: "BNB", name: "BNB", price: 310, change: 3.8, volume: "2.1B", marketCap: "47B", rank: 3 },
-  { symbol: "XRP", name: "XRP", price: 0.52, change: -0.8, volume: "1.8B", marketCap: "28B", rank: 4 },
-  { symbol: "ADA", name: "Cardano", price: 0.48, change: 5.2, volume: "890M", marketCap: "17B", rank: 5 },
-  { symbol: "SOL", name: "Solana", price: 98, change: 8.9, volume: "1.2B", marketCap: "42B", rank: 6 },
-  { symbol: "DOGE", name: "Dogecoin", price: 0.08, change: 15.2, volume: "2.5B", marketCap: "11B", rank: 7 },
-  { symbol: "MATIC", name: "Polygon", price: 0.92, change: -2.1, volume: "450M", marketCap: "8.5B", rank: 8 },
-  { symbol: "DOT", name: "Polkadot", price: 7.2, change: -3.1, volume: "320M", marketCap: "9.2B", rank: 9 },
-  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 10 },
-  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 11 },
-  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 12 },
-  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 13 },
-  { symbol: "LINK", name: "Chainlink", price: 15.2, change: 1.8, volume: "680M", marketCap: "8.8B", rank: 14 },
-]
 
 const trendingCoins = [
   { symbol: "PEPE", change: 25.8, reason: "Meme coin rally" },
   { symbol: "SHIB", change: 18.4, reason: "Community growth" },
   { symbol: "FLOKI", change: 12.3, reason: "Partnership news" },
-]
-
-const marketNews = [
-  {
-    title: "Bitcoin ETF Approval Drives Market Rally",
-    summary: "Major institutional adoption continues as Bitcoin reaches new monthly highs",
-    time: "2 hours ago",
-    impact: "bullish",
-  },
-  {
-    title: "Ethereum Network Upgrade Scheduled",
-    summary: "Latest upgrade promises improved scalability and reduced gas fees",
-    time: "4 hours ago",
-    impact: "bullish",
-  },
-  {
-    title: "Regulatory Clarity in Europe",
-    summary: "New crypto regulations provide clearer framework for institutional investors",
-    time: "6 hours ago",
-    impact: "neutral",
-  },
 ]
 
 const coinNameMap = { BTC: "비트코인", ETH: "이더리움", BNB: "비엔비", XRP: "리플", ADA: "에이다", SOL: "솔라나", DOGE: "도지코인", MATIC: "폴리곤", DOT: "폴카닷", LINK: "체인링크" }
@@ -66,7 +29,7 @@ const formatNumber = n => typeof n === "number" ? n.toLocaleString() : n
 const getBadgeVariant = v => v === "bullish" ? "default" : v === "bearish" ? "destructive" : "secondary"
 
 export const MarketAnalysis = () => {
-  const { subscribe, marketData: liveData } = useWebSocket()
+  const { subscribe, liveData={} } = useWebSocket()//websocket에 기본값 주기
   const [selectedTimeframe, setSelectedTimeframe] = useState("24h")
   const [currency, setCurrency] = useState("KRW")
 
@@ -79,6 +42,52 @@ export const MarketAnalysis = () => {
       .catch(err => console.error(err))
   }, [])
 
+
+  const [items, setItems] = useState([]);
+
+  // 마켓 리스트 가져오기
+  useEffect(() => {
+    const user_id = 12; // 임시. JWT 붙이면 서버에서 꺼내게 변경
+    axios
+      .get(`http://localhost:8080/api/Market_assets/assets_and_bookmarks`, { params: { user_id } })
+      .then(res => {
+        console.log(' API data:', res.data, Array.isArray(res.data) ? res.data[0] : null);
+        setItems(res.data)}
+            )
+      .catch(console.error);
+  }, []);
+
+  
+
+// 웹소켓 구독은 서버 리스트 기준
+  useEffect(() => {
+    if (items.length) subscribe(items.map(c => c.symbol));
+  }, [subscribe, items]);
+
+const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks";
+
+const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
+  const user_id = 12; // 임시
+  const is_bookmarked = Number(is_bookmarkedRaw) === 1; // 0/1 정규화
+  try {
+    if (is_bookmarked) {
+      // 해제
+      await axios.delete(BOOKMARK_API, { params: { user_id, asset_id } });
+      setItems(prev =>
+        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 0 } : i)
+      );
+    } else {
+      // 추가
+      await axios.post(BOOKMARK_API, null, { params: { user_id, asset_id } });
+      setItems(prev =>
+        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 1 } : i)
+      );
+    }
+  } catch (e) {
+    console.error("[bookmark err]", e?.response?.status, e?.response?.data || e);
+  }
+};
+
   const exchangeRate = 1391
   const totalMarketCapUSD = 16800
   const totalMarketCapKRW = totalMarketCapUSD * 1e8 * exchangeRate
@@ -86,7 +95,12 @@ export const MarketAnalysis = () => {
   const volumeUSD = 892
   const volumeKRW = volumeUSD * 1e8 * exchangeRate
   const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
-  useEffect(() => { subscribe(marketData.map(coin => coin.symbol)) }, [subscribe])
+  useEffect(() => {
+  if (items.length) {
+    console.log('items sample:', items?.[0]);
+    subscribe(items.map(c => c.symbol))
+  }
+}, [subscribe, items])
 
   const {bookmarked,toggle_Bookmark}=useBookmark();
 
@@ -267,44 +281,51 @@ export const MarketAnalysis = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {marketData.slice(0,10).map((coin) => {
-                  const livePrice = liveData[coin.symbol]?.price || coin.price
-                  const liveChange = liveData[coin.symbol]?.change24h || coin.change
+
+              
+                {/* 서버값 출력 */}
+                {items.slice(0, 10).map((coin, idx) => {
+                  const livePrice  = liveData[coin.symbol]?.price ?? coin.price;
+                  const liveChange = liveData[coin.symbol]?.change24h ?? coin.change_rate ?? 0; 
+                  const rank = idx + 1;
+
                   return (
-                    <div key={coin.symbol} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center space-x-4">
-                        <span className="text-sm text-muted-foreground w-6">#{coin.rank}</span>
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="font-bold text-sm">{coin.symbol}</span>
+                      <div key={coin.asset_id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-muted-foreground w-6">#{rank}</span>
+                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <span className="font-bold text-sm">{coin.symbol}</span>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">{`${coin.asset_name} (${coin.symbol})`}</h3> {/* snake_case */}
+                            <p className="text-sm text-muted-foreground">{coin.market}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold">{getKoreanCoinLabel(coin.symbol, coin.name)}</h3>
-                          <p className="text-sm text-muted-foreground">{coin.symbol}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-6">
+
+                        <div className="flex items-center space-x-6">
                         <div className="text-right">
-                          <p className="font-semibold">${formatNumber(livePrice)}</p>
+                          <p className="font-semibold">
+                            {typeof livePrice === "number" ? livePrice.toLocaleString() : "-"}
+                          </p>
                           <Badge variant={liveChange > 0 ? "default" : "destructive"}>
                             {liveChange > 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-                            {liveChange > 0 ? "+" : ""}{liveChange.toFixed(1)}%
+                            {liveChange > 0 ? "+" : ""}{Number(liveChange).toFixed(1)}%
                           </Badge>
                         </div>
-                        <div className="text-right text-sm text-muted-foreground min-w-[80px]">
-                          <p>거래량: {formatNumber(coin.volume)}</p>
-                          <p>시가총액: {formatNumber(coin.marketCap)}</p>
-                        </div>
+
                         <div className="flex gap-2">
-                       
-                          <Button size="sm" variant="outline" onClick={()=> toggle_Bookmark(coin.symbol)}>
-                             {/* 클릭 통해 관심코인 추가시 노란별 변경/클릭시 해제와 빈 별  */}
-                            <Star className="h-3 w-3" fill={bookmarked[coin.symbol]? "yellow":"none"} />
-                            </Button>
-                          {/* <Button size="sm" variant="outline"><Plus className="h-3 w-3" /></Button> */}
+                          {/* ✅ 북마크 토글: assetId 기준 */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleBookmark(coin.asset_id, coin.is_bookmarked)}
+                          >
+                            <Star className="h-3 w-3" fill={Number(coin.is_bookmarked) ? "yellow" : "none"} />
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </CardContent>
@@ -369,7 +390,7 @@ export const MarketAnalysis = () => {
 
         {/* 뉴스 */}
         <TabsContent value="news">
-         <Card>
+          <Card>
           <CardHeader>
       <CardTitle>📰 시장 뉴스</CardTitle>
       <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>

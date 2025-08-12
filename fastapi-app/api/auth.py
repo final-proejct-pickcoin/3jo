@@ -185,3 +185,8 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="유효하지 않은 토큰"
         )
+
+# 관리자 인증이 필요한 API 예시 
+@router.get("/admin/only")
+async def admin_only_api(current_admin: str = Depends(get_current_admin)):
+    return {"msg": f"관리자 {current_admin}만 접근 가능"}

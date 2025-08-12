@@ -4,9 +4,15 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+// reactive 말고 MVC용 import
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -24,7 +30,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/users/register", "/users/verify", "/community/findAll"
-                                , "/community/insert", "/api/assets", "/api/Market_assets/bookmarks"
+                                , "/community/insert", "/api/assets", "/api/Market_assets/**"
                                 , "/users/login", "/css/**", "/js/**", "/error", "/test", "/users/social-login"
                                 ,"/WEB-INF/views/**", "/WEB-INF/**").permitAll() // 회원가입, 로그인은 인증 없이 접근
                 .anyRequest().authenticated()
