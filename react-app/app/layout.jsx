@@ -40,7 +40,7 @@ const RootLayout = ({ children }) => (
               <BookmarkProvider>
                 {children}
                 <Toaster />
-              </BookmarkProvider>                
+              </BookmarkProvider>
             </OnboardingProvider>
           </WebSocketProvider>
         </AuthProvider>

@@ -1,4 +1,4 @@
-// components/my-page-watchlist.jsx
+// components/watchlist-manager.jsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Plus, Trash2, Bell } from "lucide-react";
 
 const API_BASE = "http://localhost:8080/api/mypage";
-const USER_ID = 15; // TODO: JWT로 대체
+const USER_ID = 15; // 추후 JWT로 대체
 
 export default function MyPageWatchlist() {
+  
   const [watchlist, setWatchlist] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [search, setSearch] = useState("");
@@ -295,3 +296,4 @@ export default function MyPageWatchlist() {
     </div>
   );
 }
+export const WatchlistManager = MyPageWatchlist;
