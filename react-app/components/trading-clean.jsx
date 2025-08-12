@@ -53,17 +53,7 @@ export const TradingInterface = () => {
       if (resizeObs && mainPanelRef.current) resizeObs.disconnect();
     };
   }, []);
-  // 영어명을 한글 발음으로 변환하는 함수
-  function engToKorPronounce(eng) {
-    if (!eng) return '';
-    const table = {
-      'A': '에이', 'B': '비', 'C': '씨', 'D': '디', 'E': '이', 'F': '에프', 'G': '지', 'H': '에이치',
-      'I': '아이', 'J': '제이', 'K': '케이', 'L': '엘', 'M': '엠', 'N': '엔', 'O': '오', 'P': '피',
-      'Q': '큐', 'R': '알', 'S': '에스', 'T': '티', 'U': '유', 'V': '브이', 'W': '더블유', 'X': '엑스',
-      'Y': '와이', 'Z': '지',
-    };
-    return eng.split('').map(ch => table[ch.toUpperCase()] || ch).join('');
-  }
+
   // State hooks for UI controls
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCoin, setSelectedCoin] = useState("BTC");
@@ -186,11 +176,11 @@ export const TradingInterface = () => {
             })));
           } else {
             console.error('❌ 데이터 형식 오류:', data);
-            setCoinList([]);
+            // setCoinList([]); // Keep previous coin list on error
           }
         } catch (e) {
           console.error('❌ 코인 목록 조회 실패:', e);
-          setCoinList([]);
+          // setCoinList([]); // Keep previous coin list on error
         } finally {
           setLoading(false);
         }
@@ -202,14 +192,11 @@ export const TradingInterface = () => {
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
       const realtimeInfo = realTimeData[coin.symbol + '_KRW'];
-      // 한글명이 없으면 영어명을 한글 발음으로 변환
-      const korName = coin.korean_name && coin.korean_name.trim() !== ''
-        ? coin.korean_name
-        : engToKorPronounce(coin.englishName || coin.symbol);
+
       if (realtimeInfo) {
         return {
           ...coin,
-          name: korName,
+          name: coin.name,
           price: parseInt(realtimeInfo.closePrice),
           change: parseFloat(realtimeInfo.chgRate),
           changeAmount: parseInt(realtimeInfo.chgAmt),
@@ -219,7 +206,7 @@ export const TradingInterface = () => {
       }
       return {
         ...coin,
-        name: korName,
+        name: coin.korean_name,
         volume: typeof coin.volume === 'string' ? coin.volume : (coin.volume / 1000000).toFixed(0) + '백만'
       };
     });
@@ -370,6 +357,7 @@ export const TradingInterface = () => {
             {view === "chart" ? (
               <TradingChart
                 symbol={`${selectedCoin}/KRW`}
+                koreanName={updatedCoinList.find(c => c.symbol === selectedCoin)?.name || selectedCoin} // ✅ 이거 추가
                 height={combinedHeight}
                 theme="light"
                 realTimeData={realTimeData[selectedCoin + '_KRW']}

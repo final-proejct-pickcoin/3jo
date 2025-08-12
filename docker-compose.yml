@@ -18,24 +18,24 @@ services:
     depends_on:
       - redis
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-  # mysql:
-  #   image: mysql:8.0
-  #   restart: always
-  #   container_name: mysql
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: admin1234
-  #     MYSQL_DATABASE: coindb
-  #     MYSQL_USER: pickcoin
-  #     MYSQL_PASSWORD: final3
-  #     TZ: Asia/Seoul
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - ./mysql_data:/var/lib/mysql
-  #   command:
-  #     - --character-set-server=utf8mb4
-  #     - --collation-server=utf8mb4_unicode_ci
-  #     - --skip-character-set-client-handshake
+  mysql:
+    image: mysql:8.0
+    restart: always
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin1234
+      MYSQL_DATABASE: coindb
+      MYSQL_USER: pickcoin
+      MYSQL_PASSWORD: final3
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
 
   redis:
     image: redis:7
