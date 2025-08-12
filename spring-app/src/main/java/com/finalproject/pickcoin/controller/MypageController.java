@@ -1,11 +1,7 @@
 package com.finalproject.pickcoin.controller;
 
 import java.util.List;
-
-import org.hibernate.mapping.Map;
-//import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,37 +11,38 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.finalproject.pickcoin.domain.Market_item;
-import com.finalproject.pickcoin.service.MarketService;
-
+import com.finalproject.pickcoin.service.MypageService;
 
 @RestController
-@RequestMapping("/api/Market_assets")
+@RequestMapping("/api/mypage")
 @CrossOrigin(origins = "*")
-public class MarketController {
+public class MypageController {
 
     @Autowired
-    private MarketService marketService;
+    private MypageService mypageService;
 
-    @GetMapping("/bookmarks")
-    public List<Integer> get_bookmarked_assets(@RequestParam("user_id") int user_id) {
-        return marketService.find_bookmarked_asset(user_id);
+    // 북마크한 코인만
+    @GetMapping("/bookmarks/list")
+    public List<Market_item> get_only_bookmarked(@RequestParam("user_id") Long user_id) {
+        return mypageService.find_bookmarked_only(user_id);
     }
 
-    @GetMapping("/assets_and_bookmarks")
-    public List<Market_item> get_assets_and_bookmarks(@RequestParam("user_id") Long user_id) {
-        return marketService.find_asset_and_bookmark(user_id);
+    // 북마크 안 한 코인만
+    @GetMapping("/assets/unbookmarked")
+    public List<Market_item> get_unbookmarked(@RequestParam("user_id") Long user_id) {
+        return mypageService.find_unbookmarked_only(user_id);
     }
 
     @PostMapping("/bookmarks")
     public void add_bookmark(@RequestParam("user_id") int user_id,
                             @RequestParam("asset_id") int asset_id) {
-        marketService.insert_bookmark(user_id, asset_id);
+        mypageService.insert_bookmark(user_id, asset_id);
     }
 
     @DeleteMapping("/bookmarks")
     public void remove_bookmark(@RequestParam("user_id") int user_id,
                                 @RequestParam("asset_id") int asset_id) {
-        marketService.delete_bookmark(user_id, asset_id);
+        mypageService.delete_bookmark(user_id, asset_id);
     }
-    
 }
+

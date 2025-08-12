@@ -6,9 +6,11 @@
 
 <!-- 전체 코인정보 검색 -->
 <select id="get_asset_list" resultType="com.finalproject.pickcoin.domain.Asset">
-	SELECT * FROM ASSET
+	SELECT * FROM asset
 	ORDER BY  asset_id
 	</select>
+
+	
 	
 
 </mapper>

@@ -11,6 +11,7 @@
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "python-envs.pythonProjects": [],
     "cSpell.words": [
+        "assetmapper",
         "finalproject",
         "pickcoin"
     ]
