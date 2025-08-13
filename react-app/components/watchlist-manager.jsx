@@ -1,19 +1,111 @@
 // components/watchlist-manager.jsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Trash2, Bell } from "lucide-react";
+import axios from "axios";
+import { Bell, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = "http://localhost:8080/api/mypage";
-const USER_ID = 15; // 추후 JWT로 대체
+//const default_user_id = 12; // 추후 JWT로 대체
+
+
+//=====================
+//1) JWT 파싱 함수 (UTF-8 안전)
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+    );
+    return JSON.parse(json);
+  } catch (e) {
+    console.error("JWT 파싱 실패:", e);
+    return null;
+  }
+}
+
+// 2) 이메일 → user_id 조회 (백엔드에 맞는 URL 하나로 변경)
+// async function fetchUserIdByEmail(email, token) {
+//  //백엔드에 실제로 있는 “조회용 GET API 하나”로 변경
+//   //예시 후보(하나만 살리고 나머진 지워도 됨):
+//   const url = `/api/auth/me`;                                   // 토큰만으로 현재 유저 반환형
+//   //const url = `/api/users/by-email?email=${encodeURIComponent(email)}`; // 이메일 쿼리형
+//   //const url = `/api/users/email/${encodeURIComponent(email)}`;          // 이메일 path형
+
+//   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+//   if (!res.ok) throw new Error("user_id 조회 실패");
+//   const data = await res.json();
+
+//   //응답 스키마에 맞게 user_id 뽑기 (필요시 키 이름 수정)
+//   //return data.user_id ?? data.id ?? data?.data?.user_id ?? data?.data?.id ?? null;
+// }
+//====================
+// AuthController 만들기 전
+// async function fetchUserIdFromToken(token) {
+//   const res = await fetch("http://localhost:8080/api/auth/me", {
+//     headers: { Authorization: `Bearer ${token}` },
+//   });
+//   if (!res.ok) throw new Error("user_id 조회 실패");
+//   const data = await res.json();
+//   return data.user_id ?? null;
+// }
+
+
+//===================
+
+// AuthController 만들고 나서
+async function fetchUserIdFromToken(token) {
+  try {
+    const res = await fetch("http://localhost:8080/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // 200이더라도 ok=false일 수 있으니 JSON을 보고 판단
+    const data = await res.json().catch(() => ({}));
+    if (data && data.ok && (data.user_id ?? null) != null) {
+      return Number(data.user_id);
+    }
+    // id가 없고 email만 온 경우: 필요하면 여기서 email로 백엔드에 user_id 조회 API를 더 호출
+    console.warn("[/api/auth/me] no user_id; payload =", data);
+    return null;
+  } catch (e) {
+    console.warn("user_id 조회 실패:", e);
+    return null;
+  }
+}
+//=====================
+//user_lookupController 만든 뒤
+//이메일 추출
+function getEmailFromToken(t) {
+  try {
+    const base64Url = t.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+    );
+    const claims = JSON.parse(json);
+    return claims?.email || claims?.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+//=====================
+async function fetchUserIdByEmail(email) {
+  const res = await fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(email)}`);
+  const data = await res.json().catch(() => ({}));
+  if (data?.ok && data?.user_id != null) return Number(data.user_id);
+  return null;
+}
+
+
 
 export default function MyPageWatchlist() {
   
@@ -21,6 +113,11 @@ export default function MyPageWatchlist() {
   const [candidates, setCandidates] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [user_id, setUserId] = useState(null); // 초기값 null로 설정
+  //const [user_id, setUserId] = useState(default_user_id); // 초기값 12로 설정
+
+  const [token, setToken] = useState(null);
+
 
   // 알림 UI 상태
   const [alertDialogOpen, setAlertDialogOpen] = useState({});
@@ -28,22 +125,41 @@ export default function MyPageWatchlist() {
   const [newAlertCond, setNewAlertCond] = useState("above");
   const [newAlertValue, setNewAlertValue] = useState("");
 
+  // useEffect(() => {
+  //   setLoading(true);
+  //   Promise.all([
+  //     axios.get(`${API_BASE}/bookmarks/list`, { params: { user_id: user_id } }),
+  //     axios.get(`${API_BASE}/assets/unbookmarked`, { params: { user_id: user_id } }),
+  //   ])
+  //     .then(([wlRes, candRes]) => {
+  //       // 알림 배열 초기화(없으면 [])
+  //       const wl = (Array.isArray(wlRes.data) ? wlRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+  //       const cd = (Array.isArray(candRes.data) ? candRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+  //       setWatchlist(wl);
+  //       setCandidates(cd);
+  //     })
+  //     .catch(e => console.error("[mypage load]", e?.response?.status, e?.message))
+  //     .finally(() => setLoading(false));
+  // }, []);
+
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      axios.get(`${API_BASE}/bookmarks/list`, { params: { user_id: USER_ID } }),
-      axios.get(`${API_BASE}/assets/unbookmarked`, { params: { user_id: USER_ID } }),
-    ])
-      .then(([wlRes, candRes]) => {
-        // 알림 배열 초기화(없으면 [])
-        const wl = (Array.isArray(wlRes.data) ? wlRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
-        const cd = (Array.isArray(candRes.data) ? candRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
-        setWatchlist(wl);
-        setCandidates(cd);
-      })
-      .catch(e => console.error("[mypage load]", e?.response?.status, e?.message))
-      .finally(() => setLoading(false));
-  }, []);
+  if (!user_id) return;
+  setLoading(true);
+  Promise.all([
+    axios.get(`${API_BASE}/bookmarks/list`,        { params: { user_id } }),
+    axios.get(`${API_BASE}/assets/unbookmarked`,   { params: { user_id } }),
+  ])
+  .then(([wlRes, candRes]) => {
+    const wl = (Array.isArray(wlRes.data) ? wlRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+    const cd = (Array.isArray(candRes.data) ? candRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+    setWatchlist(wl);
+    setCandidates(cd);
+  })
+  .catch(e => console.error("[mypage load]", e?.response?.status, e?.message))
+  .finally(() => setLoading(false));
+}, [user_id]);
+
+
 
   const filteredCandidates = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -62,7 +178,7 @@ export default function MyPageWatchlist() {
       if (!item) return;
       setCandidates(prev => prev.filter(c => c.asset_id !== asset_id));
       setWatchlist(prev => prev.concat({ ...item, is_bookmarked: 1, alerts: item.alerts ?? [] }));
-      await axios.post(`${API_BASE}/bookmarks`, null, { params: { user_id: USER_ID, asset_id } });
+      await axios.post(`${API_BASE}/bookmarks`, null, { params: { user_id, asset_id } });
     } catch (e) {
       console.error("[add]", e?.response?.status, e?.message);
       // 롤백
@@ -80,7 +196,7 @@ export default function MyPageWatchlist() {
       if (!item) return;
       setWatchlist(prev => prev.filter(w => w.asset_id !== asset_id));
       setCandidates(prev => prev.concat({ ...item, is_bookmarked: 0, alerts: item.alerts ?? [] }));
-      await axios.delete(`${API_BASE}/bookmarks`, { params: { user_id: USER_ID, asset_id } });
+      await axios.delete(`${API_BASE}/bookmarks`, { params: { user_id, asset_id } });
     } catch (e) {
       console.error("[remove]", e?.response?.status, e?.message);
       // 롤백
@@ -108,6 +224,122 @@ export default function MyPageWatchlist() {
     setNewAlertCond("above");
   };
 
+  //======================
+
+
+// useEffect(() => {
+//     if (typeof window === "undefined") return;
+//     const t = sessionStorage.getItem("auth_token")
+// //            || sessionStorage.getItem("jwtToken")
+// //            || sessionStorage.getItem("access_token");
+//     setToken(t);
+//     if (!t) return;
+
+//     const claims = parseJwt(t);
+//     const directId = claims?.uid ?? claims?.user_id ?? claims?.user_id ?? claims?.id;
+
+//     if (directId != null) {
+//       setUserId(Number(directId));
+//       return;
+//     }
+
+//     const email = claims?.sub || claims?.email || claims?.username;
+//     if (!email) return;
+
+//     fetchUserIdByEmail(email, t)
+//       .then(id => setUserId(Number(id)))
+//       .catch(err => console.warn("user_id 조회 실패:", err));
+//   }, []);
+
+// useEffect(() => {
+//   if (typeof window === "undefined") return;
+//   const t = sessionStorage.getItem("auth_token");
+//   setToken(t);
+//   if (!t) return;
+
+//   const claims = parseJwt(t);
+//   const directId = claims?.uid ?? claims?.user_id ?? claims?.id;
+//   if (directId != null) {
+//     setUserId(Number(directId));
+//     return;
+//   }
+//   // 토큰에 id가 없으면 임시 API로 조회
+//   fetchUserIdFromToken(t)
+//     .then(id => id && setUserId(Number(id)))
+//     .catch(err => console.warn("user_id 조회 실패:", err));
+// }, []);
+
+
+
+  useEffect(() => {
+    //if (!user_id || !token) return;
+    if (!user_id || Number.isNaN(Number(user_id)) || !token) {
+  console.debug("[mypage] skip fetch. userId:", user_id, "token?", !!token);
+  return;
+  }
+    fetch(`http://localhost:8080/api/mypage/bookmarks/list?user_id=${user_id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(setWatchlist)
+      //.catch(e => console.error("관심코인 불러오기 실패:", e));
+      .catch(err => {
+      console.error("[mypage load]", err?.response?.status, err?.response?.data);
+  });
+  }, [user_id, token]);
+
+  //======================
+
+const [email, setEmail] = useState(null);
+
+
+// 1) 토큰 → email → user_id
+// useEffect(() => {
+//   if (typeof window === "undefined") return;
+//   const t = sessionStorage.getItem("auth_token");
+//   setToken(t);
+//   if (!t) { setLoading(false); return; }
+
+//   const e = getEmailFromToken(t);
+//   setEmail(e);
+//   if (!e) { setLoading(false); return; }
+
+//   fetchUserIdByEmail(e)
+//     .then(uid => { setUserId(uid); })
+//     .finally(() => setLoading(false));
+// }, []);
+//===========================================================================================
+console.log("북마크 추가 요청", user_id);
+console.log("토큰확인", JSON.parse(atob(sessionStorage.getItem("auth_token").split('.')[1])));
+  
+//토큰값을 빼서 user_mail변수에 넣어서 출력
+const tokenValue = sessionStorage.getItem("auth_token");
+if (tokenValue) {
+  const payload = JSON.parse(atob(tokenValue.split('.')[1]));
+  const user_mail = payload.email || payload.sub || null;
+//이메일 값 확인
+  console.log("이메일:", user_mail);
+//이메일값 정상 들어왔을때 id값을 가져오는 API 호출
+    if (user_mail) {
+    //fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(user_mail)}`)
+    fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
+      .then(res => res.json())
+      .then(data => {
+      //   user_id=data.user_id;
+      if(data && data.user_id != null) {
+      setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
+        //console.log("유저아이디:",user_id);
+      }
+      })
+      .catch(err => console.error(err));
+  }
+}
+//변경된 user_id값 최종 확인
+useEffect(() => {
+  console.log("user_id 변경됨:", user_id);
+}, [user_id]);
+
+//===========================================================================================
   const removeAlert = (asset_id, idx) => {
     setWatchlist(prev => prev.map(it =>
       it.asset_id === asset_id
@@ -132,7 +364,7 @@ export default function MyPageWatchlist() {
             <div className="text-sm text-muted-foreground">불러오는 중…</div>
           ) : watchlist.length === 0 ? (
             <div className="text-sm text-muted-foreground py-6">
-              아직 북마크한 코인이 없습니다. 오른쪽에서 추가하세요.
+              아직 북마크한 코인이 없습니다.
             </div>
           ) : (
             <div className="space-y-2">
@@ -264,7 +496,7 @@ export default function MyPageWatchlist() {
               <div className="text-sm text-muted-foreground">불러오는 중…</div>
             ) : candidates.length === 0 ? (
               <div className="text-sm text-muted-foreground py-6">
-                담을 수 있는 코인이 없습니다. (이미 모두 북마크했을 수 있어요)
+                담을 수 있는 코인이 없습니다.
               </div>
             ) : filteredCandidates.length === 0 ? (
               <div className="text-sm text-muted-foreground py-6">
