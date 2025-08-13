@@ -43,7 +43,7 @@ export const LandingPage = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Zap className="h-5 w-5 text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-bold">CryptoVirtual</h1>
+              <h1 className="text-xl font-bold">pickCoin</h1>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" onClick={handleClearStorage} className="text-xs">
@@ -210,7 +210,7 @@ export const LandingPage = () => {
                 <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
                   <Zap className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <span className="font-bold">CryptoVirtual</span>
+                <span className="font-bold">PickCoin</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 The next-generation virtual cryptocurrency trading platform.
@@ -249,7 +249,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            © 2024 CryptoVirtual. All rights reserved.
+            © 2025 PickCoin. All rights reserved.
           </div>
         </div>
       </footer>

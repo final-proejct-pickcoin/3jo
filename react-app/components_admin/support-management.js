@@ -325,7 +325,7 @@ export default function SupportManagement({ isDarkMode }) {
               <div className="flex items-center space-x-2">
                 <Search className="h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="문의 검색..."
+                  placeholder="사용자 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-64"
@@ -494,12 +494,12 @@ export default function SupportManagement({ isDarkMode }) {
                   </p>
                   <Select
                     value={selectedTicket.status}
-                    onValueChange={(value) => handleStatusChange(selectedTicket.id, value)}
+                    onValueChange={(value) => handleStatusChange(selectedTicket.inquiry_id, value)}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent >
                       <SelectItem value="신규">신규</SelectItem>
                       <SelectItem value="진행중">진행중</SelectItem>
                       <SelectItem value="완료">완료</SelectItem>

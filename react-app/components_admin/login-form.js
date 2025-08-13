@@ -68,7 +68,7 @@ export default function LoginForm({
         
         onLogin();        
         setError(null);
-        // window.location.reload(); // 페이지 새로고침
+        window.location.reload(); // 페이지 새로고침
         
       }else if(response.data.role === "USER"){
         setError("관리자 계정이 아닙니다.");

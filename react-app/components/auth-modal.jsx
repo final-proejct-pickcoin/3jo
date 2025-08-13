@@ -100,7 +100,7 @@ export function AuthModal({ isOpen, onClose }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-center">Welcome to CryptoVirtual</DialogTitle>
+          <DialogTitle className="text-2xl text-center">Welcome to PickCoin</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="login" className="w-full">
