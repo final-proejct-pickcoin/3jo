@@ -120,6 +120,7 @@ const checkReported = async (postId) => {
 }
 
 const handleOpenReport = async (postId) => {
+  console.log("신고눌렀을 때 user_id:",currentUser.user_id)
   if (!currentUser.user_id) return alert("로그인 후 이용해주세요.")
   const already = await checkReported(postId)
   if (already) {
@@ -155,9 +156,11 @@ const handleSubmitReport = async () => {
   // 세션에서 사용자 정보 로드
   useEffect(() => {
     const raw = sessionStorage.getItem("user_data")
+    console.log("유저이펙트에서 유저데이타:", raw)
     if (raw) {
       const u = JSON.parse(raw)
-      const uid = safeToNumber(u.user_id ?? u.userId ?? u.USER_ID)
+      // const uid = safeToNumber(u.user_id ?? u.user_id ?? u.USER_ID)
+      const uid = u.user_id
       setCurrentUser({ user_id: uid, name: u.nickname ?? u.name ?? "" })
     } else {
       setCurrentUser({ user_id: 22, name: "현재사용자" })
@@ -167,7 +170,7 @@ const handleSubmitReport = async () => {
   // 내가 좋아요 누른 게시글 목록 불러오기
   const fetchLikedPosts = async (userId) => {
     try {
-      console.log(userId)
+      
       const res = await axios.get(`http://localhost:8080/community/liked`, {
         params: { userId }
       })
@@ -234,6 +237,7 @@ useEffect(() => {
 
   const handleLike = async (postId) => {
     if (!postId) return
+    console.log("좋아요 눌렀을 때 유저아이디:",currentUser.user_id)
     if (currentUser.user_id == null) return alert("로그인 후 이용해주세요.")
     try {
       const res = await axios.put(`http://localhost:8080/community/${postId}/like/${currentUser.user_id}`)
@@ -253,6 +257,7 @@ useEffect(() => {
 
   const handleCreatePost = async () => {
     if (!newPost.trim()) return
+    console.log("글 등록할 때 유저아이디",currentUser.user_id)
     if (currentUser.user_id == null) return alert("로그인 후 글을 작성해주세요.")
     try {
       await axios.post("http://localhost:8080/community/insert", {

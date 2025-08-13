@@ -87,7 +87,7 @@ export const TradingInterface = () => {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log('📊 실시간 데이터 수신:', data);
+            // console.log('📊 실시간 데이터 수신:', data);
             if (data.type === 'ticker' && data.content && data.content.symbol) {
               setRealTimeData(prev => ({
                 ...prev,
