@@ -175,6 +175,9 @@ export function AuthModal({ isOpen, onClose }) {
                   </div>
                 </div>
 
+                {/* ✅ 구글 버튼 컨테이너 */}
+                <div id="googleLoginBtn" style={{ width: "100%" }} />
+
                 <div className="grid grid-cols-2 gap-4">
                   <Button variant="outline" onClick={() => handleOAuthLogin("google")} disabled={isLoading}>
                     <Chrome className="mr-2 h-4 w-4" />

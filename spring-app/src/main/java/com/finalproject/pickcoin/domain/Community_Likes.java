@@ -14,7 +14,6 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "community_likes")
 public class Community_Likes {
     
     @Id
