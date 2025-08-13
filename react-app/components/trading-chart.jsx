@@ -730,11 +730,11 @@ function TradingChart({
     const low = Number(realTimeData.minPrice || priceInfo.displayPrice);
     const close = Number(realTimeData.closePrice || priceInfo.displayPrice);
 
-    console.log('🔄 실시간 업데이트:', { 
-      timeframe,
-      currentCandleTime: new Date(currentCandleTime * 1000).toLocaleString(),
-      close 
-    });
+    // console.log('🔄 실시간 업데이트:', { 
+    //   timeframe,
+    //   currentCandleTime: new Date(currentCandleTime * 1000).toLocaleString(),
+    //   close 
+    // });
 
     const updateObj = ["candlestick", "heikin-ashi"].includes(chartType)
       ? { time: currentCandleTime, open, high, low, close } // ✅ 타임프레임 기반 시간 사용

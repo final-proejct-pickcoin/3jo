@@ -18,7 +18,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "34.64.105.135"
+host = "34.47.81.41"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

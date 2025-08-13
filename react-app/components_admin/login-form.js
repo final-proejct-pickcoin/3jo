@@ -65,12 +65,10 @@ export default function LoginForm({
         localStorage.setItem("role", response.data.role);
         
         setToken(response.data.access_token);    // 상태 업데이트 추가
-
-        console.log("로그인 시 토큰 확인:", localStorage.getItem("access_token"))
-
+        
         onLogin();        
         setError(null);
-        window.location.reload(); // 페이지 새로고침
+        // window.location.reload(); // 페이지 새로고침
         
       }else if(response.data.role === "USER"){
         setError("관리자 계정이 아닙니다.");
