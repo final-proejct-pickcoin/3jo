@@ -1,5 +1,6 @@
 "use client"
 
+import axios from "axios"
 import { createContext, useContext, useState, useEffect } from "react"
 
 const AuthContext = createContext(undefined)
@@ -82,6 +83,11 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     const userData = JSON.parse(sessionStorage.getItem("user_data"))
     const isKakaoUser = userData?.provider === "kakao"
+
+    console.log("로그아웃 유저 정보:",userData)
+    axios.delete("http://localhost:8080/users/logout", {
+      params : {email : userData.email}
+    })
 
     // 카카오 로그아웃
     if (isKakaoUser && window.Kakao?.Auth) {
