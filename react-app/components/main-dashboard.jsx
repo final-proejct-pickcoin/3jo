@@ -18,7 +18,7 @@ export const MainDashboard = () => {
   useEffect(() => {
     if (user && !user.isOnboardingCompleted) setTimeout(startOnboarding, 1000)
   }, [user, startOnboarding])
-  const isAdmin = user?.email.includes("admin")
+  const isAdmin = user?.email?.includes("admin") ?? false
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
