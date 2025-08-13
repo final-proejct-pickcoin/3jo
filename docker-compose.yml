@@ -4,6 +4,7 @@ services:
     build: ./fastapi-app
     volumes:
       - ./fastapi-app:/app
+      - ./key/pickcoin-687a99cb3128.json:/app/secrets/pickcoin-687a99cb3128.json
     ports:
       - "8000:8000"
     env_file:
