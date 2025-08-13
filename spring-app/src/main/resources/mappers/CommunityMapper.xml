@@ -1,64 +1,108 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.finalproject.pickcoin.repository.CommunityRepository">
 
-    <!-- 전체 조회 -->
-    <select id="findAll" resultType="com.finalproject.pickcoin.domain.Community">
-        SELECT * FROM community
-    </select>
+  <!-- 엔티티가 post_id/user_id 처럼 스네이크이므로 property도 스네이크로! -->
+  <resultMap id="CommunityMap" type="com.finalproject.pickcoin.domain.Community">
+    <id     column="post_id"     property="post_id"/>
+    <result column="user_id"     property="user_id"/>
+    <result column="coin_id"     property="coin_id"/>
+    <result column="title"       property="title"/>
+    <result column="content"     property="content"/>
+    <result column="author"      property="author"/>
+    <result column="like_count"  property="like_count"/>
+    <result column="cnt"         property="cnt"/>
+    <result column="reply_count" property="reply_count"/>
+    <result column="status"      property="status"/>
+    <!-- 엔티티 필드는 createdAt/updatedAt(카멜)이라 여기만 카멜 -->
+    <result column="created_at"  property="createdAt"/>
+    <result column="updated_at"  property="updatedAt"/>
+  </resultMap>
 
-    <!-- 단건 조회 -->
-    <select id="findById" parameterType="int" resultType="com.finalproject.pickcoin.domain.Community">
-        SELECT * FROM community WHERE post_id = #{post_id}
-    </select>
+  <select id="findAll" resultMap="CommunityMap">
+    SELECT
+      c.post_id,
+      c.user_id,
+      c.coin_id,
+      c.title,
+      c.content,
+      COALESCE(c.like_count, 0)  AS like_count,
+      COALESCE(c.cnt, 0)         AS cnt,
+      COALESCE(c.reply_count, 0) AS reply_count,
+      c.status,
+      c.created_at,
+      c.updated_at,
+      u.name AS author
+    FROM community c
+    LEFT JOIN users u ON u.user_id = c.user_id
+    ORDER BY c.post_id DESC
+  </select>
 
-    <!-- 삽입 -->
-    <insert id="insert" parameterType="com.finalproject.pickcoin.domain.Community">
+  <select id="findById" parameterType="int" resultMap="CommunityMap">
+    SELECT
+      c.post_id,
+      c.user_id,
+      c.coin_id,
+      c.title,
+      c.content,
+      COALESCE(c.like_count, 0)  AS like_count,
+      COALESCE(c.cnt, 0)         AS cnt,
+      COALESCE(c.reply_count, 0) AS reply_count,
+      c.status,
+      c.created_at,
+      c.updated_at,
+      u.name AS author
+    FROM community c
+    LEFT JOIN users u ON u.user_id = c.user_id
+    WHERE c.post_id = #{post_id}
+  </select>
+
+  <insert id="insert" parameterType="com.finalproject.pickcoin.domain.Community">
     INSERT INTO community (
-        user_id, coin_id, title, content, like_count, cnt, reply_count, status, created_at, updated_at
+      user_id, coin_id, title, content, like_count, cnt, reply_count, status, created_at, updated_at
     ) VALUES (
-        #{user_id},
-        #{coin_id, jdbcType=INTEGER},
-        #{title},
-        #{content},
-        COALESCE(#{like_count}, 0),
-        COALESCE(#{cnt}, 0),
-        COALESCE(#{reply_count}, 0),
-        #{status},
-        NOW(), NOW()
+      #{user_id},
+      #{coin_id},
+      #{title},
+      #{content},
+      COALESCE(#{like_count}, 0),
+      COALESCE(#{cnt}, 0),
+      COALESCE(#{reply_count}, 0),
+      #{status},
+      NOW(), NOW()
     )
-</insert>
+  </insert>
 
+  <update id="update" parameterType="com.finalproject.pickcoin.domain.Community">
+    UPDATE community
+    SET
+      user_id     = #{user_id},
+      coin_id     = #{coin_id},
+      title       = #{title},
+      content     = #{content},
+      cnt         = #{cnt},
+      reply_count = #{reply_count},
+      status      = #{status},
+      updated_at  = NOW()
+    WHERE post_id = #{post_id}
+  </update>
 
-    <!-- 수정 -->
-    <update id="update" parameterType="com.finalproject.pickcoin.domain.Community">
-        UPDATE community
-        SET
-            user_id = #{user_id},
-            coin_id = #{coin_id},
-            title = #{title},
-            content = #{content},
-            like_count = #{like_count},
-            cnt = #{cnt},
-            reply_count = #{reply_count},
-            status = #{status},
-            updated_at = NOW()
-        WHERE post_id = #{post_id}
-    </update>
+  <delete id="delete" parameterType="com.finalproject.pickcoin.domain.Community">
+    DELETE FROM community WHERE post_id = #{post_id}
+  </delete>
 
-    <!-- 삭제 -->
-    <delete id="delete" parameterType="int">
-        DELETE FROM community WHERE post_id = #{post_id}
-    </delete>
+  <update id="increaseLikeCount" parameterType="int">
+  UPDATE community
+  SET like_count = (
+      SELECT COUNT(*) FROM community_likes WHERE post_id = #{post_id}
+  ),
+  updated_at = NOW()
+  WHERE post_id = #{post_id}
+</update>
 
-	<update id="increaseLikeCount" parameterType="int">
-    	UPDATE community
-    	SET like_count = like_count + 1,
-			updated_at = NOW()
-    	WHERE post_id = #{value}
-	</update>
+  
 
 </mapper>

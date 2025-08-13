@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.finalproject.pickcoin.repository.CommunityLikeRepository">
+
+    <!-- 좋아요 추가 -->
+    <insert id="insertLike" parameterType="com.finalproject.pickcoin.domain.Community_Likes">
+        INSERT INTO community_likes (post_id, user_id, created_at)
+        VALUES (#{post_id}, #{user_id}, NOW())
+    </insert>
+
+    <!-- 특정 글에 특정 유저가 좋아요 했는지 확인 -->
+    <select id="isLikedByUser" resultType="int">
+        SELECT COUNT(*) FROM community_likes
+        WHERE post_id = #{post_id} AND user_id = #{user_id}
+    </select>
+
+    <!-- 특정 글의 좋아요 개수 조회 -->
+    <select id="countLikesByPostId" resultType="int">
+        SELECT COUNT(*) FROM community_likes
+        WHERE post_id = #{post_id}
+    </select>
+
+    <!-- 좋아요 삭제 (예: 취소 기능이 있을 경우) -->
+    <delete id="deleteLike" parameterType="com.finalproject.pickcoin.domain.Community_Likes">
+        DELETE FROM community_likes
+        WHERE post_id = #{post_id} AND user_id = #{user_id}
+    </delete>
+
+    <!-- 사용자가 좋아요한 글 ID 목록 -->
+    <select id="findPostIdsByUser" resultType="int" parameterType="com.finalproject.pickcoin.domain.Community_Likes">
+        SELECT post_id
+        FROM community_likes
+        WHERE user_id = #{user_id}
+    </select>
+</mapper>
