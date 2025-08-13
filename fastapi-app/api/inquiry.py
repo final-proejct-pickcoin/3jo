@@ -10,7 +10,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "34.64.105.135"
+host = " 34.47.81.41"
 
 @router.post("/inq-status")
 def inq_status(inquiry_id: int, status: str):

@@ -23,7 +23,7 @@ export const MainDashboard = () => {
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-0 pt-6 pb-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex justify-evenly w-full">
             <TabsTrigger value="trading" data-tour="trading-tab"

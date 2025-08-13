@@ -17,7 +17,7 @@ class User(BaseModel):
     is_verified: bool
     trade_count: int
 
-host = "34.64.105.135"
+host = " 34.47.81.41"
 
 @router.get("/admin/getuser")
 def getuser():

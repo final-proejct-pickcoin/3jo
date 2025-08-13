@@ -12,24 +12,31 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
  */
 function TradingChart({
   symbol = "BTC/KRW",
-  koreanName = "", // ✅ 이거 추가  
+  koreanName = "", // ✅ 이거 추가
   height = 680,
   theme = "light",
   currentPrice = null,
   initialTimeframe = '1h', // ✅ props 이름 변경
-  realTimeData,
   initialPriceInfo = { displayPrice: 0 } // ✅ props 이름 변경
 }) {
-  const containerRef = useRef(null);
-  const chartRef = useRef(null);
-  const priceSeriesRef = useRef(null);
-  const volumeSeriesRef = useRef(null);
-  const indicatorRefs = useRef({});
-  const priceLineRef = useRef(null);
-
-  // ✅ state 관리 (중복 제거)
-  const [timeframe, setTimeframe] = useState(initialTimeframe); // ✅ 하나만 유지
+  // ✅ 1. 먼저 기본 state들을 선언
+  const [timeframe, setTimeframe] = useState(initialTimeframe);
   const [chartType, setChartType] = useState("candlestick");
+  const [crosshair, setCrosshair] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [chartApi, setChartApi] = useState(null);
+  const [showIndicators, setShowIndicators] = useState(false);
+  const [drawingMode, setDrawingMode] = useState(null);
+  const [volumeProfile, setVolumeProfile] = useState(false);
+
+  // ✅ 2. 실시간 데이터 관련 state
+  const [liveCandles, setLiveCandles] = useState([]);
+  const [liveTicks, setLiveTicks] = useState([]);
+  const [realTimeCandles, setRealTimeCandles] = useState([]);
+  const [lastTickTime, setLastTickTime] = useState(null);
+  const [tickBuffer, setTickBuffer] = useState([]);
+
+  // ✅ 3. 지표 설정
   const [indicators, setIndicators] = useState({
     volume: true,
     sma: false,
@@ -43,12 +50,41 @@ function TradingChart({
     vwap: false,
   });
 
-  const [crosshair, setCrosshair] = useState(null);
-  const [ready, setReady] = useState(false);
-  const [chartApi, setChartApi] = useState(null);
-  const [showIndicators, setShowIndicators] = useState(false);
-  const [drawingMode, setDrawingMode] = useState(null);
-  const [volumeProfile, setVolumeProfile] = useState(false);
+  // ✅ 4. 타임프레임 옵션 정의 (state 초기화 후)
+  const timeframes = [
+    { value: 'tick', label: '1틱' },
+    { value: '1m', label: '1분' },
+    { value: '5m', label: '5분' },
+    { value: '15m', label: '15분' },
+    { value: '1h', label: '1시간' },
+    { value: '4h', label: '4시간' },
+    { value: '1d', label: '1일' },
+    { value: '1w', label: '1주' }
+  ];
+
+  // ✅ 5. refs 초기화
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const priceSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
+  const indicatorRefs = useRef({});
+  const priceLineRef = useRef(null);
+
+  // ✅ 6. 실시간 데이터 처리 (timeframe이 초기화된 후)
+  const realTimeData = useMemo(() => {
+    if (timeframe === 'tick') {
+      return liveTicks.length > 0 ? liveTicks[liveTicks.length - 1] : null;
+    } else {
+      return liveCandles.length > 0 ? liveCandles[liveCandles.length - 1] : null;
+    }
+  }, [timeframe, liveTicks, liveCandles]);
+
+  // ✅ realTimeData를 직접 사용하도록 수정 (라인 100-120 근처)
+  const chartRealTimeData = useMemo(() => {
+    return realTimeData; // 부모에서 전달받은 실시간 데이터 직접 사용
+  }, [realTimeData]);
+
+  // ...existing code...
 
   // ✅ 팔레트 정의
   const palette = useMemo(() => {
@@ -56,89 +92,118 @@ function TradingChart({
       bg: "#ffffff",
       text: "#2D3748",
       grid: "rgba(0,0,0,0.05)",
-      up: "#16C784",
-      down: "#EA3943",
-      volUp: "rgba(22,199,132,.3)",
-      volDown: "rgba(234,57,67,.3)",
+      up: "#4F9CF9",
+      down: "#FF6B8A",
+      volUp: "rgba(79,156,249,.3)",
+      volDown: "rgba(255,107,138,.3)",
       axis: "#E2E8F0",
-      accent: "#3182CE",
+      accent: "#4F9CF9",
     };
     const dark = {
       bg: "#0D1421",
       text: "#E2E8F0",
       grid: "rgba(255,255,255,0.04)",
-      up: "#00D4AA",
-      down: "#FF6B6B",
-      volUp: "rgba(0,212,170,.3)",
-      volDown: "rgba(255,107,107,.3)",
+      up: "#6BB6FF",
+      down: "#FF8FA3",
+      volUp: "rgba(107,182,255,.3)",
+      volDown: "rgba(255,143,163,.3)",
       axis: "#2D3748",
       accent: "#63B3ED",
     };
     return theme === "dark" ? dark : light;
   }, [theme]);
 
-  // ✅ 가격 정보 (하나만 유지)
-  const priceInfo = useMemo(() => {
-    const displayPrice = currentPrice ?? 
-      (realTimeData?.closePrice ? Number(realTimeData.closePrice) : 163_800_000);
-    const change = realTimeData?.chgAmt ? Number(realTimeData.chgAmt) : 600_000;
-    const changePercent = realTimeData?.chgRate ? Number(realTimeData.chgRate) : 0.37;
-    const high24h = realTimeData?.maxPrice ? Number(realTimeData.maxPrice) : 164_200_000;
-    const low24h = realTimeData?.minPrice ? Number(realTimeData.minPrice) : 162_000_000;
-    const volume24h = realTimeData?.unitsTraded ? Number(realTimeData.unitsTraded) : 1231.795;
-    
-    return { displayPrice, change, changePercent, high24h, low24h, volume24h, isRealTime: !!realTimeData };
-  }, [currentPrice, realTimeData]);
+// ✅ 가격 정보 계산 수정
+const priceInfo = useMemo(() => {
+  const displayPrice = currentPrice ?? 
+    (chartRealTimeData?.closePrice ? Number(chartRealTimeData.closePrice) : 163_800_000);
+  const change = chartRealTimeData?.chgAmt ? Number(chartRealTimeData.chgAmt) : 600_000;
+  const changePercent = chartRealTimeData?.chgRate ? Number(chartRealTimeData.chgRate) : 0.37;
+  const high24h = chartRealTimeData?.maxPrice ? Number(chartRealTimeData.maxPrice) : 164_200_000;
+  const low24h = chartRealTimeData?.minPrice ? Number(chartRealTimeData.minPrice) : 162_000_000;
+  const volume24h = chartRealTimeData?.unitsTraded ? Number(chartRealTimeData.unitsTraded) : 1231.795;
+  
+  return { displayPrice, change, changePercent, high24h, low24h, volume24h, isRealTime: !!chartRealTimeData };
+}, [currentPrice, chartRealTimeData]);
 
-  // ✅ 차트 데이터 생성
+  // 차트에 표시할 데이터: 1틱 or 봉 (차트용)
+  const chartData = useMemo(() => {
+    if (timeframe === 'tick') {
+      return liveTicks.map(tick => ({
+        time: Math.floor((tick.timestamp || Date.now()) / 1000),
+        value: Number(tick.closePrice || tick.price || 0)
+      }));
+    } else {
+      return liveCandles.map(candle => ({
+        time: Math.floor((candle.timestamp || Date.now()) / 1000),
+        open: Number(candle.open),
+        high: Number(candle.high),
+        low: Number(candle.low),
+        close: Number(candle.close),
+        volume: Number(candle.volume)
+      }));
+    }
+  }, [timeframe, liveTicks, liveCandles]);
+
+  // ✅ 실제 차트용 데이터 (candles)
   const candles = useMemo(() => {
-    const out = [];
-    let base = priceInfo.displayPrice * 0.99;
-    const now = Date.now();
-    const ms = {
-      "1m": 60_000, "5m": 300_000, "15m": 900_000,
-      "1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000,
-      "1w": 604_800_000, "1M": 2_592_000_000
-    }[timeframe] || 3_600_000;
+    if (timeframe === 'tick') {
+      // 틱 데이터의 경우 라인 차트용으로 변환
+      return liveTicks.map(tick => ({
+        time: Math.floor((tick.timestamp || Date.now()) / 1000),
+        open: Number(tick.closePrice || tick.price || 0),
+        high: Number(tick.closePrice || tick.price || 0),
+        low: Number(tick.closePrice || tick.price || 0),
+        close: Number(tick.closePrice || tick.price || 0),
+        volume: Number(tick.volume || 1)
+      }));
+    } else {
+      // 실시간 캔들 데이터가 있으면 사용
+      if (liveCandles.length > 0) {
+        return liveCandles.map(candle => ({
+          time: Math.floor((candle.timestamp || Date.now()) / 1000),
+          open: Number(candle.open),
+          high: Number(candle.high),
+          low: Number(candle.low),
+          close: Number(candle.close),
+          volume: Number(candle.volume)
+        }));
+      }
+      // 폴백: 더미 데이터 (실시간 데이터가 없을 때)
+      const out = [];
+      let base = priceInfo.displayPrice * 0.99;
+      const now = Date.now();
+      const ms = {
+        "1m": 60_000, "5m": 300_000, "15m": 900_000,
+        "1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000,
+        "1w": 604_800_000
+      }[timeframe] || 3_600_000;
 
-    const candleCount = timeframe === "1m" ? 200 : timeframe === "5m" ? 288 : 100;
-
-    for (let i = candleCount; i >= 0; i--) {
-      const candleTime = Math.floor((now - i * ms) / ms) * ms;
-      const t = Math.floor(candleTime / 1000);
-      
-      const trend = Math.sin(i * 0.02) * 0.0008;
-      const volatility = 0.001 + Math.random() * 0.002;
-      const priceMove = (Math.random() - 0.5) * volatility;
-      
-      base = base * (1 + trend + priceMove);
-      
-      const spread = base * (0.002 + Math.random() * 0.003);
-      const o = base + (Math.random() - 0.5) * spread * 0.3;
-      const c = base + (Math.random() - 0.5) * spread * 0.8;
-      const h = Math.max(o, c) + Math.random() * spread * 0.3;
-      const l = Math.min(o, c) - Math.random() * spread * 0.3;
-      const v = 100 + Math.random() * 500 + Math.abs(Math.sin(i * 0.1)) * 300;
-      
-      out.push({
-        time: t,
-        open: Math.round(Math.max(l, o)),
-        high: Math.round(Math.max(h, o, c)),
-        low: Math.round(Math.min(l, o, c)),
-        close: Math.round(Math.max(l, c)),
-        volume: Math.round(v),
-      });
+      for (let i = 100; i >= 0; i--) {
+        const candleTime = Math.floor((now - i * ms) / ms) * ms;
+        const t = Math.floor(candleTime / 1000);
+        const trend = Math.sin(i * 0.02) * 0.0008;
+        const volatility = 0.001 + Math.random() * 0.002;
+        const priceMove = (Math.random() - 0.5) * volatility;
+        base = base * (1 + trend + priceMove);
+        const spread = base * (0.002 + Math.random() * 0.003);
+        const o = base + (Math.random() - 0.5) * spread * 0.3;
+        const c = base + (Math.random() - 0.5) * spread * 0.8;
+        const h = Math.max(o, c) + Math.random() * spread * 0.3;
+        const l = Math.min(o, c) - Math.random() * spread * 0.3;
+        const v = 100 + Math.random() * 500;
+        out.push({
+          time: t,
+          open: Math.round(Math.max(l, o)),
+          high: Math.round(Math.max(h, o, c)),
+          low: Math.round(Math.min(l, o, c)),
+          close: Math.round(Math.max(l, c)),
+          volume: Math.round(v),
+        });
+      }
+      return out.sort((a, b) => a.time - b.time);
     }
-
-    if (realTimeData && out.length) {
-      const last = out[out.length - 1];
-      last.close = priceInfo.displayPrice;
-      last.high = Math.max(last.high, priceInfo.displayPrice);
-      last.low = Math.min(last.low, priceInfo.displayPrice);
-    }
-
-    return out.sort((a, b) => a.time - b.time);
-  }, [timeframe, priceInfo.displayPrice, realTimeData]);
+  }, [timeframe, liveTicks, liveCandles, priceInfo.displayPrice]);
 
   // 고급 지표 계산 함수들
   const calcSMA = useCallback((data, period = 20) => {
@@ -412,13 +477,24 @@ function TradingChart({
       chartRef.current = chart;
       setChartApi(LW);
 
+
       // 메인 시리즈 생성
       let seriesData = candles;
       if (chartType === "heikin-ashi") {
         seriesData = transformToHeikinAshi(candles);
       }
 
-      if (["candlestick", "heikin-ashi"].includes(chartType)) {
+      // ✅ 틱 차트는 라인 시리즈로 처리
+      if (timeframe === 'tick') {
+        priceSeriesRef.current = chart.addLineSeries({ 
+          color: palette.accent, 
+          lineWidth: 2,
+          priceFormat: { type: "price", precision: 0, minMove: 1000 }
+        });
+        priceSeriesRef.current.setData(
+          candles.map(({ time, close }) => ({ time, value: close }))
+        );
+      } else if (["candlestick", "heikin-ashi"].includes(chartType)) {
         priceSeriesRef.current = chart.addCandlestickSeries({
           upColor: palette.up,
           downColor: palette.down,
@@ -702,75 +778,117 @@ function TradingChart({
     return () => { mounted = false; };
   }, [
     timeframe, chartType, height, theme, JSON.stringify(indicators),
-    calcSMA, calcEMA, calcMACD, calcStochastic, calcWilliamsR, calcATR, calcVWAP, calcBollinger, calcRSI, transformToHeikinAshi
+    calcSMA, calcEMA, calcMACD, calcStochastic, calcWilliamsR, calcATR, calcVWAP, calcBollinger, calcRSI, transformToHeikinAshi,
+    candles, palette
   ]);
 
   // 실시간 업데이트 - 기존 코드를 완전히 교체
   useEffect(() => {
     if (!ready || !priceSeriesRef.current || !realTimeData) return;
 
-    // ✅ 타임프레임에 맞는 캔들 시간 계산
-    const getTimeframeMs = (tf) => ({
-      "1m": 60_000,
-      "5m": 300_000, 
-      "15m": 900_000,
-      "1h": 3_600_000,
-      "4h": 14_400_000,
-      "1d": 86_400_000,
-      "1w": 604_800_000
-    }[tf] || 3_600_000);
-
-    const timeframeMs = getTimeframeMs(timeframe);
-    const now = Date.now();
-    
-    // ✅ 현재 타임프레임에 맞는 캔들 시간 계산
-    const currentCandleTime = Math.floor(now / timeframeMs) * timeframeMs / 1000;
-    
-    const open = Number(realTimeData.openPrice || priceInfo.displayPrice);
-    const high = Number(realTimeData.maxPrice || priceInfo.displayPrice);
-    const low = Number(realTimeData.minPrice || priceInfo.displayPrice);
-    const close = Number(realTimeData.closePrice || priceInfo.displayPrice);
-
-    console.log('🔄 실시간 업데이트:', { 
-      timeframe,
-      currentCandleTime: new Date(currentCandleTime * 1000).toLocaleString(),
-      close 
-    });
-
-    const updateObj = ["candlestick", "heikin-ashi"].includes(chartType)
-      ? { time: currentCandleTime, open, high, low, close } // ✅ 타임프레임 기반 시간 사용
-      : { time: currentCandleTime, value: close };
+    console.log('🔄 차트 실시간 업데이트:', realTimeData);
 
     try {
-      // ✅ 기존 캔들 업데이트 (새로운 캔들 생성 X)
-      priceSeriesRef.current.update(updateObj);
+      const price = Number(realTimeData.closePrice || realTimeData.price || priceInfo.displayPrice);
+      const currentTime = Math.floor(Date.now() / 1000);
       
+      // ✅ 실시간 캔들 업데이트
+      if (["candlestick", "heikin-ashi"].includes(chartType)) {
+        const candleData = {
+          time: currentTime,
+          open: Number(realTimeData.openPrice || price),
+          high: Number(realTimeData.maxPrice || price),
+          low: Number(realTimeData.minPrice || price), 
+          close: price
+        };
+        priceSeriesRef.current.update(candleData);
+        console.log('📈 캔들 업데이트:', candleData);
+      } else {
+        // 라인/에어리어 차트
+        priceSeriesRef.current.update({
+          time: currentTime,
+          value: price
+        });
+      }
+
+      // x축을 항상 최신(현재시각)으로 스크롤
+      if (chartRef.current && chartRef.current.timeScale) {
+        try { chartRef.current.timeScale().scrollToRealTime(); } catch (e) {}
+      }
+
       // 현재가 라인 업데이트
       if (priceLineRef.current) {
         priceSeriesRef.current.removePriceLine(priceLineRef.current);
       }
       priceLineRef.current = priceSeriesRef.current.createPriceLine({
-        price: close,
+        price: price,
         color: palette.accent,
         lineWidth: 2,
         lineStyle: 2,
-        title: `현재가: ${close.toLocaleString()}원`,
+        title: `현재가: ${price.toLocaleString()}원`,
       });
-      
-    } catch (e) {
-      console.warn('실시간 업데이트 오류:', e);
+
+    } catch (error) {
+      console.error('❌ 차트 업데이트 오류:', error);
     }
-  }, [ready, chartType, realTimeData, timeframe, palette.accent]); // ✅ timeframe 의존성 추가
+  }, [ready, realTimeData, chartType, palette.accent]);
 
-  // UI 토글 함수
-  const toggleIndicator = (key) => {
-    setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // 차트 업데이트 (별도 useEffect)
+  useEffect(() => {
+    if (!ready || !priceSeriesRef.current || !chartRealTimeData) return;
+    console.log('🔄 차트 실시간 업데이트:', chartRealTimeData);
+    try {
+      const price = Number(chartRealTimeData.closePrice || chartRealTimeData.price || priceInfo.displayPrice);
+      const currentTime = Math.floor(Date.now() / 1000);
 
+      // ✅ 실시간 캔들 업데이트
+      if (["candlestick", "heikin-ashi"].includes(chartType)) {
+        const candleData = {
+          time: currentTime,
+          open: Number(chartRealTimeData.openPrice || price),
+          high: Number(chartRealTimeData.maxPrice || price),
+          low: Number(chartRealTimeData.minPrice || price), 
+          close: price
+        };
+
+        priceSeriesRef.current.update(candleData);
+        console.log('📈 캔들 업데이트:', candleData);
+
+      } else {
+        // 라인/에어리어 차트
+        priceSeriesRef.current.update({
+          time: currentTime,
+          value: price
+        });
+      }
+
+    // 현재가 라인 업데이트
+    if (priceLineRef.current) {
+      priceSeriesRef.current.removePriceLine(priceLineRef.current);
+    }
+    
+    priceLineRef.current = priceSeriesRef.current.createPriceLine({
+      price: price,
+      color: palette.accent,
+      lineWidth: 2,
+      lineStyle: 2,
+      title: `현재가: ${price.toLocaleString()}원`,
+    });
+
+  } catch (error) {
+    console.error('❌ 차트 업데이트 오류:', error);
+  }
+}, [ready, chartRealTimeData, chartType, palette.accent]); // ✅ realTimeData 대신 chartRealTimeData 사용
+
+  // 드로잉 모드 토글 함수
   const toggleDrawingMode = (mode) => {
     setDrawingMode(prev => prev === mode ? null : mode);
   };
 
+  const toggleIndicator = (key) => {
+    setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
+  };  
+  
   const isUp = priceInfo.change >= 0;
 
  // 차트 타입 옵션들
@@ -781,16 +899,7 @@ function TradingChart({
     { key: "area", label: "에어리어", icon: "🌊" }
   ];
 
-  // 타임프레임 옵션들
-  const timeframes = [
-    { key: "1m", label: "1분" },
-    { key: "5m", label: "5분" },
-    { key: "15m", label: "15분" },
-    { key: "1h", label: "1시간" },
-    { key: "4h", label: "4시간" },
-    { key: "1d", label: "1일" },
-    { key: "1w", label: "1주" }
-  ];
+  // (중복 제거) 위에서 선언한 timeframes만 사용
 
 
  // 지표 그룹들
@@ -920,21 +1029,21 @@ const indicatorGroups = {
        </div>
 
        {/* 우측: 컨트롤 패널 */}
-       <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-         {/* 타임프레임 선택 */}
-         <div style={{ display: "flex", gap: 4, padding: "4px", borderRadius: 8, background: theme === "dark" ? "#2D3748" : "#F7FAFC" }}>
+       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+         {/* 첫 번째 행: 타임프레임 선택 */}
+         <div style={{ display: "flex", gap: 4, padding: "4px", borderRadius: 4, background: theme === "dark" ? "#2D3748" : "#F7FAFC" }}>
            {timeframes.map(tf => (
              <button
-               key={tf.key}
-               onClick={() => setTimeframe(tf.key)}
+               key={tf.value}
+               onClick={() => setTimeframe(tf.value)}
                style={{
                  fontSize: 11, 
                  padding: "6px 10px", 
                  borderRadius: 6, 
                  border: "none",
-                 background: timeframe === tf.key ? palette.accent : "transparent", 
-                 color: timeframe === tf.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
-                 fontWeight: timeframe === tf.key ? 600 : 400,
+                 background: timeframe === tf.value ? palette.accent : "transparent", 
+                 color: timeframe === tf.value ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                 fontWeight: timeframe === tf.value ? 600 : 400,
                  cursor: "pointer",
                  transition: "all 0.2s ease"
                }}
@@ -944,72 +1053,76 @@ const indicatorGroups = {
            ))}
          </div>
 
-         {/* 차트 타입 선택 */}
-         <div style={{ display: "flex", gap: 4, padding: "4px", borderRadius: 8, background: theme === "dark" ? "#2D3748" : "#F7FAFC" }}>
-           {chartTypes.map(type => (
-             <button
-               key={type.key}
-               onClick={() => setChartType(type.key)}
-               style={{
-                 fontSize: 11, 
-                 padding: "6px 10px", 
-                 borderRadius: 6, 
-                 border: "none",
-                 background: chartType === type.key ? palette.accent : "transparent", 
-                 color: chartType === type.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
-                 fontWeight: chartType === type.key ? 600 : 400,
-                 cursor: "pointer",
-                 transition: "all 0.2s ease",
-                 display: "flex",
-                 alignItems: "center",
-                 gap: 4
-               }}
-             >
-               <span>{type.icon}</span>
-               {type.label}
-             </button>
-           ))}
-         </div>
+         {/* 두 번째 행 : 차트 타입 + 지표 + 드로잉 도구 */}
+         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          {/* 차트 타입 선택 */}
+          <div style={{ display: "flex", gap: 4, padding: "4px", borderRadius: 8, background: theme === "dark" ? "#2D3748" : "#F7FAFC" }}>
+            {chartTypes.map(type => (
+              <button
+                key={type.key}
+                onClick={() => setChartType(type.key)}
+                style={{
+                  fontSize: 11, 
+                  padding: "6px 10px", 
+                  borderRadius: 6, 
+                  border: "none",
+                  background: chartType === type.key ? palette.accent : "transparent", 
+                  color: chartType === type.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                  fontWeight: chartType === type.key ? 600 : 400,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
+              >
+                <span>{type.icon}</span>
+                {type.label}
+              </button>
+            ))}
+          </div>
+        </div>  
 
-         {/* 지표 버튼 */}
-         <div style={{ position: "relative" }}>
-           <button 
-             style={{
-               padding: "8px 12px",
-               borderRadius: 8,
-               border: "none",
-               background: theme === "dark" ? "#4A5568" : "#E2E8F0",
-               color: theme === "dark" ? "#F7FAFC" : "#2D3748",
-               fontSize: 12,
-               fontWeight: 600,
-               cursor: "pointer"
-             }}
-             onClick={() => setShowIndicators(!showIndicators)}
-           >
-             📊 지표 ({Object.values(indicators).filter(Boolean).length})
-           </button>
-         </div>
-
-         {/* 드로잉 도구 */}
-         <div style={{ display: "flex", gap: 4 }}>
-           {drawingTools.slice(0, 3).map(tool => (
-             <button
-               key={tool.key}
-               onClick={() => toggleDrawingMode(tool.key)}
+         {/* 지표 버튼 + 드로잉 도구를 같은 flex row로 묶음 */}
+         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+           <div style={{ position: "relative" }}>
+             <button 
                style={{
-                 padding: "6px 8px",
-                 borderRadius: 6,
+                 padding: "8px 12px",
+                 borderRadius: 8,
                  border: "none",
-                 background: drawingMode === tool.key ? palette.accent : (theme === "dark" ? "#4A5568" : "#E2E8F0"),
-                 color: drawingMode === tool.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
-                 fontSize: 11,
-                 cursor: "pointer",
-                 title: tool.label
+                 background: theme === "dark" ? "#4A5568" : "#E2E8F0",
+                 color: theme === "dark" ? "#F7FAFC" : "#2D3748",
+                 fontSize: 12,
+                 fontWeight: 600,
+                 cursor: "pointer"
                }}
+               onClick={() => setShowIndicators(!showIndicators)}
              >
-               {tool.icon}
+               📊 지표 ({Object.values(indicators).filter(Boolean).length})
              </button>
-           ))}
+           </div>
+           {/* 드로잉 도구 */}
+           <div style={{ display: "flex", gap: 4 }}>
+             {drawingTools.slice(0, 3).map(tool => (
+               <button
+                 key={tool.key}
+                 onClick={() => toggleDrawingMode(tool.key)}
+                 style={{
+                   padding: "6px 8px",
+                   borderRadius: 6,
+                   border: "none",
+                   background: drawingMode === tool.key ? palette.accent : (theme === "dark" ? "#4A5568" : "#E2E8F0"),
+                   color: drawingMode === tool.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
+                   fontSize: 11,
+                   cursor: "pointer",
+                   title: tool.label
+                 }}
+               >
+                 {tool.icon}
+               </button>
+             ))}
+           </div>
          </div>
        </div>
      </div>
@@ -1204,7 +1317,7 @@ const indicatorGroups = {
            📈 지표: <strong>{Object.values(indicators).filter(Boolean).length}개 활성</strong>
          </span>
          <span>
-           ⏱️ 간격: <strong>{timeframes.find(tf => tf.key === timeframe)?.label}</strong>
+           ⏱️ 간격: <strong>{timeframes.find(tf => tf.value === timeframe)?.label}</strong>
          </span>
        </div>
        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1221,21 +1334,20 @@ const indicatorGroups = {
      {/* CSS 애니메이션 */}
      <style jsx>{`
      @keyframes spin {
-         0% { transform: rotate(0deg); }
-         100% { transform: rotate(360deg); }
-       }
-       
-       .trading-chart-container button:hover {
-         transform: translateY(-1px);
-         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-       }
-       
-       .trading-chart-container button:active {
-         transform: translateY(0);
-       }
-     `}</style>
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.trading-chart-container button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.trading-chart-container button:active {
+  transform: translateY(0);
+}
+`}</style>
    </div>
  );
 }
-
 export default TradingChart;
