@@ -6,7 +6,6 @@ codeList = getCoinCode()
 
 def insertCoin(data):
 
-
     conn = pymysql.connect(host='34.47.81.41', port=3306, user='pickcoin', password='Admin1234!', database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()

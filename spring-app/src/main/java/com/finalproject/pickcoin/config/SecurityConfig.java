@@ -29,9 +29,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/users/register", "/users/verify", "/community/findAll"
-                                , "/community/insert", "/api/assets", "/api/Market_assets/**", "**"
-                                , "/users/login", "/css/**", "/js/**", "/error", "/test", "/users/social-login"
+                .requestMatchers("/users/register", "/users/verify", "/community/findAll", "/user/log-test"
+                                , "/community/insert", "/api/assets", "/api/Market_assets/bookmarks", "/users/logout"
+                                , "/users/login", "/css/**", "/js/**", "/error", "/test", "/users/social-login", "**"
                                 ,"/WEB-INF/views/**", "/WEB-INF/**").permitAll() // 회원가입, 로그인은 인증 없이 접근
                 .anyRequest().authenticated()
             );

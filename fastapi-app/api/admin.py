@@ -102,7 +102,7 @@ def getinq():
     try:
         with conn.cursor() as cursor:
             sql = """
-                    SELECT i.inquiry_id, i.user_id, i.amount, i.category, i.closed_at, i.created_at, i.priority, i.status, u.name, u.email
+                    SELECT i.inquiry_id, i.user_id, i.amount, i.category, i.closed_at, i.created_at, i.status, u.name, u.email
                     FROM inquiry i
                         LEFT JOIN users u
                         ON i.user_id = u.user_id

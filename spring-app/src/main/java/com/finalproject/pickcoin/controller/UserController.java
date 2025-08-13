@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 
@@ -38,6 +39,8 @@ public class UserController {
     Logger logger = LoggerFactory.getLogger(UserController.class);
 
     private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    private ArrayList<String> logged_users = new ArrayList<String>();
 
     // 회원가입
     @PostMapping("/register")
@@ -98,7 +101,14 @@ public class UserController {
             @RequestParam String email,
             @RequestParam String password) {
 
-        logger.info("로그인 시도: email={}, password={}", email, password);
+        logged_users.add(email);
+        try{
+            MDC.put("event_type", "login");
+        logger.info("유저 로그인 발생 - 사용자: {}", email);
+        }finally{
+            MDC.remove("event_type");
+        }
+        
         
         Map<String, Object> result = new HashMap<>();
         Optional<Users> optionalUser  = userService.findByEmail(email);
@@ -128,7 +138,10 @@ public class UserController {
         result.put("sub", email);
         //추가
         result.put("user_id", user.getUser_id());
-        result.put("name", user.getName());        
+        result.put("name", user.getName());
+
+        System.out.println("컨트롤러에서 result:"+result.toString());
+        System.out.println("2컨트롤러에서 result:"+ResponseEntity.ok(result));
         
         return ResponseEntity.ok(result);
     }
@@ -141,8 +154,13 @@ public class UserController {
         @RequestParam(required = false) String providerId
     
     ) {
-        logger.info("[소셜 로그인] 요청 들어옴");
-        logger.info("provider: {}, email: {}, providerId: {}", provider, email, providerId);
+        logged_users.add(email);
+        try{
+            MDC.put("event_type", "login");
+        logger.info("유저 로그인 발생 - 사용자: {}", email);
+        }finally{
+            MDC.remove("event_type");
+        }        
 
         Map<String, Object> result = new HashMap<>();
 
@@ -200,6 +218,19 @@ public class UserController {
         result.put("name", user.getName());
 
         return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/logout")
+    public ResponseEntity<?> logout(@RequestParam String email){
+        try{
+            MDC.put("event_type", "login");
+        logger.info("유저 로그아웃 발생 - 사용자: {}", email);
+        }finally{
+            MDC.remove("event_type");
+        }
+        logged_users.remove(email);
+        
+        return ResponseEntity.ok("logout");
     }
 
 

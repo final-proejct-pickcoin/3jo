@@ -1,5 +1,6 @@
 "use client"
 
+import axios from "axios"
 import { createContext, useContext, useState, useEffect } from "react"
 
 // JWT 파서 유틸 함수
@@ -70,7 +71,7 @@ export const AuthProvider = ({ children }) => {
         method: "POST",
         body: formData,
       })
-
+      console.log("res 값:", res)
       if (!res.ok) {
         const ErrorMsg = (await res.json())?.error || "로그인 실패"
         setLoginError(ErrorMsg)
@@ -78,6 +79,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await res.json()
+      
       // 백엔드 응답: access_token, sub(email), user_id, name
       const profile = {
         user_id: data.user_id,
@@ -96,7 +98,7 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.setItem("auth_token", data.access_token)
       sessionStorage.setItem(
         "user_data",
-        JSON.stringify({user_id:profile.user_id, email: userEmail, nickname: userEmail.split("@")[0] })
+        JSON.stringify({user_id:data.user_id, email: userEmail, nickname: userEmail.split("@")[0] })
       )
       setUser({ email: userEmail, nickname: userEmail.split("@")[0] })
     } finally {
@@ -109,6 +111,11 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     const userData = JSON.parse(sessionStorage.getItem("user_data"))
     const isKakaoUser = userData?.provider === "kakao"
+
+    console.log("로그아웃 유저 정보:",userData)
+    axios.delete("http://localhost:8080/users/logout", {
+      params : {email : userData.email}
+    })
 
     // 카카오 로그아웃
     if (isKakaoUser && window.Kakao?.Auth) {

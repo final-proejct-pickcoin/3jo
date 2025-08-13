@@ -20,11 +20,14 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   redis:
-    image: redis:7
+    image: redis:latest
     container_name: redis
     ports:
       - "6379:6379"
     restart: always
+    volumes:
+      - ./redis_data:/data
+
   spring-app:
     build:
       #이미지빌드 할 폴더위치 설정
@@ -74,33 +77,37 @@ services:
       - spring-app
     command: ["pnpm", "dev"]
 
-
-
-  # elastic:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.txt
-  #   ports:
-  #     - 9200:9200
-  #   environment:
-  #     - discovery.type=single-node
-  #     - xpack.security.enabled=false
-  #     - xpack.security.http.ssl.enabled=false
-  #     - xpack.security.enrollment.enabled=true
-
-  # logstash:
-  #   image: docker.elastic.co/logstash/logstash:7.10.2
-  #   ports:
-  #     - 5044:5044
-  #   environment:
-  #     - ELASTICSERACH_HOSTS=http://elastic:9200
-      # volumes:
-      # - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-      # depends_on:
-      # - elasticsearch
-  # kibana:
-  #   image: docker.elastic.co/kibana/kibana:8.17.4
-  #   ports:
-  #     - 5601:5601
-  #   environment:
-  #     - ELASTICSERACH_HOSTS=http://elastic:9200
+  elasticsearch:
+    build:
+      context: .
+      dockerfile: Dockerfile.txt
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.enrollment.enabled=true
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.17.4
+    ports:
+      - 5044:5044
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    volumes:
+    - ./logstash:/usr/share/logstash/pipeline
+    depends_on:
+    - elasticsearch
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.17.4
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+  
+volumes:
+  elasticsearch_data:
