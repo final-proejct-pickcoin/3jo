@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }) => {
     const userData = sessionStorage.getItem("user_data")
 
     if (token && userData) {
+      console.log("로그인 시 유저데이타", userData)
       setUser(JSON.parse(userData))
     }
     setIsLoading(false)
@@ -91,10 +92,11 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
+      console.log("일반로그인 시 유저데이타", profile)
       sessionStorage.setItem("auth_token", data.access_token)
       sessionStorage.setItem(
         "user_data",
-        JSON.stringify({ email: userEmail, nickname: userEmail.split("@")[0] })
+        JSON.stringify({user_id:profile.user_id, email: userEmail, nickname: userEmail.split("@")[0] })
       )
       setUser({ email: userEmail, nickname: userEmail.split("@")[0] })
     } finally {
@@ -175,8 +177,10 @@ export const AuthProvider = ({ children }) => {
         nickname: data.name || data.sub.split("@")[0],
       }
 
+      console.log("소셜로그인 시 유저데이타", profile)
+
     sessionStorage.setItem("auth_token", data.access_token)
-    sessionStorage.setItem("user_data", JSON.stringify(profile)) // ✅ user_id 포함 저장
+    // sessionStorage.setItem("user_data", JSON.stringify(profile)) // ✅ user_id 포함 저장
     setUser(profile) // ✅ user_id 포함 상태 반영
 
       const userEmail = data.socialEmail || data.email
@@ -188,11 +192,7 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.setItem("auth_token", data.access_token)
       sessionStorage.setItem(
         "user_data",
-        JSON.stringify({
-          email: userEmail,
-          nickname: userEmail.split("@")[0],
-          provider: data.provider || provider,
-        })
+        JSON.stringify(profile)
       )
 
       setUser({
