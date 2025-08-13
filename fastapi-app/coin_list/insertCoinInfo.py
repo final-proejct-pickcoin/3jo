@@ -6,20 +6,12 @@ codeList = getCoinCode()
 
 def insertCoin(data):
 
-<<<<<<< HEAD
-    conn = pymysql.connect(host='34.64.105.135', port=3306, user='pickcoin', password='Admin1234!', database="coindb", charset="utf8mb4")
-=======
-    conn = pymysql.connect(host='localhost', port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
->>>>>>> feature_jh
+    conn = pymysql.connect(host='34.47.81.41', port=3306, user='pickcoin', password='Admin1234!', database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
     sql = '''
-<<<<<<< HEAD
         INSERT INTO asset(symbol, asset_name, market) VALUES(%s, %s, %s)
-=======
-        INSERT INTO coin(symbol, coin_name, market) VALUES(%s, %s, %s)
->>>>>>> feature_jh
     '''
 
     cursor.execute(sql, data)
