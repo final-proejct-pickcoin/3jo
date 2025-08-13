@@ -54,6 +54,7 @@ redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 #____________빗썸+제미나이 연동____________
 # 전역 변수로 설정하여 다른 모듈에서 임포트 가능하게 함
 # __all__ = ["redis_client"]
+from api.ai_coin_connect import redis_client
 #______________________________________________
 
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -431,38 +432,48 @@ class BithumbWebSocketManager:
         except Exception as e:
             print(f"❌ 활성 코인 조회 오류: {e}")
             return []
+        
     async def start_bithumb_connection(self):
         """빗썸 실시간 WebSocket 연결 - 모든 활성 코인 동적 구독"""
         self.is_running = True
         max_retries = 5
         retry_count = 0
+
         while retry_count < max_retries:
             try:
                 print("🔄 활성 거래 코인 목록 조회 중...")
                 active_symbols = await self.get_all_active_coins()
+
                 if not active_symbols:
                     print("❌ 활성 코인을 찾을 수 없습니다. 30초 후 재시도...")
                     await asyncio.sleep(30)
                     retry_count += 1
                     continue
+
                 self.subscribed_symbols = active_symbols
                 self.connection_stats.update({
                     "total_symbols": len(active_symbols),
                     "last_update": datetime.now().isoformat()
                 })
+
                 print(f"🚀 총 {len(active_symbols)}개 활성 코인 발견!")
                 print(f"📋 상위 10개: {[s.replace('_KRW', '') for s in active_symbols[:10]]}")
+
                 uri = "wss://pubwss.bithumb.com/pub/ws"
+
                 async with websockets.connect(uri) as websocket:
                     batch_size = 30
                     successful_subscriptions = 0
+
                     for i in range(0, len(active_symbols), batch_size):
                         batch = active_symbols[i:i+batch_size]
+
                         subscribe_msg = {
                             "type": "ticker",
                             "symbols": batch,
                             "tickTypes": ["24H"]
                         }
+
                         try:
                             await websocket.send(json.dumps(subscribe_msg))
                             successful_subscriptions += len(batch)
@@ -470,51 +481,120 @@ class BithumbWebSocketManager:
                             total_batches = (len(active_symbols) + batch_size - 1) // batch_size
                             print(f"📡 배치 {batch_num}/{total_batches}: {len(batch)}개 구독 완료 (누적: {successful_subscriptions}개)")
                             await asyncio.sleep(2)
+
                         except Exception as e:
                             print(f"❌ 배치 {batch_num} 구독 실패: {e}")
                             continue
+
                     self.connection_stats["active_subscriptions"] = successful_subscriptions
                     print(f"✅ 총 {successful_subscriptions}/{len(active_symbols)}개 코인 구독 완료!")
+
                     message_count = 0
                     last_stats_time = time.time()
+
+                    # 디버깅용 async for message in websocket:
                     async for message in websocket:
                         try:
                             data = json.loads(message)
                             message_count += 1
+                            
                             if data.get("type") == "ticker" and data.get("content"):
-                                symbol = data["content"].get("symbol", "")
+                                content = data["content"]
+                                symbol = content.get("symbol", "")
+                                
+                                # [디버깅] WebSocket에서 받은 실제 데이터 구조 출력 (처음 몇 개만)
+                                if message_count <= 5:
+                                    print(f"🔍 WebSocket 데이터 구조 분석 ({symbol}):")
+                                    print(f"   content 키: {list(content.keys())}")
+                                    
+                                    # 가능한 가격 필드들 확인
+                                    price_fields = ['closing_price', 'closePrice', 'close', 'price', 'current_price', 'last_price']
+                                    for field in price_fields:
+                                        if field in content:
+                                            print(f"   {field}: {content[field]}")
+                                
                                 if symbol in self.subscribed_symbols:
                                     await self.broadcast_to_clients(data)
+                                    
+                                    # Redis 저장
                                     try:
-                                        redis_client.setex(
-                                            f"ticker:{symbol}",
-                                            300,
-                                            json.dumps(data["content"])
-                                        )
+                                        redis_key = f"ticker:{symbol}"
+                                        redis_client.setex(redis_key, 300, json.dumps(content))
+                                        
+                                        # 중요한 코인만 저장 로그 출력 (BTC, ETH만)
+                                        if symbol in ["BTC_KRW", "ETH_KRW"]:
+                                            price_info = content.get('closing_price', content.get('close', 'N/A'))
+                                            print(f"💾 Redis 저장: {redis_key} (가격: {price_info})")
+                                        
                                     except Exception as e:
                                         print(f"⚠️ Redis 캐싱 오류 ({symbol}): {e}")
+                            
+                            # 주기적 통계 출력
                             current_time = time.time()
-                            if current_time - last_stats_time > 300:
+                            if current_time - last_stats_time > 300:  # 5분마다
                                 print(f"📊 실시간 데이터 통계: {message_count}개 메시지 수신, {len(self.connections)}개 클라이언트 연결")
                                 last_stats_time = current_time
                                 message_count = 0
+                                
                         except json.JSONDecodeError as e:
                             print(f"⚠️ JSON 파싱 오류: {e}")
                         except Exception as e:
                             print(f"❌ 메시지 처리 오류: {e}")
+
+                    # async for message in websocket:
+                    #     try:
+                    #         data = json.loads(message)
+                    #         message_count += 1
+
+                    #         if data.get("type") == "ticker" and data.get("content"):
+                    #             symbol = data["content"].get("symbol", "")
+                    #             if symbol in self.subscribed_symbols:
+                    #                 await self.broadcast_to_clients(data)
+
+                    #                 # [수정] Redis 키 형식을 voice_router.py와 일치하도록 수정
+                    #                 try:
+                    #                     # 기존: f"ticker:{symbol}" 
+                    #                     # 수정: symbol이 이미 "BTC_KRW" 형식이므로 그대로 사용
+                    #                     redis_key = f"ticker:{symbol}"
+                    #                     redis_client.setex(
+                    #                         redis_key,
+                    #                         300,  # 5분 캐시
+                    #                         json.dumps(data["content"])
+                    #                     )
+                    #                     print(f"💾 Redis 저장: {redis_key}")
+                                        
+                    #                 except Exception as e:
+                    #                     print(f"⚠️ Redis 캐싱 오류 ({symbol}): {e}")
+
+                    #         # 주기적 통계 출력 
+                    #         current_time = time.time()
+                    #         if current_time - last_stats_time > 300:
+                    #             print(f"📊 실시간 데이터 통계: {message_count}개 메시지 수신, {len(self.connections)}개 클라이언트 연결")
+                    #             last_stats_time = current_time
+                    #             message_count = 0
+
+                    #     except json.JSONDecodeError as e:
+                    #         print(f"⚠️ JSON 파싱 오류: {e}")
+                    #     except Exception as e:
+                    #         print(f"❌ 메시지 처리 오류: {e}")
+
                 print("🔄 WebSocket 연결 종료됨. 재연결 시도...")
                 retry_count = 0
                 await asyncio.sleep(5)
+
             except websockets.exceptions.ConnectionClosed as e:
                 retry_count += 1
                 print(f"❌ WebSocket 연결 끊어짐 (시도 {retry_count}/{max_retries}): {e}")
                 await asyncio.sleep(min(retry_count * 10, 60))
+
             except Exception as e:
                 retry_count += 1
                 print(f"❌ 예상치 못한 오류 (시도 {retry_count}/{max_retries}): {e}")
                 await asyncio.sleep(min(retry_count * 5, 30))
+
         print(f"❌ 최대 재시도 횟수 ({max_retries}) 초과. WebSocket 연결 중단.")
         self.is_running = False
+
     async def broadcast_to_clients(self, data):
         if not self.connections:
             return
@@ -528,6 +608,7 @@ class BithumbWebSocketManager:
                 disconnected.append(websocket)
         for ws in disconnected:
             self.disconnect_client(ws)
+
 # 추가: WebSocket 통계 엔드포인트
 @app.get("/api/websocket/stats")
 async def get_websocket_stats():
@@ -557,30 +638,74 @@ async def realtime_websocket(websocket: WebSocket):
         bithumb_manager.disconnect_client(websocket)
 
 # Redis에서 최신 시세 조회
+# [수정 2] get_cached_ticker 엔드포인트 수정 - 라인 약 370 부근
 @app.get("/api/ticker/{symbol}")
 async def get_cached_ticker(symbol: str):
-    """Redis에 캐시된 최신 시세 조회"""
+    """Redis에 캐시된 최신 시세 조회 - 형식 통일"""
     try:
-        cached_data = redis_client.get(f"ticker:{symbol}")
+        # [수정] 일관된 Redis 키 형식 사용
+        redis_key = f"ticker:{symbol}_KRW" if not symbol.endswith('_KRW') else f"ticker:{symbol}"
+        cached_data = redis_client.get(redis_key)
+        
         if cached_data:
             return {
                 "status": "success",
                 "data": json.loads(cached_data),
-                "source": "cache"
+                "source": "cache",
+                "redis_key": redis_key  # 디버깅용
             }
         else:
             # 캐시에 없으면 직접 API 호출
-            url = f"https://api.bithumb.com/public/ticker/{symbol}_KRW"
-            response = requests.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "status": "success", 
-                    "data": data["data"],
-                    "source": "api"
-                }
+            api_symbol = symbol if symbol.endswith('_KRW') else f"{symbol}_KRW"
+            url = f"https://api.bithumb.com/public/ticker/{api_symbol}"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        api_data = await response.json()
+                        if api_data.get("status") == "0000":
+                            # Redis에 캐시 저장
+                            try:
+                                redis_client.setex(redis_key, 300, json.dumps(api_data["data"]))
+                                print(f"💾 API 데이터 Redis 저장: {redis_key}")
+                            except Exception as cache_error:
+                                print(f"⚠️ 캐시 저장 실패: {cache_error}")
+                            
+                            return {
+                                "status": "success", 
+                                "data": api_data["data"],
+                                "source": "api",
+                                "redis_key": redis_key
+                            }
+            
+            return {"status": "error", "message": "데이터를 찾을 수 없습니다"}
+            
     except Exception as e:
+        print(f"❌ get_cached_ticker 오류: {e}")
         return {"status": "error", "message": str(e)}
+    
+# [추가 3] Redis 디버깅을 위한 새로운 엔드포인트 추가
+@app.get("/api/debug/redis-keys")
+async def debug_redis_keys():
+    """Redis에 저장된 ticker 키들 확인 (디버깅용)"""
+    try:
+        keys = redis_client.keys("ticker:*")
+        result = {}
+        for key in keys:
+            data = redis_client.get(key)
+            if data:
+                parsed = json.loads(data)
+                result[key] = {
+                    "closing_price": parsed.get("closing_price", "N/A"),
+                    "symbol": parsed.get("symbol", "N/A"),
+                    "timestamp": parsed.get("date", "N/A")
+                }
+        return {
+            "total_keys": len(keys),
+            "keys": result
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 # 서버 상태 확인
 @app.get("/api/status")
@@ -593,3 +718,48 @@ async def server_status():
         "active_connections": len(bithumb_manager.connections),
         "timestamp": datetime.now().isoformat()
     }        
+
+
+
+
+# main.py에 임시 디버깅 엔드포인트 추가:
+
+@app.get("/api/debug/websocket-data/{symbol}")
+async def debug_websocket_data(symbol: str):
+    """특정 코인의 WebSocket 데이터 구조 확인"""
+    try:
+        redis_key = f"ticker:{symbol}_KRW" if not symbol.endswith('_KRW') else f"ticker:{symbol}"
+        cached_data = redis_client.get(redis_key)
+        
+        if cached_data:
+            data = json.loads(cached_data)
+            return {
+                "symbol": symbol,
+                "redis_key": redis_key,
+                "data_keys": list(data.keys()),
+                "sample_data": {k: v for k, v in list(data.items())[:10]},  # 처음 10개 필드만
+                "price_fields": {
+                    field: data.get(field, "NOT_FOUND") 
+                    for field in ['closing_price', 'closePrice', 'close', 'price', 'current_price', 'last_price']
+                }
+            }
+        else:
+            return {"error": f"No data found for {symbol}", "redis_key": redis_key}
+            
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/debug/test-voice-price/{symbol}")  
+async def test_voice_price(symbol: str):
+    """음성 AI에서 사용하는 가격 조회 함수 테스트"""
+    from api.voice_router import get_realtime_price
+    
+    result = get_realtime_price(symbol.upper())
+    
+    return {
+        "symbol": symbol,
+        "result": result,
+        "has_data": result is not None,
+        "closing_price": result.get('closing_price') if result else None
+    }
