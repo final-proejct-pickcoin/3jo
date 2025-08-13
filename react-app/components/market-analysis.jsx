@@ -34,6 +34,45 @@ export const MarketAnalysis = () => {
   const [currency, setCurrency] = useState("KRW")
 
   const [marketNews, setMarketNews] = useState([])
+  //유저 아이디 값을 가져오기 위한 상태 변수선언
+  const [user_id, setUserId] = useState(null);
+
+  useEffect(() => {
+      //===========================================================================================
+  console.log("북마크 추가 요청", user_id);
+  console.log("토큰확인", JSON.parse(atob(sessionStorage.getItem("auth_token").split('.')[1])));
+    
+  //토큰값을 빼서 user_mail변수에 넣어서 출력
+  const tokenValue = sessionStorage.getItem("auth_token");
+  if (tokenValue) {
+    const payload = JSON.parse(atob(tokenValue.split('.')[1]));
+    const user_mail = payload.email || payload.sub || null;
+  //이메일 값 확인
+    console.log("이메일:", user_mail);
+  //이메일값 정상 들어왔을때 id값을 가져오는 API 호출
+      if (user_mail) {
+      //fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(user_mail)}`)
+      fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
+        .then(res => res.json())
+        .then(data => {
+        //   user_id=data.user_id;
+        if(data && data.user_id != null) {
+        setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
+          //console.log("유저아이디:",user_id);
+        }
+        })
+        .catch(err => console.error(err));
+    }
+  }
+
+  }, [])
+
+    //변경된 user_id값 최종 확인
+  useEffect(() => {
+    console.log("user_id 변경됨:", user_id);
+  }, [user_id]);
+
+  //===========================================================================================
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/news") // FastAPI 서버 주소
@@ -45,9 +84,11 @@ export const MarketAnalysis = () => {
 
   const [items, setItems] = useState([]);
 
+
   // 마켓 리스트 가져오기
   useEffect(() => {
-    const user_id = 12; // 임시. JWT 붙이면 서버에서 꺼내게 변경
+    //const user_id = 12; // 임시. JWT 붙이면 서버에서 꺼내게 변경
+    if (!user_id) return;
     axios
       .get(`http://localhost:8080/api/Market_assets/assets_and_bookmarks`, { params: { user_id } })
       .then(res => {
@@ -55,19 +96,19 @@ export const MarketAnalysis = () => {
         setItems(res.data)}
             )
       .catch(console.error);
-  }, []);
+  }, [user_id]);
 
   
 
 // 웹소켓 구독은 서버 리스트 기준
-  useEffect(() => {
-    if (items.length) subscribe(items.map(c => c.symbol));
-  }, [subscribe, items]);
+  // useEffect(() => {
+  //   if (items.length) subscribe(items.map(c => c.symbol));
+  // }, [subscribe, items]);
 
 const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks";
 
 const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
-  const user_id = 12; // 임시
+  //const user_id = 12; // 임시
   const is_bookmarked = Number(is_bookmarkedRaw) === 1; // 0/1 정규화
   try {
     if (is_bookmarked) {

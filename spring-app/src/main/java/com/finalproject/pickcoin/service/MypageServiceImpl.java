@@ -23,6 +23,10 @@ public class MypageServiceImpl implements MypageService {
         return mypageRepository.find_unbookmarked_only(user_id);
     }
 
+    public Integer getUserIdByEmail(String email){
+        return mypageRepository.getUserIdByEmail(email);
+    }
+
     @Override
     public void insert_bookmark(int user_id, int asset_id) {
         mypageRepository.insert_bookmark(user_id, asset_id);
