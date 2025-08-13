@@ -44,7 +44,7 @@ export default function LoginForm({
     }, [])
 
     // 로그인 핸들러
-  const handleLogin = async e => {
+  const handleLogin = async e => {    
     e.preventDefault();
     // setIsLoading(true);
     setError("");
@@ -66,10 +66,10 @@ export default function LoginForm({
         
         setToken(response.data.access_token);    // 상태 업데이트 추가
         
-        onLogin();
-        window.location.reload(); // 페이지 새로고침
+        onLogin();        
         setError(null);
-        window.location.reload();
+        // window.location.reload(); // 페이지 새로고침
+        
       }else if(response.data.role === "USER"){
         setError("관리자 계정이 아닙니다.");
       } else {

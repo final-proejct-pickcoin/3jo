@@ -23,8 +23,11 @@ import SupportManagement from "./components_admin/support-management";
 import ProfileDialogs from "./components_admin/profile-dialogs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+// import { headers } from "next/headers";
 
 export default function Component() {
+  // const jwt_decode = require("jwt-decode");
   const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -91,19 +94,7 @@ export default function Component() {
   ]);
 
   // Mock data with more realistic information
-  const [users, setUsers] = useState([
-    {
-      // id: 1,
-      // username: "user123",
-      // email: "user123@example.com",
-      // status: "활성",
-      // joinDate: "2024-01-10",
-      // balance: "1.2345 BTC",
-      // lastLogin: "2024-01-15 14:30",
-      // trades: 45,
-      // verified: true
-    }
-  ]);
+  const [users, setUsers] = useState([]);
 
   const [logs, setLogs] = useState([
     {
@@ -344,11 +335,62 @@ export default function Component() {
     );
   };
 
+  const isTokenExpired = (token) => {
+    if(!token) return true
+    try {
+      const {exp} = jwtDecode(token);
+      if (!exp) return true;
+      return (Date.now() >= exp*1000);
+    }catch(e){
+      console.log("JWT decode error", e)
+      return true; // 실패시 만료로 간주
+    }
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if (!token) {
+
+    // if(!token){
+    //   setIsLoggedIn(false);
+    //   return
+    // }
+
+    // if(isTokenExpired(token)){
+    //   console.log("토큰 만료")
+    //   localStorage.clear();
+    //   setIsLoggedIn(false)
+    //   return
+    // }
+
+    // const email = localStorage.getItem("sub");
+    // const name = localStorage.getItem("name");
+    // const role = localStorage.getItem("role");
+
+    // setProfileData({
+    //   ...profileData,
+    //   role: role,
+    //   name: name,
+    //   email: email
+    // });
+
+    // // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
+    // axios.get("http://localhost:8000/admin/getuser")
+    // .then((result)=>{
+    //   setUsers(result.data)
+    // })
+    // .catch((err)=> console.log(err))
+
+    // setIsLoggedIn(true);
+
+    if (!token || isTokenExpired(token)) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("sub");
+      localStorage.removeItem("name");
+      localStorage.removeItem("role");      
       setIsLoggedIn(false);
     } else {
+
+
       // profileData
       const email = localStorage.getItem("sub");
       const name = localStorage.getItem("name");
@@ -361,6 +403,7 @@ export default function Component() {
         email: email
       });
 
+      // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
       axios.get("http://localhost:8000/admin/getuser")
         .then((result)=>{
           setUsers(result.data)

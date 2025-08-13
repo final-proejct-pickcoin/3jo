@@ -39,6 +39,9 @@ out/
 ### mysql ###
 mysql_data/
 
+## redis ##
+redis_data/
+
 ## python ##
 *.pyc
 __pycache__/
