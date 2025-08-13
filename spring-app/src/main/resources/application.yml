@@ -10,7 +10,7 @@ spring:
       port: 6379
   datasource:
     # url 뒷부분에 한글 설정만 하면 에러가남. 이대로도 한글 잘 되긴하는데 다른 테이블에서 확인 필요.
-    url: jdbc:mysql://34.64.105.135:3306/coindb
+    url: jdbc:mysql://34.47.81.41:3306/coindb
     username: pickcoin
     password: Admin1234!
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -74,5 +74,7 @@ jwt:
 #  MyBatis 설정은 spring 블록 밖으로!
 mybatis:
   # mapper-locations: classpath:/mappers/*.xml
-  mapper-locations: classpath:./mappers/*.xml
+  mapper-locations: classpath:mappers/*.xml
   type-aliases-package: com.finalproject.pickcoin.domain
+  configuration:
+    map-underscore-to-camel-case: true
