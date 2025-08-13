@@ -74,7 +74,7 @@ export default function SupportManagement({ isDarkMode }) {
   });
 
   const handleTicketClick = async (ticket) => {
-    console.log("선택된 티켓:", ticket);
+    // console.log("선택된 티켓:", ticket);
 
     try{
       const res = await axios.get(`http://localhost:8000/chat/history/${ticket.user_id}`);
