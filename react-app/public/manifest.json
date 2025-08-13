@@ -1,6 +1,6 @@
 {
-  "name": "CryptoVirtual",
-  "short_name": "CryptoVirtual",
+  "name": "PickCoin",
+  "short_name": "PickCoin",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -19,7 +19,7 @@ export const NotificationSystem = () => {
       welcomeShown.current = true
       toast({
         title: "Welcome back 👋",
-        description: "Happy trading on CryptoVirtual!",
+        description: "Happy trading on PickCoin!",
       })
     }
   }, [toast])

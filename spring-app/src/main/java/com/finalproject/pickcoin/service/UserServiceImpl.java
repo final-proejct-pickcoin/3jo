@@ -46,9 +46,9 @@ public class UserServiceImpl implements UserService {
     public void deleteExpiredUnverifiedUsers() {
         LocalDateTime now = LocalDateTime.now();
         List<Users> expiredUsers = usersRepository.findExpiredUnverifiedUsers(now);
-        logger.info("삭제 대상 유저 수: {}", expiredUsers.size());
+        // logger.info("삭제 대상 유저 수: {}", expiredUsers.size());
         for(Users user : expiredUsers){
-            logger.info("삭제할 유저: {}", user.getEmail());
+            // logger.info("삭제할 유저: {}", user.getEmail());
             usersRepository.delete(user);
         }
     }

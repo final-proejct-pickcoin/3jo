@@ -35,7 +35,7 @@ public class EmailServiceImpl implements EmailService {
         
         String tokenReq = "/users/verify?token=";
         
-        logger.info("메일인증 이메일 전송 메서드 호출");
+        // logger.info("메일인증 이메일 전송 메서드 호출");
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -48,7 +48,7 @@ public class EmailServiceImpl implements EmailService {
             helper.setText(content, true);
             mailSender.send(message);
         } catch (Exception e) {
-            logger.info("메일전송 에러:"+e);
+            // logger.info("메일전송 에러:"+e);
             e.printStackTrace();
         }
     }

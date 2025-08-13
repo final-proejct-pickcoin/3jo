@@ -286,11 +286,11 @@ export default function DepositManager() {
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="font-semibold">KB국민은행</p>
-                                <p className="text-sm text-muted-foreground">CryptoVirtual 입금 전용</p>
+                                <p className="text-sm text-muted-foreground">PickCoin 입금 전용</p>
                               </div>
                               <div className="text-right">
                                 <p className="font-mono text-lg">123-456-789012</p>
-                                <p className="text-sm text-muted-foreground">예금주: (주)크립토버추얼</p>
+                                <p className="text-sm text-muted-foreground">예금주: (주)픽코인</p>
                               </div>
                             </div>
                             <div className="flex space-x-2">
