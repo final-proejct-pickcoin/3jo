@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, status, Query, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 import jwt
 from passlib.context import CryptContext
@@ -24,8 +25,8 @@ from api.admin_user import router as admin_user_router
 from api.admin import router as admin_router
 from api.inquiry import router as inq_router
 from api.chat import router as ws_router
-from api.bithumb_api import router as bithumb_router
-from api.bithumb_api import realtime_ws
+
+from api.bithumb_api import router as bithumb_router, realtime_ws
 
 
 load_dotenv()
@@ -83,7 +84,7 @@ app.include_router(ws_router)
 app.include_router(bithumb_router)
 
 @app.websocket("/ws/realtime")
-async def bithumb_websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket):
     await realtime_ws(websocket)
 
 manager = ConnectionManager()
@@ -179,5 +180,4 @@ async def login_page(request: Request):
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     return templates.TemplateResponse("chat.html", {"request": request})
-
 
