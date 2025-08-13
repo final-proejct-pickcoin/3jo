@@ -17,7 +17,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "34.64.105.135"
+host = "34.47.81.41"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -92,7 +92,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
                 "message": f"{email}님 로그인 성공!",
                 "sub": email,
                 "role": user["role"],
-                "name": user["name"],                
+                "name": user["name"],
                 "access_token": token,
                 "token_type": "bearer"
                 

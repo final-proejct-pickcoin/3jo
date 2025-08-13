@@ -38,6 +38,14 @@
             ORDER BY a.asset_id
 </select>
 
+<!-- 이메일 통해 user_id 조회 -->
+<select id="getUserIdByEmail" parameterType="string" resultType="int">
+            SELECT user_id
+            FROM users
+            WHERE email = #{email}
+            LIMIT 1
+</select>
+
     <insert id="insert_bookmark" parameterType="com.finalproject.pickcoin.domain.Favorite">
         <!-- 북마크 추가 -->
         INSERT INTO favorite (user_id, asset_id)
