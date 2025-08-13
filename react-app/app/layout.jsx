@@ -13,7 +13,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "CryptoVirtual - Virtual Cryptocurrency Trading Platform",
+  title: "PickCoin",
   description:
     "Master cryptocurrency trading without risk. Real-time market simulation with AI-powered insights, voice commands, and advanced analytics.",
   keywords: [
@@ -24,7 +24,7 @@ export const metadata = {
     "crypto portfolio",
     "market analysis",
   ],
-  authors: [{ name: "CryptoVirtual Team" }],
+  authors: [{ name: "PickCoin Team" }],
   generator: "v0.dev",
 };
 
