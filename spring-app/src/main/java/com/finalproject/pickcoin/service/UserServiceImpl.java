@@ -42,7 +42,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 300000)
     public void deleteExpiredUnverifiedUsers() {
         LocalDateTime now = LocalDateTime.now();
         List<Users> expiredUsers = usersRepository.findExpiredUnverifiedUsers(now);

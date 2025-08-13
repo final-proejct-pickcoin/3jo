@@ -1,470 +1,571 @@
 "use client";
-import React from "react";
-
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components_admin/ui/card";
 import { Badge } from "@/components_admin/ui/badge";
 import { Button } from "@/components_admin/ui/button";
 import { Input } from "@/components_admin/ui/input";
 import { Textarea } from "@/components_admin/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components_admin/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components_admin/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components_admin/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components_admin/ui/dropdown-menu";
-import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Search, MoreHorizontal, Send, Eye, Archive } from "lucide-react";
-export default function SupportManagement({
-  isDarkMode
-}) {
-  const [tickets, setTickets] = useState([{
-    id: 1,
-    user: "user123",
-    email: "user123@example.com",
-    subject: "출금이 처리되지 않습니다",
-    category: "출금",
-    priority: "높음",
-    status: "신규",
-    createdAt: "2024-01-15 14:30",
-    lastReply: "2024-01-15 14:30",
-    messages: [{
-      id: 1,
-      sender: "user",
-      message: "어제 출금 신청을 했는데 아직 처리되지 않았습니다. 확인 부탁드립니다.",
-      timestamp: "2024-01-15 14:30"
-    }]
-  }, {
-    id: 2,
-    user: "user456",
-    email: "user456@example.com",
-    subject: "계정 인증 문제",
-    category: "계정",
-    priority: "보통",
-    status: "진행중",
-    createdAt: "2024-01-15 10:15",
-    lastReply: "2024-01-15 15:20",
-    messages: [{
-      id: 1,
-      sender: "user",
-      message: "KYC 인증을 완료했는데 계정이 아직 인증되지 않았습니다.",
-      timestamp: "2024-01-15 10:15"
-    }, {
-      id: 2,
-      sender: "admin",
-      message: "안녕하세요. 제출해주신 서류를 검토 중입니다. 추가 서류가 필요할 수 있습니다.",
-      timestamp: "2024-01-15 15:20"
-    }]
-  }, {
-    id: 3,
-    user: "user789",
-    email: "user789@example.com",
-    subject: "거래 수수료 문의",
-    category: "거래",
-    priority: "낮음",
-    status: "완료",
-    createdAt: "2024-01-14 16:45",
-    lastReply: "2024-01-15 09:30",
-    messages: [{
-      id: 1,
-      sender: "user",
-      message: "거래 수수료가 예상보다 높게 나왔는데 확인 부탁드립니다.",
-      timestamp: "2024-01-14 16:45"
-    }, {
-      id: 2,
-      sender: "admin",
-      message: "확인해보니 정상적으로 적용된 수수료입니다. 자세한 내용은 수수료 안내 페이지를 참고해주세요.",
-      timestamp: "2024-01-15 09:30"
-    }]
-  }]);
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components_admin/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components_admin/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components_admin/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components_admin/ui/dropdown-menu";
+import {
+  MessageSquare,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  User,
+  Search,
+  MoreHorizontal,
+  Send,
+  Eye,
+  Archive,
+} from "lucide-react";
+import axios from "axios";
+
+export default function SupportManagement({ isDarkMode }) {
+  const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [replyMessage, setReplyMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) || ticket.user.toLowerCase().includes(searchTerm.toLowerCase()) || ticket.email.toLowerCase().includes(searchTerm.toLowerCase());
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const ws = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesSearch =      
+      ticket.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || ticket.priority === priorityFilter;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
-  const handleTicketClick = ticket => {
-    setSelectedTicket(ticket);
-    setIsTicketDialogOpen(true);
+
+  const handleTicketClick = async (ticket) => {
+    console.log("선택된 티켓:", ticket);
+
+    try{
+      const res = await axios.get(`http://localhost:8000/chat/history/${ticket.user_id}`);
+      const messages = res.data.messages || [];
+      
+      // 티켓에 messages를 보함시켜서 셋팅
+      const ticketWithMessages = {
+        ...ticket,
+        messages
+      }
+
+      setSelectedTicket(ticketWithMessages);
+      setIsTicketDialogOpen(true);
+
+    }catch(err){
+      console.error("채팅 기록 불러오기 실패:", err);
+      setSelectedTicket({...ticket, message:[]});
+      setIsTicketDialogOpen(true)
+    }
+
+    
   };
+
   const handleStatusChange = (ticketId, newStatus) => {
-    setTickets(tickets.map(ticket => ticket.id === ticketId ? {
-      ...ticket,
-      status: newStatus
-    } : ticket));
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({
-        ...selectedTicket,
+    
+    setTickets(
+      tickets.map((ticket) =>
+        ticket.inquiry_id === ticketId
+          ? {
+              ...ticket,
+              status: newStatus,
+            }
+          : ticket
+      )
+    );
+    
+    axios.post("http://localhost:8000/admin/inq-status", null, {
+      params: {
+        inquiry_id: ticketId,
         status: newStatus
-      });
-    }
+      }
+    }).then(()=>{
+        setSelectedTicket(prev =>
+          prev && prev.inquiry_id === ticketId
+            ? { ...prev, status: newStatus }
+            : prev
+        );
+
+    })
   };
-  const handlePriorityChange = (ticketId, newPriority) => {
-    setTickets(tickets.map(ticket => ticket.id === ticketId ? {
-      ...ticket,
-      priority: newPriority
-    } : ticket));
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket({
-        ...selectedTicket,
-        priority: newPriority
-      });
-    }
-  };
+
   const handleSendReply = () => {
     if (!selectedTicket || !replyMessage.trim()) return;
+
     const newMessage = {
       id: selectedTicket.messages.length + 1,
       sender: "admin",
       message: replyMessage,
-      timestamp: new Date().toLocaleString("ko-KR")
+      timestamp: new Date().toLocaleString("ko-KR"),
     };
-    const updatedTicket = {
-      ...selectedTicket,
-      messages: [...selectedTicket.messages, newMessage],
-      lastReply: newMessage.timestamp,
-      status: "진행중"
-    };
-    setTickets(tickets.map(ticket => ticket.id === selectedTicket.id ? updatedTicket : ticket));
-    setSelectedTicket(updatedTicket);
+
+    // 화면 먼저 업데이트
+    setTickets((prev) => 
+      prev.map((ticket) => 
+        ticket.user_id === selectedTicket.user_id ? {
+          ...ticket,
+          messages: [...ticket.messages, newMessage],
+          lastReply: newMessage.timestamp,
+        } : ticket
+      )
+    );
+    setSelectedTicket((prev) => 
+      prev ? {...prev, messages: [...prev.messages, newMessage], lastReply: newMessage} : prev
+    );
+
+    // 웹소켓으로 전송
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        room_id: selectedTicket.user_id,
+        sender: "admin",
+        message: replyMessage
+      }));
+    }else{
+      console.log("WebSocket이 연결되어 있지 않습니다.");
+    }
+
     setReplyMessage("");
+
   };
-  const getPriorityColor = priority => {
-    switch (priority) {
-      case "긴급":
-        return "destructive";
-      case "높음":
-        return "destructive";
-      case "보통":
-        return "secondary";
-      case "낮음":
-        return "default";
-      default:
-        return "default";
-    }
-  };
-  const getStatusColor = status => {
+
+  const getStatusColor = (status) => {
     switch (status) {
       case "신규":
         return "destructive";
       case "진행중":
-        return "secondary";
       case "대기":
         return "secondary";
       case "완료":
-        return "default";
       default:
         return "default";
     }
   };
-  const getStatusIcon = status => {
+
+  const getStatusIcon = (status) => {
     switch (status) {
       case "신규":
-        return /*#__PURE__*/React.createElement(AlertCircle, {
-          className: "h-4 w-4"
-        });
+        return <AlertCircle className="h-4 w-4" />;
       case "진행중":
-        return /*#__PURE__*/React.createElement(Clock, {
-          className: "h-4 w-4"
-        });
       case "대기":
-        return /*#__PURE__*/React.createElement(Clock, {
-          className: "h-4 w-4"
-        });
+        return <Clock className="h-4 w-4" />;
       case "완료":
-        return /*#__PURE__*/React.createElement(CheckCircle, {
-          className: "h-4 w-4"
-        });
+        return <CheckCircle className="h-4 w-4" />;
       default:
-        return /*#__PURE__*/React.createElement(Clock, {
-          className: "h-4 w-4"
-        });
+        return <Clock className="h-4 w-4" />;
     }
   };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "space-y-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
-    className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, "1:1 \uBB38\uC758 \uAD00\uB9AC"), /*#__PURE__*/React.createElement("p", {
-    className: `${isDarkMode ? "text-gray-300" : "text-gray-600"} mt-1`
-  }, "\uC0AC\uC6A9\uC790 \uBB38\uC758\uC0AC\uD56D\uC744 \uAD00\uB9AC\uD558\uACE0 \uC751\uB2F5\uD569\uB2C8\uB2E4"))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 md:grid-cols-4 gap-6"
-  }, /*#__PURE__*/React.createElement(Card, {
-    className: isDarkMode ? "bg-gray-800 border-gray-700" : ""
-  }, /*#__PURE__*/React.createElement(CardContent, {
-    className: "p-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC2E0\uADDC \uBB38\uC758"), /*#__PURE__*/React.createElement("p", {
-    className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, tickets.filter(t => t.status === "신규").length)), /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center"
-  }, /*#__PURE__*/React.createElement(AlertCircle, {
-    className: "h-6 w-6 text-red-600"
-  }))))), /*#__PURE__*/React.createElement(Card, {
-    className: isDarkMode ? "bg-gray-800 border-gray-700" : ""
-  }, /*#__PURE__*/React.createElement(CardContent, {
-    className: "p-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC9C4\uD589\uC911"), /*#__PURE__*/React.createElement("p", {
-    className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, tickets.filter(t => t.status === "진행중").length)), /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center"
-  }, /*#__PURE__*/React.createElement(Clock, {
-    className: "h-6 w-6 text-yellow-600"
-  }))))), /*#__PURE__*/React.createElement(Card, {
-    className: isDarkMode ? "bg-gray-800 border-gray-700" : ""
-  }, /*#__PURE__*/React.createElement(CardContent, {
-    className: "p-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC644\uB8CC"), /*#__PURE__*/React.createElement("p", {
-    className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, tickets.filter(t => t.status === "완료").length)), /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center"
-  }, /*#__PURE__*/React.createElement(CheckCircle, {
-    className: "h-6 w-6 text-green-600"
-  }))))), /*#__PURE__*/React.createElement(Card, {
-    className: isDarkMode ? "bg-gray-800 border-gray-700" : ""
-  }, /*#__PURE__*/React.createElement(CardContent, {
-    className: "p-6"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC804\uCCB4 \uBB38\uC758"), /*#__PURE__*/React.createElement("p", {
-    className: `text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`
-  }, tickets.length)), /*#__PURE__*/React.createElement("div", {
-    className: "w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"
-  }, /*#__PURE__*/React.createElement(MessageSquare, {
-    className: "h-6 w-6 text-blue-600"
-  })))))), /*#__PURE__*/React.createElement(Card, {
-    className: isDarkMode ? "bg-gray-800 border-gray-700" : ""
-  }, /*#__PURE__*/React.createElement(CardHeader, null, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(CardTitle, {
-    className: isDarkMode ? "text-white" : "text-gray-900"
-  }, "\uBB38\uC758 \uBAA9\uB85D"), /*#__PURE__*/React.createElement(CardDescription, {
-    className: isDarkMode ? "text-gray-400" : "text-gray-600"
-  }, "\uCD1D ", filteredTickets.length, "\uAC1C\uC758 \uBB38\uC758")), /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center space-x-2"
-  }, /*#__PURE__*/React.createElement(Search, {
-    className: "h-4 w-4 text-gray-400"
-  }), /*#__PURE__*/React.createElement(Input, {
-    placeholder: "\uBB38\uC758 \uAC80\uC0C9...",
-    value: searchTerm,
-    onChange: e => setSearchTerm(e.target.value),
-    className: "w-64"
-  })), /*#__PURE__*/React.createElement(Select, {
-    value: statusFilter,
-    onValueChange: setStatusFilter
-  }, /*#__PURE__*/React.createElement(SelectTrigger, {
-    className: "w-32"
-  }, /*#__PURE__*/React.createElement(SelectValue, {
-    placeholder: "\uC0C1\uD0DC"
-  })), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "all"
-  }, "\uC804\uCCB4"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC2E0\uADDC"
-  }, "\uC2E0\uADDC"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC9C4\uD589\uC911"
-  }, "\uC9C4\uD589\uC911"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB300\uAE30"
-  }, "\uB300\uAE30"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC644\uB8CC"
-  }, "\uC644\uB8CC"))), /*#__PURE__*/React.createElement(Select, {
-    value: priorityFilter,
-    onValueChange: setPriorityFilter
-  }, /*#__PURE__*/React.createElement(SelectTrigger, {
-    className: "w-32"
-  }, /*#__PURE__*/React.createElement(SelectValue, {
-    placeholder: "\uC6B0\uC120\uC21C\uC704"
-  })), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "all"
-  }, "\uC804\uCCB4"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uAE34\uAE09"
-  }, "\uAE34\uAE09"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB192\uC74C"
-  }, "\uB192\uC74C"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uBCF4\uD1B5"
-  }, "\uBCF4\uD1B5"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB0AE\uC74C"
-  }, "\uB0AE\uC74C")))))), /*#__PURE__*/React.createElement(CardContent, null, /*#__PURE__*/React.createElement(Table, null, /*#__PURE__*/React.createElement(TableHeader, null, /*#__PURE__*/React.createElement(TableRow, null, /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "ID"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0AC\uC6A9\uC790"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC81C\uBAA9"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uCE74\uD14C\uACE0\uB9AC"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC6B0\uC120\uC21C\uC704"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0C1\uD0DC"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC0DD\uC131\uC77C"), /*#__PURE__*/React.createElement(TableHead, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, "\uC561\uC158"))), /*#__PURE__*/React.createElement(TableBody, null, filteredTickets.map(ticket => /*#__PURE__*/React.createElement(TableRow, {
-    key: ticket.id,
-    className: "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
-  }, /*#__PURE__*/React.createElement(TableCell, {
-    className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, "#", ticket.id), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, ticket.user), /*#__PURE__*/React.createElement("p", {
-    className: `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`
-  }, ticket.email))), /*#__PURE__*/React.createElement(TableCell, {
-    className: `font-medium ${isDarkMode ? "text-gray-200" : ""}`
-  }, ticket.subject), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement(Badge, {
-    variant: "outline"
-  }, ticket.category)), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement(Select, {
-    value: ticket.priority,
-    onValueChange: value => handlePriorityChange(ticket.id, value)
-  }, /*#__PURE__*/React.createElement(SelectTrigger, {
-    className: "w-20"
-  }, /*#__PURE__*/React.createElement(SelectValue, null)), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uAE34\uAE09"
-  }, "\uAE34\uAE09"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB192\uC74C"
-  }, "\uB192\uC74C"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uBCF4\uD1B5"
-  }, "\uBCF4\uD1B5"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB0AE\uC74C"
-  }, "\uB0AE\uC74C")))), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center"
-  }, getStatusIcon(ticket.status), /*#__PURE__*/React.createElement(Badge, {
-    variant: getStatusColor(ticket.status),
-    className: "ml-2"
-  }, ticket.status))), /*#__PURE__*/React.createElement(TableCell, {
-    className: isDarkMode ? "text-gray-300" : ""
-  }, ticket.createdAt), /*#__PURE__*/React.createElement(TableCell, null, /*#__PURE__*/React.createElement(DropdownMenu, null, /*#__PURE__*/React.createElement(DropdownMenuTrigger, {
-    asChild: true
-  }, /*#__PURE__*/React.createElement(Button, {
-    variant: "ghost",
-    size: "sm"
-  }, /*#__PURE__*/React.createElement(MoreHorizontal, {
-    className: "h-4 w-4"
-  }))), /*#__PURE__*/React.createElement(DropdownMenuContent, null, /*#__PURE__*/React.createElement(DropdownMenuItem, {
-    onClick: () => handleTicketClick(ticket)
-  }, /*#__PURE__*/React.createElement(Eye, {
-    className: "h-4 w-4 mr-2"
-  }), "\uC0C1\uC138 \uBCF4\uAE30"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
-    onClick: () => handleStatusChange(ticket.id, "진행중")
-  }, /*#__PURE__*/React.createElement(Clock, {
-    className: "h-4 w-4 mr-2"
-  }), "\uC9C4\uD589\uC911\uC73C\uB85C \uBCC0\uACBD"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
-    onClick: () => handleStatusChange(ticket.id, "완료")
-  }, /*#__PURE__*/React.createElement(CheckCircle, {
-    className: "h-4 w-4 mr-2"
-  }), "\uC644\uB8CC\uB85C \uBCC0\uACBD"), /*#__PURE__*/React.createElement(DropdownMenuItem, {
-    onClick: () => handleStatusChange(ticket.id, "대기")
-  }, /*#__PURE__*/React.createElement(Archive, {
-    className: "h-4 w-4 mr-2"
-  }), "\uB300\uAE30\uB85C \uBCC0\uACBD")))))))))), /*#__PURE__*/React.createElement(Dialog, {
-    open: isTicketDialogOpen,
-    onOpenChange: setIsTicketDialogOpen
-  }, /*#__PURE__*/React.createElement(DialogContent, {
-    className: `sm:max-w-[700px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`
-  }, /*#__PURE__*/React.createElement(DialogHeader, null, /*#__PURE__*/React.createElement(DialogTitle, {
-    className: isDarkMode ? "text-white" : ""
-  }, "\uBB38\uC758 \uC0C1\uC138 - #", selectedTicket?.id), /*#__PURE__*/React.createElement(DialogDescription, {
-    className: isDarkMode ? "text-gray-400" : ""
-  }, selectedTicket?.subject)), selectedTicket && /*#__PURE__*/React.createElement("div", {
-    className: "space-y-4"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: `grid grid-cols-2 gap-4 p-4 ${isDarkMode ? "bg-gray-700" : "bg-gray-50"} rounded-lg`
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC0AC\uC6A9\uC790"), /*#__PURE__*/React.createElement("p", {
-    className: isDarkMode ? "text-gray-200" : "text-gray-900"
-  }, selectedTicket.user)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC774\uBA54\uC77C"), /*#__PURE__*/React.createElement("p", {
-    className: isDarkMode ? "text-gray-200" : "text-gray-900"
-  }, selectedTicket.email)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uCE74\uD14C\uACE0\uB9AC"), /*#__PURE__*/React.createElement(Badge, {
-    variant: "outline"
-  }, selectedTicket.category)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC6B0\uC120\uC21C\uC704"), /*#__PURE__*/React.createElement(Select, {
-    value: selectedTicket.priority,
-    onValueChange: value => handlePriorityChange(selectedTicket.id, value)
-  }, /*#__PURE__*/React.createElement(SelectTrigger, {
-    className: "w-32"
-  }, /*#__PURE__*/React.createElement(SelectValue, null)), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uAE34\uAE09"
-  }, "\uAE34\uAE09"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB192\uC74C"
-  }, "\uB192\uC74C"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uBCF4\uD1B5"
-  }, "\uBCF4\uD1B5"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB0AE\uC74C"
-  }, "\uB0AE\uC74C")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC0C1\uD0DC"), /*#__PURE__*/React.createElement(Select, {
-    value: selectedTicket.status,
-    onValueChange: value => handleStatusChange(selectedTicket.id, value)
-  }, /*#__PURE__*/React.createElement(SelectTrigger, {
-    className: "w-32"
-  }, /*#__PURE__*/React.createElement(SelectValue, null)), /*#__PURE__*/React.createElement(SelectContent, null, /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC2E0\uADDC"
-  }, "\uC2E0\uADDC"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC9C4\uD589\uC911"
-  }, "\uC9C4\uD589\uC911"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uB300\uAE30"
-  }, "\uB300\uAE30"), /*#__PURE__*/React.createElement(SelectItem, {
-    value: "\uC644\uB8CC"
-  }, "\uC644\uB8CC")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
-    className: `text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`
-  }, "\uC0DD\uC131\uC77C"), /*#__PURE__*/React.createElement("p", {
-    className: isDarkMode ? "text-gray-200" : "text-gray-900"
-  }, selectedTicket.createdAt))), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-4 max-h-96 overflow-y-auto"
-  }, selectedTicket.messages.map(message => /*#__PURE__*/React.createElement("div", {
-    key: message.id,
-    className: `flex ${message.sender === "admin" ? "justify-end" : "justify-start"}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: `max-w-[70%] p-3 rounded-lg ${message.sender === "admin" ? "bg-orange-500 text-white" : isDarkMode ? "bg-gray-700 text-gray-200" : "bg-gray-100 text-gray-900"}`
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center mb-2"
-  }, /*#__PURE__*/React.createElement(User, {
-    className: "h-4 w-4 mr-2"
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "text-sm font-medium"
-  }, message.sender === "admin" ? "관리자" : selectedTicket.user), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs ml-2 opacity-70"
-  }, message.timestamp)), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm"
-  }, message.message))))), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-3"
-  }, /*#__PURE__*/React.createElement(Textarea, {
-    placeholder: "\uB2F5\uBCC0\uC744 \uC785\uB825\uD558\uC138\uC694...",
-    value: replyMessage,
-    onChange: e => setReplyMessage(e.target.value),
-    rows: 3,
-    className: isDarkMode ? "bg-gray-700 border-gray-600 text-gray-200" : ""
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-end"
-  }, /*#__PURE__*/React.createElement(Button, {
-    onClick: handleSendReply,
-    disabled: !replyMessage.trim()
-  }, /*#__PURE__*/React.createElement(Send, {
-    className: "h-4 w-4 mr-2"
-  }), "\uB2F5\uBCC0 \uC804\uC1A1")))))));
+
+  useEffect(() => {
+    axios.get("http://localhost:8000/admin/getinq")
+      .then((inq) => {
+        // console.log(inq.data)
+        // 메세지 - redis에서 저장된 것 가져옮 (handleTicketClick에서 백엔드 요청 -> redis)
+        const updatedTickets = inq.data.map(ticket => ({
+          ...ticket,
+          messages: ticket.messages || [],  // 기존에 message가 없으면 빈 배열 할당
+        }));
+        setTickets(updatedTickets) // setTickets(inq.data) 로 바꿔야함
+      }).catch((error) => {
+      console.error("데이터 불러오기 실패:", error);
+    });
+
+    // 웹소켓 - 연결
+    // room_id 생성    
+    const roomId = selectedTicket?.user_id    
+    if(!roomId) return;
+
+    ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${roomId}`)
+    ws.current.onopen = () => {
+      console.log("웹소켓 연결됨");
+    }
+
+    ws.current.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      console.log(`받은메세지: ${msg}`) // 여기서 ticket / selectedTicet 업데이트 가능
+    }
+    // messages 바뀔 때마다 스크롤 아래로.
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" }); 
+    });
+
+    ws.current.onclose = () => {
+      console.log("웹소켓 연결 종료")
+    }
+
+    return () => {
+      if (ws.current) ws.current.close();
+    }
+
+  },[selectedTicket?.user_id, selectedTicket?.messages])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+            1:1 문의 관리
+          </h1>
+          <p className={`${isDarkMode ? "text-gray-300" : "text-gray-600"} mt-1`}>
+            사용자 문의사항에 실시간으로 대응할 수 있습니다.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  신규 문의
+                </p>
+                <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                  {tickets.filter((t) => t.status === "신규").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>진행중</p>
+                <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                  {tickets.filter((t) => t.status === "진행중").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Clock className="h-6 w-6 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>완료</p>
+                <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                  {tickets.filter((t) => t.status === "완료").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>접수 문의</p>
+                <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                  {tickets.length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <MessageSquare className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className={isDarkMode ? "text-white" : "text-gray-900"}>문의 목록</CardTitle>
+              <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                총 {filteredTickets.length}개의 문의
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
+                <Search className="h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="문의 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-64"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="상태" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">상태검색</SelectItem>
+                  <SelectItem value="신규">신규</SelectItem>
+                  <SelectItem value="진행중">진행중</SelectItem>
+                  <SelectItem value="완료">완료</SelectItem>
+                  <SelectItem value="삭제">삭제</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="카테고리" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">내용검색</SelectItem>
+                  <SelectItem value="입금">입금</SelectItem>
+                  <SelectItem value="출금">출금</SelectItem>
+                  <SelectItem value="신고">신고</SelectItem>
+                  <SelectItem value="탈퇴">탈퇴</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>                
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>                
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>카테고리</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>신청금액</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>문의날짜</TableHead>
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태처리</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTickets.map((ticket) => (
+                <TableRow
+                  key={ticket.inquiry_id}
+                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <TableCell>
+                    <div>
+                      <p className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
+                        {ticket.name}
+                      </p>
+                      <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        {ticket.email}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{ticket.category}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className={isDarkMode ? "text-gray-300" : ""}              >
+                      {ticket.amount !== undefined && ticket.amount !== null
+                        ? `${ticket.amount.toLocaleString()} 원`
+                        : "기타문의"}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      {getStatusIcon(ticket.status)}
+                      <Badge variant={getStatusColor(ticket.status)} className="ml-2">
+                        {ticket.status}
+                      </Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell className={isDarkMode ? "text-gray-300" : ""}>
+                    {ticket.created_at.replace("T", ", ").slice(0, -3)}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleTicketClick(ticket)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          고객 대화
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "진행중")}>
+                          <Clock className="h-4 w-4 mr-2" />
+                          진행중으로 변경
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "완료")}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          완료로 변경
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.inquiry_id, "대기")}>
+                          <Archive className="h-4 w-4 mr-2" />
+                          대기로 변경
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isTicketDialogOpen} onOpenChange={setIsTicketDialogOpen}>
+        <DialogContent className={`sm:max-w-[700px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`}>
+          <DialogHeader>
+            <DialogTitle className={isDarkMode ? "text-white" : ""}>
+              문의 상세 - #{selectedTicket?.inquiry_id}
+            </DialogTitle>
+            <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
+              {selectedTicket?.subject}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTicket && (
+            <>
+              <div
+                className={`grid grid-cols-2 gap-4 p-4 ${
+                  isDarkMode ? "bg-gray-700" : "bg-gray-50"
+                } rounded-lg`}
+              >
+                <div>
+                  <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                    사용자
+                  </p>
+                  <p className={isDarkMode ? "text-gray-200" : "text-gray-900"}>
+                    {selectedTicket.name}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                    이메일
+                  </p>
+                  <p className={isDarkMode ? "text-gray-200" : "text-gray-900"}>
+                    {selectedTicket.email}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                    카테고리
+                  </p>
+                  <Badge variant="outline">{selectedTicket.category}</Badge>
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                    신청 금액
+                  </p>
+                  <p className={`isDarkMode ? "text-gray-200" : "text-gray-900"`}>
+                    {selectedTicket.amount ? `${selectedTicket.amount.toLocaleString()} 원` : "금액 정보 없음"}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                    상태
+                  </p>
+                  <Select
+                    value={selectedTicket.status}
+                    onValueChange={(value) => handleStatusChange(selectedTicket.id, value)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="신규">신규</SelectItem>
+                      <SelectItem value="진행중">진행중</SelectItem>
+                      <SelectItem value="완료">완료</SelectItem>
+                      <SelectItem value="대기">대기</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                    문의 날짜
+                  </p>
+                  <p className={isDarkMode ? "text-gray-200" : "text-gray-900"}>
+                    {selectedTicket.created_at.replace("T", ", ").slice(0, -3)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {selectedTicket.messages.map((message,idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${message.sender === "admin" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[70%] p-3 rounded-lg ${
+                        message.sender === "admin"
+                          ? "bg-orange-500 text-white"
+                          : isDarkMode
+                          ? "bg-gray-700 text-gray-200"
+                          : "bg-gray-100 text-gray-900"
+                      }`}
+                    >
+                      <div className="flex items-center mb-2">
+                        <User className="h-4 w-4 mr-2" />
+                        <span className="text-sm font-medium">
+                          {message.sender === "admin" ? "관리자" : selectedTicket.name}
+                        </span>
+                        <span className="text-xs ml-2 opacity-70">{message.timestamp}</span>
+                      </div>
+                      <p className="text-sm">{message.message}</p>
+                    </div>                    
+                  </div>
+                ))}
+                {/* 메세지 보내고 스크롤 아래쪽으로 */}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="답변을 입력하세요..."
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  rows={3}
+                  className={isDarkMode ? "bg-gray-700 border-gray-600 text-gray-200" : ""}
+                />
+                <div className="flex justify-end">
+                  <Button onClick={handleSendReply} disabled={!replyMessage.trim()}>
+                    <Send className="h-4 w-4 mr-2" />
+                    답변 전송
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

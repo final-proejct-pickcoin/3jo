@@ -167,6 +167,7 @@ const handleSubmitReport = async () => {
   // 내가 좋아요 누른 게시글 목록 불러오기
   const fetchLikedPosts = async (userId) => {
     try {
+      console.log(userId)
       const res = await axios.get(`http://localhost:8080/community/liked`, {
         params: { userId }
       })

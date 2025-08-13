@@ -1,18 +1,31 @@
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, status, Query, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+
 import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 import os
 import redis
 from utils.user_manager import ConnectionManager
-from alert_manager import AlertManager
+from service.alert_manager import AlertManager
+
+from passlib.context import CryptContext
+from utils.jwt_helper import create_access_token, verify_token
+from dotenv import load_dotenv
+from utils.user_manager import ConnectionManager
+from typing import Dict
+
 from json import dumps
 from fastapi.middleware.cors import CORSMiddleware
 from api.news_router import router as news_router
 from api.auth import router as auth_router
 from api.admin_user import router as admin_user_router
+from api.admin import router as admin_router
+from api.inquiry import router as inq_router
+from api.chat import router as ws_router
+from api.bithumb_api import router as bithumb_router
+from api.bithumb_api import realtime_ws
 
 
 load_dotenv()
@@ -57,6 +70,22 @@ app.include_router(auth_router)
 # admin_user 로그 라우터
 app.include_router(admin_user_router)
 
+# 관리자 페이지에서 받아올 라우터
+app.include_router(admin_router)
+
+# 문의 라우터
+app.include_router(inq_router)
+
+# 채팅 웹소켓 라우터
+app.include_router(ws_router)
+
+# 빗썸 API 라우터
+app.include_router(bithumb_router)
+
+@app.websocket("/ws/realtime")
+async def bithumb_websocket_endpoint(websocket: WebSocket):
+    await realtime_ws(websocket)
+
 manager = ConnectionManager()
 alert_manager = AlertManager()
 
@@ -89,7 +118,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...), room
     await manager.connect(websocket, room, username)
     
 
-    # 3. 연결 즉시, 최큰 메세지 100개 보내기
+    # 3. 연결 즉시, 최근 메세지 100개 보내기
     recent_msgs = redis_client.lrange(chat_key, -100, -1)
     for msg in recent_msgs:
         await websocket.send_text(msg)
@@ -150,4 +179,5 @@ async def login_page(request: Request):
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     return templates.TemplateResponse("chat.html", {"request": request})
+
 
