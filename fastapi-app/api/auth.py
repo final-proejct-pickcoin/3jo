@@ -92,7 +92,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
                 "message": f"{email}님 로그인 성공!",
                 "sub": email,
                 "role": user["role"],
-                "name": user["name"],                
+                "name": user["name"],
                 "access_token": token,
                 "token_type": "bearer"
                 
