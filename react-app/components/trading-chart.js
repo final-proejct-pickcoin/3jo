@@ -56,7 +56,7 @@ function TradingChart({
   // Memoized palette
   const palette = useMemo(() => {
     const light = {
-      bg: "#ffffff", text: "#2D3748", grid: "rgba(0,0,0,0.05)", up: "#4F9CF9", down: "#FF6B8A", volUp: "rgba(79,156,249,.3)", volDown: "rgba(255,107,138,.3)", axis: "#E2E8F0", accent: "#4F9CF9",
+      bg: "#ffffff", text: "#2D3748", grid: "rgba(0,0,0,0.05)", up: "#FF6B8A", down: "#4F9CF9", volUp: "rgba(79,156,249,.3)", volDown: "rgba(255,107,138,.3)", axis: "#E2E8F0", accent: "#4F9CF9",
     };
     const dark = {
       bg: "#0D1421", text: "#E2E8F0", grid: "rgba(255,255,255,0.04)", up: "#6BB6FF", down: "#FF8FA3", volUp: "rgba(107,182,255,.3)", volDown: "rgba(255,143,163,.3)", axis: "#2D3748", accent: "#63B3ED",
@@ -146,7 +146,7 @@ function TradingChart({
       return out;
     }
     // 고정 시드 더미 데이터 (Math.random() X)
-    console.log('⚠️ 빗썸 데이터 없음, 고정 더미 데이터 사용');
+    // console.log('⚠️ 빗썸 데이터 없음, 고정 더미 데이터 사용');
     const seed = symbol + timeframe;
     let seedValue = 0;
     for (let i = 0; i < seed.length; i++) seedValue += seed.charCodeAt(i);

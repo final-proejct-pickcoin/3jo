@@ -151,11 +151,11 @@ export const TradingInterface = () => {
 
                 // 로그 출력 (5번에 한 번만)
                 if (Math.random() < 0.2) {
-                  console.log(`💰 ${symbol} 실시간:`, {
-                    price: closePrice.toLocaleString(),
-                    change: chgRate.toFixed(2) + '%',
-                    direction: priceDirection
-                  });
+                  // console.log(`💰 ${symbol} 실시간:`, {
+                  //   price: closePrice.toLocaleString(),
+                  //   change: chgRate.toFixed(2) + '%',
+                  //   direction: priceDirection
+                  // });
                 }
 
                 return newData;
