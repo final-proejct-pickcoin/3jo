@@ -43,7 +43,7 @@ function TradingChart({
   });
   const [bithumbCandles, setBithumbCandles] = useState([]);
   const [isLoadingCandles, setIsLoadingCandles] = useState(false);
-
+//test
   // Ref declarations
   const containerRef = useRef(null);
   const chartRef = useRef(null);
