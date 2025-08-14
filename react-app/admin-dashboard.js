@@ -433,7 +433,7 @@ export default function Component() {
               </div>
               <div>
                 <span className={`text-xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  PickCoin Admin
+                  PickCoin 관리자
                 </span>
                 <div className="flex items-center space-x-2 mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
