@@ -1,11 +1,11 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-import aiohttp
+import json
 import asyncio
 import websockets
-import json 
-import requests
+import aiohttp
+import time
+import random
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime
-import redis
 
 # 라우터 생성
 router = APIRouter(prefix="/api", tags=["bithumb"])
@@ -265,7 +265,7 @@ def get_korean_name(symbol: str) -> str:
         "OBSR": "옵저버", "ZRX": "제로엑스", "AXS": "엑시인피니티", 
         "IOTX": "아이오텍스", "FLOW": "플로우", "CHZ": "칠리즈", 
         "BAT": "베이직어텐션토큰", "S": "에스", "LM": "엘엠", "ENJ": "엔진코인",
-        "ALICE": "앨리스", "HP": "히포프로토콜", "MAPO": "맵오", "JOE": "조",
+        "ALICE": "앨리스", "HP": "히포프로토콜", "MAPO": "맵프로토콜", "JOE": "조",
         "BOBA": "보바", "CRTS": "씨알티에스", "OSMO": "오스모시스", 
         "MTL": "메탈", "COS": "코스", "SONIC": "소닉에스브이엠", "OXT": "옥스트",
         "POLYX": "폴리매쉬", "CVC": "시빅", "RON": "론", "ICX": "아이콘",
@@ -294,28 +294,29 @@ def get_korean_name(symbol: str) -> str:
     return korean_names.get(symbol, symbol)
 
 # 메인 코인 목록 API (추가 필요)
+
 @router.get("/coins")
 async def get_coin_list():
     """모든 활성 거래 코인 목록 조회 (업비트 한글명 포함)"""
+    print("[API] /api/coins 진입")
     markets_url = "https://api.bithumb.com/v1/market/all"
     ticker_url = "https://api.bithumb.com/public/ticker/ALL_KRW"
-    
     try:
         # 업비트에서 한글명 먼저 가져오기
         upbit_korean_names = await get_korean_names_from_upbit()
-        
-        timeout = aiohttp.ClientTimeout(total=8, connect=3)
+        # 3초 타임아웃 강제 적용
+        timeout = aiohttp.ClientTimeout(total=3, connect=2)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             market_task = session.get(markets_url)
             ticker_task = session.get(ticker_url)
             market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
-            
             if ticker_response.status != 200:
+                print(f"[API] 시세 API 오류: {ticker_response.status}")
                 return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
             ticker_data = await ticker_response.json()
             if ticker_data.get("status") != "0000":
+                print("[API] 빗썸 시세 API 오류")
                 return {"status": "error", "message": "빗썸 시세 API 오류"}
-            
             # 빗썸 마켓 데이터 처리
             market_map = {}
             if market_response.status == 200:
@@ -333,72 +334,61 @@ async def get_coin_list():
                                 }
                 except Exception as e:
                     print(f"⚠️ 빗썸 마켓 정보 파싱 실패: {e}")
-        
-        coins = []
-        for symbol, info in ticker_data["data"].items():
-            if symbol == "date":
-                continue
-            try:
-                trade_value = float(info.get("acc_trade_value_24H", 0))
-                if trade_value <= 100000:
+            coins = []
+            for symbol, info in ticker_data["data"].items():
+                if symbol == "date":
                     continue
-                
-                market_info = market_map.get(symbol, {})
-                
-                # 한글명 결정 우선순위: 빗썸 한글명 > 업비트 한글명 > 빗썸 영문명 > 기본매핑 > 심볼
-                bithumb_korean = market_info.get("korean_name", "").strip()
-                upbit_korean = upbit_korean_names.get(symbol, "")
-                bithumb_english = market_info.get("english_name", "").strip()
-                basic_korean = get_korean_name(symbol)
-                
-                display_name = (
-                    bithumb_korean or 
-                    upbit_korean or 
-                    bithumb_english or 
-                    (basic_korean if basic_korean != symbol else symbol)
-                )
-                
-                coins.append({
-                    "symbol": symbol,
-                    "korean_name": display_name,
-                    "english_name": bithumb_english or symbol,
-                    "current_price": float(info.get("closing_price", 0)),
-                    "change_rate": float(info.get("fluctate_rate_24H", 0)),
-                    "change_amount": float(info.get("fluctate_24H", 0)),
-                    "volume": trade_value,
-                    "market_warning": market_info.get("market_warning", "NONE"),
-                    "units_traded": float(info.get("units_traded_24H", 0))
-                })
-            except (ValueError, TypeError) as e:
-                print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
-                continue
-        
-        coins.sort(key=lambda x: x["volume"], reverse=True)
-        return {
-            "status": "success",
-            "data": coins,
-            "total_count": len(coins),
-            "upbit_korean_names": len(upbit_korean_names),
-            "last_updated": datetime.now().isoformat()
-        }
-        
+                try:
+                    trade_value = float(info.get("acc_trade_value_24H", 0))
+                    if trade_value <= 100000:
+                        continue
+                    market_info = market_map.get(symbol, {})
+                    # 한글명 결정 우선순위: 빗썸 한글명 > 업비트 한글명 > 빗썸 영문명 > 기본매핑 > 심볼
+                    bithumb_korean = market_info.get("korean_name", "").strip()
+                    upbit_korean = upbit_korean_names.get(symbol, "")
+                    bithumb_english = market_info.get("english_name", "").strip()
+                    basic_korean = get_korean_name(symbol)
+                    display_name = (
+                        bithumb_korean or 
+                        upbit_korean or 
+                        bithumb_english or 
+                        (basic_korean if basic_korean != symbol else symbol)
+                    )
+                    coins.append({
+                        "symbol": symbol,
+                        "korean_name": display_name,
+                        "english_name": bithumb_english or symbol,
+                        "current_price": float(info.get("closing_price", 0)),
+                        "change_rate": float(info.get("fluctate_rate_24H", 0)),
+                        "change_amount": float(info.get("fluctate_24H", 0)),
+                        "volume": trade_value,
+                        "market_warning": market_info.get("market_warning", "NONE"),
+                        "units_traded": float(info.get("units_traded_24H", 0))
+                    })
+                except (ValueError, TypeError) as e:
+                    print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
+                    continue
+            coins.sort(key=lambda x: x["volume"], reverse=True)
+            print(f"[API] /api/coins 정상 종료: {len(coins)}개 반환")
+            return {
+                "status": "success",
+                "data": coins,
+                "total_count": len(coins),
+                "upbit_korean_names": len(upbit_korean_names),
+                "last_updated": datetime.now().isoformat()
+            }
     except Exception as e:
-        print(f"❌ 코인 목록 조회 오류: {e}")
-        # 에러시 더미 데이터 반환
+        print(f"[API] /api/coins 예외 발생: {e}")
+        # 에러시 폴백 데이터 반환 (항상 최소 3개 코인)
+        fallback_data = [
+            {"symbol": "BTC", "korean_name": "비트코인", "english_name": "Bitcoin", "current_price": 163800000, "change_rate": 0.37, "change_amount": 600000, "volume": 200000000000, "market_warning": "NONE", "units_traded": 1231},
+            {"symbol": "ETH", "korean_name": "이더리움", "english_name": "Ethereum", "current_price": 5924000, "change_rate": 0.59, "change_amount": 35000, "volume": 150000000000, "market_warning": "NONE", "units_traded": 2531},
+            {"symbol": "XRP", "korean_name": "리플", "english_name": "XRP", "current_price": 4376, "change_rate": 0.32, "change_amount": 14, "volume": 100000000000, "market_warning": "NONE", "units_traded": 15234}
+        ]
         return {
             "status": "success",
-            "data": [
-                {"symbol": "BTC", "korean_name": "비트코인", "english_name": "Bitcoin", 
-                 "current_price": 163800000, "change_rate": 0.37, "change_amount": 600000, 
-                 "volume": 200000000000, "market_warning": "NONE", "units_traded": 1231},
-                {"symbol": "ETH", "korean_name": "이더리움", "english_name": "Ethereum",
-                 "current_price": 5924000, "change_rate": 0.59, "change_amount": 35000,
-                 "volume": 150000000000, "market_warning": "NONE", "units_traded": 2531},
-                {"symbol": "XRP", "korean_name": "리플", "english_name": "XRP",
-                 "current_price": 4376, "change_rate": 0.32, "change_amount": 14,
-                 "volume": 100000000000, "market_warning": "NONE", "units_traded": 15234}
-            ],
-            "total_count": 3,
+            "data": fallback_data,
+            "total_count": len(fallback_data),
             "error": str(e),
             "last_updated": datetime.now().isoformat()
         }
@@ -410,6 +400,7 @@ class BithumbWebSocketManager:
         self.connections = []
         self.connection_stats = {}
         self.subscribed_symbols = []
+        self.bithumb_ws = None
 
 bithumb_manager = BithumbWebSocketManager()
 
@@ -421,37 +412,207 @@ async def broadcast_to_clients(message):
         except Exception:
             pass
 
-# 실시간 WebSocket 엔드포인트
+
+# 실시간 WebSocket 엔드포인트 (수정됨)
 @router.websocket("/realtime")
 async def realtime_ws(websocket: WebSocket):
     await websocket.accept()
-    bithumb_manager.is_running = True
     bithumb_manager.connections.append(websocket)
-
+    
     try:
+        print("✅ 클라이언트 연결됨")
+        
+        # 초기 코인 목록 전송
         coins_resp = await get_coin_list()
-        if coins_resp["status"] != "success":
-            await websocket.send_text(json.dumps({"error": "코인 목록 불러오기 실패"}))
-            return
-        
-        symbols = [c["symbol"] for c in coins_resp["data"]]
-        
-        async with websockets.connect("wss://pubwss.bithumb.com/pub/ws") as bithumb_ws:
-            subscribe_msg = json.dumps({
-                "type": "ticker",
-                "symbols": [f"{s}_KRW" for s in symbols],
-                "tickTypes": ["30M"]
-            })
-            await bithumb_ws.send(subscribe_msg)
+        if coins_resp["status"] == "success":
+            await websocket.send_text(json.dumps({
+                "type": "initial_coins",
+                "data": coins_resp["data"][:30]  # 상위 30개
+            }))
+            print(f"📋 초기 코인 목록 전송: {len(coins_resp['data'])}개")
+
+        # ✅ 실제 빗썸 WebSocket 연결 (개선된 버전)
+        await connect_to_bithumb_websocket(websocket, coins_resp["data"])
             
-            while True:
-                data = await bithumb_ws.recv()
-                await broadcast_to_clients(data)
     except WebSocketDisconnect:
-        bithumb_manager.connections.remove(websocket)
-        bithumb_manager.is_running = False
+        print("❌ 클라이언트 연결 해제")
     except Exception as e:
-        print("WebSocket 에러:", e)
+        print(f"❌ WebSocket 오류: {e}")
+    finally:
+        if websocket in bithumb_manager.connections:
+            bithumb_manager.connections.remove(websocket)
+
+async def connect_to_bithumb_websocket(client_websocket, coins_data):
+    """실제 빗썸 WebSocket에 연결하고 데이터 중계"""
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            print(f"🔄 빗썸 WebSocket 연결 시도 {retry_count + 1}/{max_retries}")
+            
+            # ✅ 빗썸 공식 WebSocket URL
+            bithumb_uri = "wss://pubwss.bithumb.com/pub/ws"
+            
+            async with websockets.connect(
+                bithumb_uri,
+                ping_interval=20,      # 20초마다 ping
+                ping_timeout=10,       # ping 타임아웃 10초
+                close_timeout=10,      # 연결 종료 타임아웃 10초
+                max_size=10**7,        # 최대 메시지 크기 증가
+                compression=None       # 압축 비활성화
+            ) as ws_bithumb:
+                
+                print("✅ 빗썸 WebSocket 연결 성공")
+                
+                # 연결 확인 메시지 수신
+                greeting = await asyncio.wait_for(ws_bithumb.recv(), timeout=10.0)
+                greeting_data = json.loads(greeting)
+                print(f"📞 빗썸 연결 응답: {greeting_data}")
+                
+                # ✅ 주요 코인들만 구독 (30개로 제한)
+                major_symbols = []
+                for coin in coins_data[:30]:
+                    major_symbols.append(coin['symbol'] + '_KRW')
+                
+                # 빗썸 구독 메시지 전송
+                subscribe_message = {
+                    "type": "ticker",
+                    "symbols": major_symbols,
+                    "tickTypes": ["24H"]  # 24시간 기준
+                }
+                
+                subscribe_data = json.dumps(subscribe_message)
+                await ws_bithumb.send(subscribe_data)
+                print(f"🔔 빗썸 구독 완료: {len(major_symbols)}개 심볼")
+                
+                # 구독 확인 메시지 수신
+                response = await asyncio.wait_for(ws_bithumb.recv(), timeout=10.0)
+                response_data = json.loads(response)
+                print(f"📋 구독 응답: {response_data}")
+                
+                # ✅ 실시간 데이터 수신 및 중계
+                message_count = 0
+                last_heartbeat = time.time()
+                
+                while True:
+                    try:
+                        # 메시지 수신 (30초 타임아웃)
+                        raw_message = await asyncio.wait_for(
+                            ws_bithumb.recv(), 
+                            timeout=30.0
+                        )
+                        
+                        # 하트비트 업데이트
+                        last_heartbeat = time.time()
+                        message_count += 1
+                        
+                        # JSON 파싱
+                        bithumb_data = json.loads(raw_message)
+                        
+                        # ticker 데이터만 처리
+                        if bithumb_data.get("type") == "ticker":
+                            content = bithumb_data.get("content", {})
+                            
+                            # 데이터 검증
+                            symbol = content.get("symbol")
+                            close_price = content.get("closePrice")
+                            
+                            if not symbol or not close_price:
+                                continue
+                            
+                            # 클라이언트용 형식으로 변환
+                            formatted_data = {
+                                "type": "ticker",
+                                "content": {
+                                    "symbol": symbol,
+                                    "closePrice": close_price,
+                                    "openPrice": content.get("openPrice", close_price),
+                                    "maxPrice": content.get("maxPrice", close_price),
+                                    "minPrice": content.get("minPrice", close_price),
+                                    "chgRate": content.get("chgRate", "0"),
+                                    "chgAmt": content.get("chgAmt", "0"),
+                                    "unitsTraded": content.get("unitsTraded", "0"),
+                                    "value": content.get("value", "0"),
+                                    "timestamp": content.get("timestamp", int(time.time() * 1000))
+                                }
+                            }
+                            
+                            # 모든 연결된 클라이언트에게 전송
+                            disconnected_clients = []
+                            for client_ws in bithumb_manager.connections:
+                                try:
+                                    await client_ws.send_text(json.dumps(formatted_data))
+                                except:
+                                    disconnected_clients.append(client_ws)
+                            
+                            # 연결 끊어진 클라이언트 정리
+                            for client in disconnected_clients:
+                                if client in bithumb_manager.connections:
+                                    bithumb_manager.connections.remove(client)
+                            
+                            # 로그 출력 (너무 많지 않게)
+                            if message_count % 10 == 0:
+                                print(f"📊 빗썸 실시간 ({message_count}): {symbol} = {close_price}")
+                        
+                        # 하트비트 체크 (60초마다)
+                        if time.time() - last_heartbeat > 60:
+                            print("💓 빗썸 WebSocket 하트비트 전송")
+                            await ws_bithumb.ping()
+                            last_heartbeat = time.time()
+                        
+                    except asyncio.TimeoutError:
+                        print("⚠️ 빗썸 WebSocket 메시지 타임아웃 - ping 전송")
+                        try:
+                            await ws_bithumb.ping()
+                            # ping에 대한 pong 대기
+                            await asyncio.wait_for(ws_bithumb.ping(), timeout=5.0)
+                            print("✅ 빗썸 WebSocket 연결 유지")
+                            continue
+                        except:
+                            print("❌ 빗썸 WebSocket ping 실패 - 재연결 필요")
+                            break
+                    
+                    except websockets.exceptions.ConnectionClosed:
+                        print("❌ 빗썸 WebSocket 연결 종료")
+                        break
+                    
+                    except json.JSONDecodeError as e:
+                        print(f"❌ JSON 파싱 오류: {e}")
+                        continue
+                        
+                    except Exception as e:
+                        print(f"❌ 빗썸 데이터 처리 오류: {e}")
+                        continue
+                
+        except websockets.exceptions.InvalidStatusCode as e:
+            print(f"❌ 빗썸 WebSocket 상태 코드 오류: {e}")
+            retry_count += 1
+            if retry_count < max_retries:
+                wait_time = 2 ** retry_count  # 지수적 백오프
+                print(f"🔄 {wait_time}초 후 재시도...")
+                await asyncio.sleep(wait_time)
+            continue
+            
+        except websockets.exceptions.ConnectionClosedError as e:
+            print(f"❌ 빗썸 WebSocket 연결 종료 오류: {e}")
+            retry_count += 1
+            if retry_count < max_retries:
+                wait_time = 2 ** retry_count
+                print(f"🔄 {wait_time}초 후 재시도...")
+                await asyncio.sleep(wait_time)
+            continue
+            
+        except Exception as e:
+            print(f"❌ 빗썸 WebSocket 연결 실패: {e}")
+            retry_count += 1
+            if retry_count < max_retries:
+                wait_time = 2 ** retry_count
+                print(f"🔄 {wait_time}초 후 재시도...")
+                await asyncio.sleep(wait_time)
+            continue
+    
+    print("❌ 빗썸 WebSocket 최대 재시도 횟수 초과")
 
 # WebSocket 통계 엔드포인트
 @router.get("/websocket/stats")
