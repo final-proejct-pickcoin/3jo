@@ -5,14 +5,14 @@
 <mapper namespace="com.finalproject.pickcoin.repository.MarketRepository">
 	
     <select id="find_bookmarked_asset" resultType="integer">
-        <!-- 관심코인 테이블에서 사용자 id를 기준으로 코인 id를 검색(추후 북마크 별 표시구분용) -->
+        <!-- 관심코인 테이블에서 사용자 id값을 기준으로 코인 id 검색(추후 북마크 별 표시구분용) -->
         SELECT asset_id from favorite
         WHERE user_id = #{user_id}
         ORDER BY asset_id;
     </select>
 
     <select id="find_asset_and_bookmark" parameterType="long" resultType="com.finalproject.pickcoin.domain.Market_item">
-        <!-- 관심코인 테이블에서 사용자 id를 기준으로 코인 id를 검색하고, 해당 코인의 상세 정보를 가져옴 -->
+        <!-- 관심코인 테이블에서 사용자 id를 기준으로 코인 id를 검색하고, join을 통해 해당 코인의 상세 정보를 가져옴 -->
         SELECT 
             a.asset_id,
             a.asset_name,
