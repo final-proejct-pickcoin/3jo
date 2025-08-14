@@ -37,7 +37,7 @@ const CoinInfoPanel = ({ coin }) => {
 export const TradingInterface = () => {
   // Responsive height: Coin list matches main chart+order book+order panel area (red box)
   const mainPanelRef = useRef(null);
-  const [combinedHeight, setCombinedHeight] = useState(800);
+  const [combinedHeight, setCombinedHeight] = useState(600);
   useEffect(() => {
     function updateHeight() {
       if (mainPanelRef.current) {
@@ -161,8 +161,8 @@ export const TradingInterface = () => {
                 return newData;
               });
 
-              // 시각적 피드백 트리거
-              triggerPriceFlash(symbol, chgRate > 0 ? 'up' : 'down');
+                // 시각적 피드백 트리거 (함수 미정의로 인한 오류 방지)
+                // triggerPriceFlash(symbol, chgRate > 0 ? 'up' : 'down');
             }
           } catch (e) {
             console.error('❌ 실시간 데이터 파싱 오류:', e);
@@ -304,13 +304,13 @@ export const TradingInterface = () => {
           change: parseFloat(realtimeInfo.chgRate),
           changeAmount: parseInt(realtimeInfo.chgAmt),
           trend: parseFloat(realtimeInfo.chgRate) > 0 ? 'up' : 'down',
-          volume: (parseFloat(realtimeInfo.value) / 1000000).toFixed(0) + '백만'
+          volume: Number((parseFloat(realtimeInfo.value) / 1000000).toFixed(0)).toLocaleString() + '백만'
         };
       }
       return {
         ...coin,
         name: coin.korean_name,
-        volume: typeof coin.volume === 'string' ? coin.volume : (coin.volume / 1000000).toFixed(0) + '백만'
+  volume: typeof coin.volume === 'string' ? coin.volume : Number((coin.volume / 1000000).toFixed(0)).toLocaleString() + '백만'
       };
     });
   }, [coinList, realTimeData]);
@@ -318,7 +318,7 @@ export const TradingInterface = () => {
   const [view, setView] = useState("chart");
 
   return (
-    <div className="w-full p-4 space-y-4">
+    <div className="w-full p-0 space-y-4">
     {/* 🚨 연결 상태 표시 추가 */}
       {/* <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
         <div className="flex items-center gap-2">
@@ -340,21 +340,21 @@ export const TradingInterface = () => {
         {/* 좌측: 세로 인덱스 탭 + Coin List */}
         <div className="flex flex-row min-h-0" style={{ height: combinedHeight }}>
           {/* 세로 인덱스 탭 */}
-          <div className="flex flex-col items-center py-4 px-2 gap-2 bg-gray-50 border-r border-gray-200">
+          <div className="flex flex-col items-center py-4 px-2 gap-2 bg-gray-50 border-r border-gray-200" style={{ height: 100 }}>
             <button
-              className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-100 text-blue-600 border border-blue-400' : 'text-gray-500'}`}
+              className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'text-gray-500'}`}
               onClick={() => setView('chart')}
             >차트</button>
             <button
-              className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-100 text-blue-600 border border-blue-400' : 'text-gray-500'}`}
+              className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'text-gray-500'}`}
               onClick={() => setView('info')}
             >코인정보</button>
           </div>
           {/* 코인목록 */}
-          <div className="flex flex-col w-[352px] max-w-[90vw] min-h-0" style={{ height: combinedHeight }}>
-            <Card className="flex flex-col" style={{ height: combinedHeight }}>
+          <div className="flex flex-col w-[420px] max-w-[90vw] min-h-0" style={{ height: 600 }}>
+            <Card className="flex flex-col" style={{ height: 1000 }}>
               <CardHeader className="pb-2">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2.5 mb-2">
                   <Search className="h-4 w-4 text-muted-foreground" />
                   <input
                     placeholder="코인명/심볼검색"
@@ -389,7 +389,7 @@ export const TradingInterface = () => {
                   </TabsList>
                 </Tabs>
               </CardHeader>
-            <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: combinedHeight }}>
+            <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
               {/* 컬럼 헤더 */}
               <div className="grid grid-cols-4 gap-2 px-4 py-2 text-xs font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10">
                 <div className="flex items-center gap-1 cursor-pointer">한글명 <span className="text-[10px]">▼</span></div>
