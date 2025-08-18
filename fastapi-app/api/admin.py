@@ -106,6 +106,7 @@ def getinq():
                     FROM inquiry i
                         LEFT JOIN users u
                         ON i.user_id = u.user_id
+                    ORDER BY i.created_at DESC
                   """
 
             cursor.execute(sql)

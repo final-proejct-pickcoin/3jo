@@ -66,8 +66,8 @@ export default function SupportManagement({ isDarkMode }) {
 
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =      
-      ticket.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.email.toLowerCase().includes(searchTerm.toLowerCase());
+      (ticket.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (ticket.email?.toLowerCase() || "").includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
