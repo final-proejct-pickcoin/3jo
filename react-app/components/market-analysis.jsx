@@ -51,14 +51,12 @@ export const MarketAnalysis = () => {
     console.log("이메일:", user_mail);
   //이메일값 정상 들어왔을때 id값을 가져오는 API 호출
       if (user_mail) {
-      //fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(user_mail)}`)
       fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
         .then(res => res.json())
         .then(data => {
         //   user_id=data.user_id;
         if(data && data.user_id != null) {
         setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
-          //console.log("유저아이디:",user_id);
         }
         })
         .catch(err => console.error(err));

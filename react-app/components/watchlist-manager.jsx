@@ -312,23 +312,20 @@ const [email, setEmail] = useState(null);
 console.log("북마크 추가 요청", user_id);
 console.log("토큰확인", JSON.parse(atob(sessionStorage.getItem("auth_token").split('.')[1])));
   
-//토큰값을 빼서 user_mail변수에 넣어서 출력
+//토큰값을 빼 user_mail변수에 저장
 const tokenValue = sessionStorage.getItem("auth_token");
 if (tokenValue) {
   const payload = JSON.parse(atob(tokenValue.split('.')[1]));
   const user_mail = payload.email || payload.sub || null;
 //이메일 값 확인
   console.log("이메일:", user_mail);
-//이메일값 정상 들어왔을때 id값을 가져오는 API 호출
+//이메일값 정상적으로 들어왔을때 id값 반환 응답 백엔드 url 호출()
     if (user_mail) {
-    //fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(user_mail)}`)
     fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
       .then(res => res.json())
       .then(data => {
-      //   user_id=data.user_id;
       if(data && data.user_id != null) {
       setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
-        //console.log("유저아이디:",user_id);
       }
       })
       .catch(err => console.error(err));
