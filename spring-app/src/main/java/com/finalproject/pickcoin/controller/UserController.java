@@ -54,9 +54,11 @@ public class UserController {
         
         try{
             MDC.put("event_type", "register");
-            logger.info("[회원가입 시도] email={}, name={}", email, name);
+            MDC.put("email", email);
+            logger.info("[회원가입 시도] name={}", name);
         }finally{
             MDC.remove("event_type");
+            MDC.remove("email");
         }
         
 
@@ -98,6 +100,15 @@ public class UserController {
             user.setVerified(true);  //???
             user.setVerificationToken(null);
             userService.save(user);
+
+            try{
+                MDC.put("event_type", "register");
+                MDC.put("email", user.getEmail());
+                logger.info("[회원가입 성공] name={}", user.getEmail());
+            }finally{
+                MDC.remove("event_type");
+                MDC.remove("email");
+            }
             
             return ResponseEntity.ok("이메일 인증이 완료되었습니다.");
         }else{
@@ -114,9 +125,11 @@ public class UserController {
         logged_users.add(email);
         try{
             MDC.put("event_type", "login");
+            MDC.put("email", email);
             logger.info("유저 로그인 발생 - 사용자: {}", email);
         }finally{
             MDC.remove("event_type");
+            MDC.remove("email");
         }
         
         

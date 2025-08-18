@@ -21,6 +21,7 @@ aiohttp
 
 websockets
 broadcaster
+elasticsearch==8.17.2
 
 # Google cloud API_0806_feature_l
 google-cloud-speech
