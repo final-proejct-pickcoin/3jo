@@ -100,13 +100,13 @@ export function AuthModal({ isOpen, onClose }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-center">Welcome to CryptoVirtual</DialogTitle>
+          <DialogTitle className="text-2xl text-center">PickCoin</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Create Account</TabsTrigger>
+            <TabsTrigger value="login">로그인</TabsTrigger>
+            <TabsTrigger value="signup">회원가입</TabsTrigger>
           </TabsList>
 
           {loginError && (
@@ -119,17 +119,17 @@ export function AuthModal({ isOpen, onClose }) {
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Sign In</CardTitle>
-                <CardDescription>Enter your credentials to access your account</CardDescription>
+                <CardTitle>로그인</CardTitle>
+                <CardDescription>회원가입 시 입력한 회원 정보를 입력하세요</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-email">이메일</Label>
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="john123@example.com"
+                      placeholder="본인의 이메일을 입력하세요"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       className={errors.email ? "border-destructive" : ""}
@@ -138,12 +138,12 @@ export function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <Label htmlFor="login-password">비밀번호</Label>
                     <div className="relative">
                       <Input
                         id="login-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="your password"
+                        placeholder="비밀번호를 입력하세요"
                         value={formData.password}
                         onChange={(e) => handleInputChange("password", e.target.value)}
                         className={errors.password ? "border-destructive pr-10" : "pr-10"}
@@ -162,7 +162,7 @@ export function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign In"}
+                    {isLoading ? "로그인 중..." : "로그인"}
                   </Button>
                 </form>
 
@@ -171,9 +171,12 @@ export function AuthModal({ isOpen, onClose }) {
                     <Separator className="w-full" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-background px-2 text-muted-foreground">간편 로그인</span>
                   </div>
                 </div>
+
+                {/* ✅ 구글 버튼 컨테이너 */}
+                <div id="googleLoginBtn" style={{ width: "100%" }} />
 
                 <div className="grid grid-cols-2 gap-4">
                   <Button variant="outline" onClick={() => handleOAuthLogin("google")} disabled={isLoading}>
@@ -192,16 +195,16 @@ export function AuthModal({ isOpen, onClose }) {
           <TabsContent value="signup">
             <Card>
               <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>Join thousands of traders mastering crypto markets</CardDescription>
+                <CardTitle>계정 만들기</CardTitle>
+                <CardDescription>암호 시장 거래소인 선두주자 PickCoin 회원가입</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-nickname">Nickname</Label>
+                    <Label htmlFor="signup-nickname">닉네임</Label>
                     <Input
                       id="signup-nickname"
-                      placeholder="Your display name"
+                      placeholder="사용할 닉네임을 입력하세요"
                       value={formData.nickname}
                       onChange={(e) => handleInputChange("nickname", e.target.value)}
                       className={errors.nickname ? "border-destructive" : ""}
@@ -210,11 +213,11 @@ export function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">이메일</Label>
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="john@example.com"
+                      placeholder="이메일을 입력하세요"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       className={errors.email ? "border-destructive" : ""}
@@ -223,12 +226,12 @@ export function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password">비밀번호</Label>
                     <div className="relative">
                       <Input
                         id="signup-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="At least 8 characters"
+                        placeholder="8글자 이상 입력하세요"
                         value={formData.password}
                         onChange={(e) => handleInputChange("password", e.target.value)}
                         className={errors.password ? "border-destructive pr-10" : "pr-10"}
@@ -247,11 +250,11 @@ export function AuthModal({ isOpen, onClose }) {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Label htmlFor="confirm-password">비밀번호 확인</Label>
                     <Input
                       id="confirm-password"
                       type="password"
-                      placeholder="Confirm your password"
+                      placeholder="비밀번호와 동일하게 입력하세요"
                       value={formData.confirmPassword}
                       onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                       className={errors.confirmPassword ? "border-destructive" : ""}
@@ -266,20 +269,13 @@ export function AuthModal({ isOpen, onClose }) {
                       onCheckedChange={(checked) => handleInputChange("agreeToTerms", !!checked)}
                     />
                     <Label htmlFor="terms" className="text-sm">
-                      I agree to the{" "}
-                      <a href="#" className="text-primary hover:underline">
-                        Terms of Service
-                      </a>{" "}
-                      and{" "}
-                      <a href="#" className="text-primary hover:underline">
-                        Privacy Policy
-                      </a>
+                      서비스 약관과 개인정보 보호정책에 동의합니다.
                     </Label>
                   </div>
                   {errors.terms && <p className="text-sm text-destructive">{errors.terms}</p>}
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating account..." : "Create Account"}
+                    {isLoading ? "계정 생성 중." : "계정 생성 완료"}
                   </Button>
                 </form>
 
@@ -288,7 +284,7 @@ export function AuthModal({ isOpen, onClose }) {
                     <Separator className="w-full" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or sign up with</span>
+                    <span className="bg-background px-2 text-muted-foreground">간편 회원가입</span>
                   </div>
                 </div>
 

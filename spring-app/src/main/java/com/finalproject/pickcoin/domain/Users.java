@@ -1,8 +1,8 @@
 package com.finalproject.pickcoin.domain;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.finalproject.pickcoin.enums.Role;
@@ -30,7 +30,7 @@ public class Users {
 
     @Column(nullable = false, unique = true)
     private String email;
-
+    @Column(nullable = true)
     private String password;
     @Column(nullable = false)
     private String name;
@@ -40,22 +40,20 @@ public class Users {
     @Column(columnDefinition = "boolean default false")
     private boolean onboarding_completed;
 
-    
+    @Column(name="created_at", updatable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private LocalDateTime createdAt;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 
     @Column(name = "is_verified", columnDefinition = "boolean default false")
     private boolean verified;
     @Column(name = "verification_token", length = 100)
     private String verificationToken;    // 인증용 토큰 (필수)
 
-    // API 회원가입 시 필요한 컬럼
+    @Column(name = "provider") // kakao, google
     private String provider;
-    
-    @Column(name = "provider_id", columnDefinition = "boolean default false")
+    @Column(name = "provider_id") // 고유번호
     private String providerId;
-
-    @Column(name="created_at", updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
-    @Column(name = "expires_at")
-    private LocalDateTime expiresAt;
 }

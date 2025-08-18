@@ -2,14 +2,14 @@ fastapi==0.110.2         # 최신 버전은 확인 후 쓰세요
 uvicorn[standard]==0.29.0 # ASGI 서버
 jinja2
 PyJWT
-# passlib[bcrypt]
+passlib[bcrypt]
 python-multipart
 pymysql
 cryptography
 python-dotenv
 redis
-bcrypt>=4.0.0
-passlib>=1.7.4
+# bcrypt>=4.0.0
+# passlib>=1.7.4
 pybithumb
 websocket-client
 selenium
@@ -17,3 +17,12 @@ bs4
 webdriver_manager
 lxml
 python-logstash
+aiohttp
+
+websockets
+broadcaster
+elasticsearch==8.17.2
+
+# Google cloud API_0806_feature_l
+google-cloud-speech
+google-generativeai

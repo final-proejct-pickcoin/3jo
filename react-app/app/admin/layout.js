@@ -2,17 +2,20 @@
 import React, { useEffect, useState } from "react";
 import './globals.css';
 import { useRouter } from "next/navigation";
+import { StatsContext } from "@/components_admin/context/stats-context"
+import AdvancedDashboard from "@/components_admin/advanced-dashboard"
 // import { cookies } from "next/headers";
 
 export default function RootLayout({children}) {
 
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [latestTotal, setLatestTotal] = useState(0);
   const router = useRouter();
 
   function isTokenExpired(token) {
     try {
-      const [, payloadBase64] = token.split('.');
+      const [payloadBase64] = token.split('.');
       const payload = JSON.parse(atob(payloadBase64));
       const exp = payload.exp;
       return Date.now() >= exp * 1000;
@@ -35,7 +38,9 @@ export default function RootLayout({children}) {
     setReady(true);
   }, []);
   
-  return <>{children}</>
+  return <>
+          {children}
+         </>
 
 }
 

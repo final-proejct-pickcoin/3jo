@@ -2,6 +2,8 @@ package com.finalproject.pickcoin.domain;
 
 import java.util.Date;
 
+import org.hibernate.annotations.UpdateTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,12 +22,15 @@ public class Reply {
     private Integer reply_id;    
     private Integer user_id;
     private Integer post_id;
+    private Integer parent_id;
     private String content;
+    private String author;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", updatable = false)
     private Date createdAt;
-    @Temporal(TemporalType.TIMESTAMP)
+
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private Date updatedAt;
 }

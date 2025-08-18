@@ -1,465 +1,528 @@
-// watchlist-manager.jsx 
-"use client"
+// components/watchlist-manager.jsx
+"use client";
 
-import { useState, useEffect } from "react"
-import { getKrwRate } from "@/lib/get-krw-rate"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Star, Plus, Trash2, TrendingUp, TrendingDown, Search, Bell, Mic, MicOff } from "lucide-react"
-import { useWebSocket } from "@/components/websocket-provider"
-//import {toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
-import { useBookmark } from "@/components/bookmark-provider.jsx"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import axios from "axios";
+import { Bell, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-const watchlistData = [
-  {
-    symbol: "BTC",
-    name: "Bitcoin",
-    price: 43000,
-    change: 2.5,
-    alerts: [{ type: "price", condition: "above", value: 45000 }],
-  },
-  {
-    symbol: "ETH",
-    name: "Ethereum",
-    price: 1600,
-    change: -1.2,
-    alerts: [{ type: "price", condition: "below", value: 1500 }],
-  },
-  {
-    symbol: "ADA",
-    name: "Cardano",
-    price: 0.48,
-    change: 5.2,
-    alerts: [],
-  },
-  {
-    symbol: "DOT",
-    name: "Polkadot",
-    price: 7.2,
-    change: -3.1,
-    alerts: [{ type: "volume", condition: "above", value: "10M" }],
-  },
-]
-
-const availableCoins = [
-  { symbol: "LINK", name: "Chainlink", price: 15.2 },
-  { symbol: "UNI", name: "Uniswap", price: 6.8 },
-  { symbol: "MATIC", name: "Polygon", price: 0.92 },
-  { symbol: "AVAX", name: "Avalanche", price: 38.5 },
-  { symbol: "SOL", name: "Solana", price: 98.5 },
-  { symbol: "DOGE", name: "Dogecoin", price: 0.08 },
-  { symbol: "DOGEJA", name: "Dogejacoin", price: 14.3 },
-  { symbol: "D1", name: "Done", price: 14.3 },
-  { symbol: "D2", name: "Dtwo", price: 14.3 },
-  { symbol: "D3", name: "Dtree", price: 14.3 },
-  { symbol: "D4", name: "Dfour", price: 14.3 },
-  { symbol: "D5", name: "Dfive", price: 14.3 },
-  { symbol: "D6", name: "Dsix", price: 14.3 },
-  { symbol: "D7", name: "Dseven", price: 14.3 },
-  { symbol: "D8", name: "Deight", price: 14.3 },
-  { symbol: "D9", name: "Dnine", price: 14.3 },
-  { symbol: "D10", name: "Dten", price: 14.3 },
-
-]
+const API_BASE = "http://localhost:8080/api/mypage";
+//const default_user_id = 12; // 추후 JWT로 대체
 
 
-const formatPrice = (price, currency, krwRate) =>
-  currency === "KRW"
-    ? `₩${(price * krwRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-    : `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+//=====================
+//1) JWT 파싱 함수 (UTF-8 안전)
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+    );
+    return JSON.parse(json);
+  } catch (e) {
+    console.error("JWT 파싱 실패:", e);
+    return null;
+  }
+}
 
-export const WatchlistManager = () => {
+// 2) 이메일 → user_id 조회 (백엔드에 맞는 URL 하나로 변경)
+// async function fetchUserIdByEmail(email, token) {
+//  //백엔드에 실제로 있는 “조회용 GET API 하나”로 변경
+//   //예시 후보(하나만 살리고 나머진 지워도 됨):
+//   const url = `/api/auth/me`;                                   // 토큰만으로 현재 유저 반환형
+//   //const url = `/api/users/by-email?email=${encodeURIComponent(email)}`; // 이메일 쿼리형
+//   //const url = `/api/users/email/${encodeURIComponent(email)}`;          // 이메일 path형
+
+//   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+//   if (!res.ok) throw new Error("user_id 조회 실패");
+//   const data = await res.json();
+
+//   //응답 스키마에 맞게 user_id 뽑기 (필요시 키 이름 수정)
+//   //return data.user_id ?? data.id ?? data?.data?.user_id ?? data?.data?.id ?? null;
+// }
+//====================
+// AuthController 만들기 전
+// async function fetchUserIdFromToken(token) {
+//   const res = await fetch("http://localhost:8080/api/auth/me", {
+//     headers: { Authorization: `Bearer ${token}` },
+//   });
+//   if (!res.ok) throw new Error("user_id 조회 실패");
+//   const data = await res.json();
+//   return data.user_id ?? null;
+// }
+
+
+//===================
+
+// AuthController 만들고 나서
+async function fetchUserIdFromToken(token) {
+  try {
+    const res = await fetch("http://localhost:8080/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // 200이더라도 ok=false일 수 있으니 JSON을 보고 판단
+    const data = await res.json().catch(() => ({}));
+    if (data && data.ok && (data.user_id ?? null) != null) {
+      return Number(data.user_id);
+    }
+    // id가 없고 email만 온 경우: 필요하면 여기서 email로 백엔드에 user_id 조회 API를 더 호출
+    console.warn("[/api/auth/me] no user_id; payload =", data);
+    return null;
+  } catch (e) {
+    console.warn("user_id 조회 실패:", e);
+    return null;
+  }
+}
+//=====================
+//user_lookupController 만든 뒤
+//이메일 추출
+function getEmailFromToken(t) {
+  try {
+    const base64Url = t.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+    );
+    const claims = JSON.parse(json);
+    return claims?.email || claims?.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+//=====================
+async function fetchUserIdByEmail(email) {
+  const res = await fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(email)}`);
+  const data = await res.json().catch(() => ({}));
+  if (data?.ok && data?.user_id != null) return Number(data.user_id);
+  return null;
+}
+
+
+
+export default function MyPageWatchlist() {
   
-  const { toast } = useToast()
-  const { subscribe, unsubscribe, marketData } = useWebSocket()
-  const [searchTerm, setSearchTerm] = useState("")
+  const [watchlist, setWatchlist] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [user_id, setUserId] = useState(null); // 초기값 null로 설정
+  //const [user_id, setUserId] = useState(default_user_id); // 초기값 12로 설정
 
-  const { bookmarked,toggle_Bookmark } = useBookmark()
-  // const [watchlist, setWatchlist] = useState(watchlistData)
-const watchlist = [...availableCoins, ...watchlistData].filter(coin => bookmarked[coin.symbol])
+  const [token, setToken] = useState(null);
 
-  const [isVoiceActive, setIsVoiceActive] = useState(false)
-  const [voiceCommand, setVoiceCommand] = useState("")
-  const [showNotificationDialog, setShowNotificationDialog] = useState(false)
-  const [alertDialogOpen, setAlertDialogOpen] = useState({})
-  const [currency, setCurrency] = useState("KRW")
-  const [krwRate, setKrwRate] = useState(0)
-  
 
-  useEffect(() => { getKrwRate().then(setKrwRate) }, [])
+  // 알림 UI 상태
+  const [alertDialogOpen, setAlertDialogOpen] = useState({});
+  const [newAlertType, setNewAlertType] = useState("price");
+  const [newAlertCond, setNewAlertCond] = useState("above");
+  const [newAlertValue, setNewAlertValue] = useState("");
+
+  // useEffect(() => {
+  //   setLoading(true);
+  //   Promise.all([
+  //     axios.get(`${API_BASE}/bookmarks/list`, { params: { user_id: user_id } }),
+  //     axios.get(`${API_BASE}/assets/unbookmarked`, { params: { user_id: user_id } }),
+  //   ])
+  //     .then(([wlRes, candRes]) => {
+  //       // 알림 배열 초기화(없으면 [])
+  //       const wl = (Array.isArray(wlRes.data) ? wlRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+  //       const cd = (Array.isArray(candRes.data) ? candRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+  //       setWatchlist(wl);
+  //       setCandidates(cd);
+  //     })
+  //     .catch(e => console.error("[mypage load]", e?.response?.status, e?.message))
+  //     .finally(() => setLoading(false));
+  // }, []);
+
   useEffect(() => {
-    const symbols = watchlist.map((item) => item.symbol)
-    subscribe(symbols)
-    return () => unsubscribe(symbols)
-  }, [watchlist, subscribe, unsubscribe])
+  if (!user_id) return;
+  setLoading(true);
+  Promise.all([
+    axios.get(`${API_BASE}/bookmarks/list`,        { params: { user_id } }),
+    axios.get(`${API_BASE}/assets/unbookmarked`,   { params: { user_id } }),
+  ])
+  .then(([wlRes, candRes]) => {
+    const wl = (Array.isArray(wlRes.data) ? wlRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+    const cd = (Array.isArray(candRes.data) ? candRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
+    setWatchlist(wl);
+    setCandidates(cd);
+  })
+  .catch(e => console.error("[mypage load]", e?.response?.status, e?.message))
+  .finally(() => setLoading(false));
+}, [user_id]);
 
-  const addToWatchlist = (coin) =>
-    setWatchlist((prev) => prev.concat({ ...coin, change: Math.random() * 10 - 5, alerts: [] }))
-  const removeFromWatchlist = (symbol) =>
-    setWatchlist((prev) => prev.filter((item) => item.symbol !== symbol))
-  const removeAlert = (symbol, alertIndex) =>
-    setWatchlist((prev) => prev.map((item) =>
-      item.symbol === symbol
-        ? { ...item, alerts: item.alerts.filter((_, idx) => idx !== alertIndex) }
-        : item))
-  const addAlert = (symbol, alert) => {
-    const coin = watchlist.find((item) => item.symbol === symbol)
-    if (coin && coin.alerts.length >= 3) {
-      toast({ title: "알림 제한", description: "알람은 최대 3개까지 설정할 수 있어요", status: "warning" });
-      return
+
+
+  const filteredCandidates = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return candidates.slice(0, 30);
+    return candidates
+      .filter(c => (c.asset_name || "").toLowerCase().includes(q) ||
+                    (c.symbol || "").toLowerCase().includes(q) ||
+                    (c.market || "").toLowerCase().includes(q))
+      .slice(0, 30);
+  }, [search, candidates]);
+
+  // 북마크 추가/해제 (낙관적 업데이트)
+  const addBookmark = async (asset_id) => {
+    try {
+      const item = candidates.find(c => c.asset_id === asset_id);
+      if (!item) return;
+      setCandidates(prev => prev.filter(c => c.asset_id !== asset_id));
+      setWatchlist(prev => prev.concat({ ...item, is_bookmarked: 1, alerts: item.alerts ?? [] }));
+      await axios.post(`${API_BASE}/bookmarks`, null, { params: { user_id, asset_id } });
+    } catch (e) {
+      console.error("[add]", e?.response?.status, e?.message);
+      // 롤백
+      const item = watchlist.find(w => w.asset_id === asset_id);
+      if (item) {
+        setWatchlist(prev => prev.filter(w => w.asset_id !== asset_id));
+        setCandidates(prev => prev.concat({ ...item, is_bookmarked: 0, alerts: item.alerts ?? [] }));
+      }
     }
-    setWatchlist((prev) => prev.map((item) =>
-      item.symbol === symbol
-        ? { ...item, alerts: [...item.alerts, { ...alert, value: typeof alert.value === "number" ? alert.value.toFixed(1) : alert.value }] }
-        : item))
-  }
-  const startVoiceCommand = () => {
-    setIsVoiceActive(true)
-    setTimeout(() => {
-      const commands = [
-        "Add Bitcoin to watchlist",
-        "Remove Ethereum from watchlist",
-        "Set price alert for Cardano above 0.50",
-        "Show me Solana price",
-      ]
-      const randomCommand = commands[Math.floor(Math.random() * commands.length)]
-      setVoiceCommand(randomCommand)
-      processVoiceCommand(randomCommand)
-      setIsVoiceActive(false)
-    }, 2000)
-  }
-  const processVoiceCommand = (command) => {
-    if (command.includes("Add") && command.includes("watchlist")) {
-      const coin = availableCoins.find(
-        (c) => command.toLowerCase().includes(c.name.toLowerCase()) || command.toLowerCase().includes(c.symbol.toLowerCase())
-      )
-      if (coin && !watchlist.find((w) => w.symbol === coin.symbol)) addToWatchlist(coin)
+  };
+
+  const removeBookmark = async (asset_id) => {
+    try {
+      const item = watchlist.find(w => w.asset_id === asset_id);
+      if (!item) return;
+      setWatchlist(prev => prev.filter(w => w.asset_id !== asset_id));
+      setCandidates(prev => prev.concat({ ...item, is_bookmarked: 0, alerts: item.alerts ?? [] }));
+      await axios.delete(`${API_BASE}/bookmarks`, { params: { user_id, asset_id } });
+    } catch (e) {
+      console.error("[remove]", e?.response?.status, e?.message);
+      // 롤백
+      const item = candidates.find(c => c.asset_id === asset_id);
+      if (item) {
+        setCandidates(prev => prev.filter(c => c.asset_id !== asset_id));
+        setWatchlist(prev => prev.concat({ ...item, is_bookmarked: 1, alerts: item.alerts ?? [] }));
+      }
     }
-    setTimeout(() => setVoiceCommand(""), 3000)
+  };
+
+  // 알림 추가/삭제 (프론트 메모리 버전)
+  const addAlert = (asset_id) => {
+    const value = newAlertValue?.trim();
+    if (value === "") return;
+    setWatchlist(prev => prev.map(it =>
+      it.asset_id === asset_id
+        ? { ...it, alerts: [...(it.alerts ?? []), { type: newAlertType, condition: newAlertCond, value }] }
+        : it
+    ));
+    // 모달 닫기 & 입력 초기화
+    setAlertDialogOpen(prev => ({ ...prev, [asset_id]: false }));
+    setNewAlertValue("");
+    setNewAlertType("price");
+    setNewAlertCond("above");
+  };
+
+  //======================
+
+
+// useEffect(() => {
+//     if (typeof window === "undefined") return;
+//     const t = sessionStorage.getItem("auth_token")
+// //            || sessionStorage.getItem("jwtToken")
+// //            || sessionStorage.getItem("access_token");
+//     setToken(t);
+//     if (!t) return;
+
+//     const claims = parseJwt(t);
+//     const directId = claims?.uid ?? claims?.user_id ?? claims?.user_id ?? claims?.id;
+
+//     if (directId != null) {
+//       setUserId(Number(directId));
+//       return;
+//     }
+
+//     const email = claims?.sub || claims?.email || claims?.username;
+//     if (!email) return;
+
+//     fetchUserIdByEmail(email, t)
+//       .then(id => setUserId(Number(id)))
+//       .catch(err => console.warn("user_id 조회 실패:", err));
+//   }, []);
+
+// useEffect(() => {
+//   if (typeof window === "undefined") return;
+//   const t = sessionStorage.getItem("auth_token");
+//   setToken(t);
+//   if (!t) return;
+
+//   const claims = parseJwt(t);
+//   const directId = claims?.uid ?? claims?.user_id ?? claims?.id;
+//   if (directId != null) {
+//     setUserId(Number(directId));
+//     return;
+//   }
+//   // 토큰에 id가 없으면 임시 API로 조회
+//   fetchUserIdFromToken(t)
+//     .then(id => id && setUserId(Number(id)))
+//     .catch(err => console.warn("user_id 조회 실패:", err));
+// }, []);
+
+
+
+  useEffect(() => {
+    //if (!user_id || !token) return;
+    if (!user_id || Number.isNaN(Number(user_id)) || !token) {
+  console.debug("[mypage] skip fetch. userId:", user_id, "token?", !!token);
+  return;
   }
-  const filteredCoins = availableCoins.filter(
-    (coin) =>
-      (coin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        coin.symbol.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      !watchlist.find((w) => w.symbol === coin.symbol),
-  )
+    fetch(`http://localhost:8080/api/mypage/bookmarks/list?user_id=${user_id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(setWatchlist)
+      //.catch(e => console.error("관심코인 불러오기 실패:", e));
+      .catch(err => {
+      console.error("[mypage load]", err?.response?.status, err?.response?.data);
+  });
+  }, [user_id, token]);
+
+  //======================
+
+const [email, setEmail] = useState(null);
+
+
+// 1) 토큰 → email → user_id
+// useEffect(() => {
+//   if (typeof window === "undefined") return;
+//   const t = sessionStorage.getItem("auth_token");
+//   setToken(t);
+//   if (!t) { setLoading(false); return; }
+
+//   const e = getEmailFromToken(t);
+//   setEmail(e);
+//   if (!e) { setLoading(false); return; }
+
+//   fetchUserIdByEmail(e)
+//     .then(uid => { setUserId(uid); })
+//     .finally(() => setLoading(false));
+// }, []);
+//===========================================================================================
+console.log("북마크 추가 요청", user_id);
+console.log("토큰확인", JSON.parse(atob(sessionStorage.getItem("auth_token").split('.')[1])));
   
+//토큰값을 빼 user_mail변수에 저장
+const tokenValue = sessionStorage.getItem("auth_token");
+if (tokenValue) {
+  const payload = JSON.parse(atob(tokenValue.split('.')[1]));
+  const user_mail = payload.email || payload.sub || null;
+//이메일 값 확인
+  console.log("이메일:", user_mail);
+//이메일값 정상적으로 들어왔을때 id값 반환 응답 백엔드 url 호출()
+    if (user_mail) {
+    fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
+      .then(res => res.json())
+      .then(data => {
+      if(data && data.user_id != null) {
+      setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
+      }
+      })
+      .catch(err => console.error(err));
+  }
+}
+//변경된 user_id값 최종 확인
+useEffect(() => {
+  console.log("user_id 변경됨:", user_id);
+}, [user_id]);
 
-  const bookmarkedcoins=availableCoins.filter(
-    (coin)=>bookmarked[coin.symbol]
-  );
-
+//===========================================================================================
+  const removeAlert = (asset_id, idx) => {
+    setWatchlist(prev => prev.map(it =>
+      it.asset_id === asset_id
+        ? { ...it, alerts: (it.alerts ?? []).filter((_, i) => i !== idx) }
+        : it
+    ));
+  };
 
   return (
-    <>
-      {/* 상단 알림 버튼 */}
-      <div className="flex justify-end mb-4 gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrency(currency === "KRW" ? "USD" : "KRW")}
-        >
-          {currency === "KRW" ? "₩" : "$"}
-        </Button>
-        <Button
-          data-tour="notifications"
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            setShowNotificationDialog(true);
-          }}
-        >
-          <Bell className="h-4 w-4" />
-        </Button>
-      </div>
-      {/* 알림 다이얼로그 */}
-      <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>알림 설정</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p>여기서 알림 관련 안내 또는 설정 UI를 추가할 수 있습니다.</p>
-            <Button className="w-full" onClick={() => setShowNotificationDialog(false)}>
-              닫기
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {/* 기존 UI */}
-      <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid lg:grid-cols-2 gap-6">
+      {/* 왼쪽: 내 관심코인 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5" />
-            관심코인
-            <Badge variant="secondary" className="ml-auto">
-              {watchlist.length}개
-            </Badge>
+            내 관심코인
+            <Badge variant="secondary" className="ml-auto">{watchlist.length}개</Badge>
           </CardTitle>
-          <CardDescription>실시간으로 관심 있는 암호화폐를 추적하세요</CardDescription>
+          <CardDescription>북마크한 코인 + 알림 관리</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {watchlist.map((coin) => {
-              const liveData = marketData[coin.symbol]
-              const currentPrice = liveData?.price || coin.price
-              const currentChange = liveData?.change24h || coin.change
-              return (
-                <div key={coin.symbol} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex flex-1 items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                      <span className="font-bold">{coin.symbol}</span>
-                    </div>
-                    <div className="flex flex-col flex-1">
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <h3 className="font-semibold">{coin.name}</h3>
-                          <p className="text-sm text-muted-foreground">{coin.symbol}</p>
-                        </div>
-                        <div className="flex items-center min-w-[80px] gap-2">
-                          <div className="text-right">
-                            <p className="font-semibold">
-                              {currency === "KRW"
-                                ? `₩${(currentPrice * krwRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                                : `$${currentPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                            </p>
-                            <div className="flex items-center justify-end">
-                              {currentChange > 0 ? (
-                                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-                              ) : (
-                                <TrendingDown className="h-3 w-3 text-red-500 mr-1" />
-                              )}
-                              <span className={`text-xs ${currentChange > 0 ? "text-green-500" : "text-red-500"}`}> 
-                              {Number.isFinite(currentChange)
-                                ? `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(1)}%`
-                                : "-"}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1 items-center">
-                            <Dialog
-                              open={!!alertDialogOpen[coin.symbol]}
-                              onOpenChange={(open) => setAlertDialogOpen((prev) => ({ ...prev, [coin.symbol]: open }))}
-                            >
-                              <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" onClick={() => setAlertDialogOpen((prev) => ({ ...prev, [coin.symbol]: true }))}>
-                                  <Bell className="h-3 w-3" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>{coin.name} 알림 설정</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                  <div>
-                                    <Label>알림 종류</Label>
-                                    <Select defaultValue="price">
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="price">가격 알림</SelectItem>
-                                        <SelectItem value="volume">거래량 알림</SelectItem>
-                                        <SelectItem value="change">변동률 알림</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div>
-                                    <Label>조건</Label>
-                                    <Select defaultValue="above">
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="above">이상</SelectItem>
-                                        <SelectItem value="below">이하</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div>
-                                    <Label>값</Label>
-                                    <Input placeholder="값을 입력하세요" />
-                                  </div>
-                                  <Button
-                                    onClick={() => {
-                                      if (coin.alerts.length >= 3) {
-                                        toast({
-                                          title: "알림 제한",
-                                          description: "알람은 최대 3개까지 설정할 수 있어요",
-                                          status: "warning",
-                                        });
-                                        return;
-                                      }
-                                      addAlert(coin.symbol, { type: "price", condition: "above", value: currentPrice * 1.1 });
-                                      setAlertDialogOpen((prev) => ({ ...prev, [coin.symbol]: false }));
-                                    }}
-                                    className="w-full"
-                                  >
-                                    알림 추가
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                            <Button size="sm" variant="outline" onClick={() => removeFromWatchlist(coin.symbol)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+          {loading ? (
+            <div className="text-sm text-muted-foreground">불러오는 중…</div>
+          ) : watchlist.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-6">
+              아직 북마크한 코인이 없습니다.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {watchlist.map(c => (
+                <div key={c.asset_id} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-xs font-bold">
+                        {c.symbol}
+                      </div>
+                      <div>
+                        <div className="font-medium">{c.asset_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {c.symbol} · {c.market}
                         </div>
                       </div>
-                      {Array.isArray(coin.alerts) && coin.alerts.length >= 1 && (
-                        <div className="flex gap-2 mt-1">
-                          {coin.alerts.map((alert, index) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="flex items-center justify-center text-[11px] rounded-full px-3 w-32 h-9 min-w-[110px] max-w-[180px]"
-                              style={{ borderRadius: '9999px' }}
-                            >{`${alert.type}${alert.condition}${alert.value}`}
-                              <button
-                                type="button"
-                                className="mr-2 text-muted-foreground hover:text-destructive flex-shrink-0"
-                                style={{ width: 'auto', height: 'auto', borderRadius: '0.375rem', padding: 0 }}
-                                onClick={() => removeAlert(coin.symbol, index)}
-                                aria-label="Delete alert"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                              <span className="truncate text-center w-full block font-medium">
-                                {(() => {
-                                  const typeMap = { price: '가격', volume: '거래량', change: '변동률' };
-                                  const condMap = { above: '이상', below: '이하' };
-                                  const t = typeMap[alert.type] || alert.type;
-                                  const c = condMap[alert.condition] || alert.condition;
-                                  const v = typeof alert.value === "number" ? alert.value.toFixed(1) : (Number(alert.value) ? Number(alert.value).toFixed(1) : alert.value);
-                                  return `${t} ${c} ${v}`;
-                                })()}
-                              </span>
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  </div>
-                </div>
-              )
-            })}
 
-            {watchlist.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>관심코인이 없습니다</p>
-                <p className="text-sm">추적할 코인을 추가해보세요</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>관심코인 담기</CardTitle>
-          <CardDescription>검색하거나 음성 명령으로 코인을 추가하세요</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="코인 검색..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={startVoiceCommand}
-                disabled={isVoiceActive}
-                className={isVoiceActive ? "voice-recording" : ""}
-              >
-                {isVoiceActive ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </Button>
-            </div>
-
-            {voiceCommand && (
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <p className="text-sm font-medium">Voice Command:</p>
-                <p className="text-sm text-muted-foreground">"{voiceCommand}"</p>
-              </div>
-            )}
-
-            {isVoiceActive && (
-              <div className="p-3 bg-muted/50 rounded-lg text-center">
-                <Mic className="h-6 w-6 mx-auto mb-2 text-primary voice-recording" />
-                <p className="text-sm">Listening for voice command...</p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {filteredCoins.slice(0,7).map((coin) => (
-                <div key={coin.symbol} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold">{coin.symbol}</span>
-                    </div>
-                    <div>
-                      <p className="font-medium">{coin.name}</p>
-                      <p className="text-sm text-muted-foreground">{coin.symbol}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <span className="font-medium">
-                      {currency === "KRW"
-                        ? `₩${(coin.price * krwRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                        : `$${coin.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                    </span>
-                    {/* <Button size="sm" variant="outline" onClick={() => addToWatchlist(coin)}>
-                      <Plus className="h-3 w-3" />
-                    </Button> */}
-                    {filteredCoins.length === 1 ? (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {toggle_Bookmark(coin.symbol);setSearchTerm("");}}
+                    <div className="flex items-center gap-2">
+                      {/* 알림 버튼 + 모달 */}
+                      <Dialog
+                        open={!!alertDialogOpen[c.asset_id]}
+                        onOpenChange={(open) => setAlertDialogOpen(prev => ({ ...prev, [c.asset_id]: open }))}
                       >
-                        <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" onClick={() => setAlertDialogOpen(prev => ({ ...prev, [c.asset_id]: true }))}>
+                            <Bell className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>{c.asset_name} 알림 추가</DialogTitle>
+                          </DialogHeader>
+
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-sm">알림 종류</Label>
+                              <Select value={newAlertType} onValueChange={setNewAlertType}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="price">가격</SelectItem>
+                                  <SelectItem value="volume">거래량</SelectItem>
+                                  <SelectItem value="change">변동률</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label className="text-sm">조건</Label>
+                              <Select value={newAlertCond} onValueChange={setNewAlertCond}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="above">이상</SelectItem>
+                                  <SelectItem value="below">이하</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div>
+                              <Label className="text-sm">값</Label>
+                              <Input
+                                placeholder="예: 50000"
+                                value={newAlertValue}
+                                onChange={(e) => setNewAlertValue(e.target.value)}
+                              />
+                            </div>
+
+                            <Button className="w-full" onClick={() => addAlert(c.asset_id)}>알림 추가</Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* 북마크 해제 */}
+                      <Button size="sm" variant="outline" onClick={() => removeBookmark(c.asset_id)}>
+                        <Trash2 className="w-4 h-4" />
                       </Button>
-                      ):
-                      (
-                        <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggle_Bookmark(coin.symbol)}
-                      >
-                        <Star className="h-3 w-3" fill={bookmarked[coin.symbol] ? "yellow" : "none"} />
-                      </Button>
-                      )}
+                    </div>
                   </div>
+
+                  {/* 알림 뱃지들 */}
+                  {(c.alerts ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {c.alerts.map((a, idx) => {
+                        const typeMap = { price: "가격", volume: "거래량", change: "변동률" };
+                        const condMap = { above: "이상", below: "이하" };
+                        const label = `${typeMap[a.type] || a.type} ${condMap[a.condition] || a.condition} ${a.value}`;
+                        return (
+                          <Badge key={idx} variant="outline" className="text-[11px]">
+                            {label}
+                            <button
+                              type="button"
+                              className="ml-2 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeAlert(c.asset_id, idx)}
+                              aria-label="delete alert"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
 
-            {filteredCoins.length === 0 && searchTerm && (
-              <div className="text-center py-4 text-muted-foreground">
-                <p>검색 결과가 없습니다</p>
-                <p className="text-sm">다른 검색어를 입력해보세요</p>
+      {/* 오른쪽: 관심코인 담기 + 검색 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>관심코인 담기</CardTitle>
+          <CardDescription>북마크하지 않은 코인만 표시됩니다</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-10"
+                placeholder="코인명/심볼/마켓으로 검색 (예: 비트코인, BTC, KRW-BTC)"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {loading ? (
+              <div className="text-sm text-muted-foreground">불러오는 중…</div>
+            ) : candidates.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-6">
+                담을 수 있는 코인이 없습니다.
+              </div>
+            ) : filteredCandidates.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-6">
+                검색 결과가 없습니다. 다른 검색어로 시도해보세요.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredCandidates.map(c => (
+                  <div key={c.asset_id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-xs font-bold">
+                        {c.symbol}
+                      </div>
+                      <div>
+                        <div className="font-medium">{c.asset_name}</div>
+                        <div className="text-xs text-muted-foreground">{c.symbol} · {c.market}</div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => addBookmark(c.asset_id)}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </CardContent>
       </Card>
-      </div>
-    </>
-  )
+    </div>
+  );
 }
+export const WatchlistManager = MyPageWatchlist;

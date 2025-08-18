@@ -64,7 +64,7 @@ export function AIAssistant() {
     {
       type: "ai",
       content:
-        "안녕하세요! AI 트레이딩 어시스턴트입니다. 시장 분석, 매매 전략, 포트폴리오 최적화 등 궁금한 점을 물어보세요.",
+        "고객센터입니다. 원하시는 서비스가 있으신가요?",
       timestamp: new Date(),
     },
   ])
@@ -142,9 +142,9 @@ export function AIAssistant() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5" />
-              AI 트레이딩 도우미
+              상담사 1:1 문의
             </CardTitle>
-            <CardDescription>맞춤형 인사이트와 매매 추천을 받아보세요</CardDescription>
+            <CardDescription>욕설과 비방은 삼가해주세요.</CardDescription>
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col overflow-hidden">
@@ -185,7 +185,7 @@ export function AIAssistant() {
             {/* Input */}
             <div className="flex gap-2">
               <Input
-                placeholder="시장, 매매 전략, 포트폴리오 등 무엇이든 물어보세요..."
+                placeholder="문의 사항을 말씀해주세요."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}

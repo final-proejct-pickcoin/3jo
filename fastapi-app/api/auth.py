@@ -6,6 +6,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 from utils.jwt_helper import create_access_token
 from fastapi.security import OAuth2PasswordBearer
+from datetime import datetime, timedelta
+from utils.jwt_helper import verify_token
+import pytz
 import os
 import jwt
 
@@ -15,7 +18,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "34.64.105.135"
+host = "34.47.81.41"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -40,9 +43,16 @@ async def register(request:Request, email: str = Form(...), password: str = Form
         # 비밀번호 해싱
         hashed_pw = pwd_context.hash(password)
 
+        # 한국 시간으로 변환
+        utc = pytz.timezone('UTC')
+        kst = pytz.timezone('Asia/Seoul')
+        created_at_uct = datetime.utcnow().replace(microsecond=0)
+        created_at = utc.localize(created_at_uct).astimezone(kst)
+        expires_at = (created_at + timedelta(minutes=5)).replace(microsecond=0)
+
         # 사용자 등록
-        insert_sql = "INSERT INTO users(email, password, name, role, is_verified) VALUES(%s, %s, %s, %s, %s)"
-        user_data = (email, hashed_pw, name, Role.ADMIN.value, True)
+        insert_sql = "INSERT INTO users(email, password, name, role, is_verified, created_at, expires_at) VALUES(%s, %s, %s, %s, %s, %s, %s)"
+        user_data = (email, hashed_pw, name, Role.ADMIN.value, True, created_at, expires_at)
         cursor.execute(insert_sql, user_data)
         conn.commit()
     except Exception as e:
@@ -83,7 +93,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
                 "message": f"{email}님 로그인 성공!",
                 "sub": email,
                 "role": user["role"],
-                "name": user["name"],                
+                "name": user["name"],
                 "access_token": token,
                 "token_type": "bearer"
                 
@@ -156,23 +166,26 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin/login")
 ADMIN_ROLE = Role.ADMIN.value
 
 def get_current_admin(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        role = payload.get("role")
-        if not email or not role:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="토큰에 이메일/권한 정보 없음"
-            )
-        if role != ADMIN_ROLE:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="관리자 권한 없음"
-            )
-        return email
-    except jwt.PyJWTError:
+    
+    payload = verify_token(token)
+
+    if not payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 토큰"
+            detail="토큰에 이메일/권한 정보 없음"
         )
+    
+    email = payload.get("sub")
+    role = payload.get("role")
+    
+    if role != ADMIN_ROLE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 권한 없음"
+        )
+    return email
+
+# 관리자 인증이 필요한 API 예시 
+@router.get("/admin/only")
+async def admin_only_api(current_admin: str = Depends(get_current_admin)):
+    return {"msg": f"관리자 {current_admin}만 접근 가능"}

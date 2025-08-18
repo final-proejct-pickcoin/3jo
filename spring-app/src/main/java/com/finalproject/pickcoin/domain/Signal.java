@@ -27,11 +27,11 @@ public class Signal {
     private Integer coin_id;
     private Integer model_id;
     @Enumerated(EnumType.STRING)
-    private TradeType signal_type; // 예: "buy", "sell"    
+    private TradeType signal_type; // 예: "buy", "sell"
     private String detail; // text
 
     @Column(name="created_at", updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)   
-    private Date createdAt;    
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
 
 }

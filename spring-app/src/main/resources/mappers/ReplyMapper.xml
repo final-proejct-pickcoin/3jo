@@ -1,8 +1,64 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
-	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-	
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
 <mapper namespace="com.finalproject.pickcoin.repository.ReplyRepository">
-	
+
+  <insert id="insert" parameterType="com.finalproject.pickcoin.domain.Reply"
+          useGeneratedKeys="true" keyProperty="reply_id">
+    INSERT INTO reply (post_id, parent_id, user_id, content, created_at)
+    VALUES (#{post_id}, #{parent_id}, #{user_id}, #{content}, NOW())
+  </insert>
+
+  <!-- 루트 댓글 -->
+  <select id="findRootsByPostId" resultType="com.finalproject.pickcoin.domain.Reply">
+    SELECT
+      r.reply_id, r.user_id, r.post_id, r.parent_id, r.content,
+      r.created_at, r.updated_at,
+      u.name AS author
+    FROM reply r
+    LEFT JOIN users u ON u.user_id = r.user_id
+    WHERE r.post_id = #{post_id} AND r.parent_id IS NULL
+    ORDER BY r.reply_id ASC
+  </select>
+
+  <!-- 대댓글 -->
+  <select id="findChildren" resultType="com.finalproject.pickcoin.domain.Reply">
+    SELECT
+      r.reply_id, r.user_id, r.post_id, r.parent_id, r.content,
+      r.created_at, r.updated_at,
+      u.name AS author
+    FROM reply r
+    LEFT JOIN users u ON u.user_id = r.user_id
+    WHERE r.parent_id = #{parent_id}
+    ORDER BY r.reply_id ASC
+  </select>
+
+  <select id="isReply" resultType="int">
+    SELECT CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END
+    FROM reply
+    WHERE reply_id = #{reply_id}
+  </select>
+
+  <select id="findById" parameterType="int" resultType="com.finalproject.pickcoin.domain.Reply">
+    SELECT
+      r.reply_id, r.user_id, r.post_id, r.parent_id, r.content,
+      r.created_at, r.updated_at,
+      u.name AS author
+    FROM reply r
+    LEFT JOIN users u ON u.user_id = r.user_id
+    WHERE r.reply_id = #{reply_id}
+  </select>
+
+  <delete id="delete">
+    DELETE FROM reply
+    WHERE reply_id = #{reply_id} AND user_id = #{user_id}
+  </delete>
+
+  <update id="update">
+  UPDATE reply
+  SET content = #{content}, updated_at = NOW()
+  WHERE reply_id = #{reply_id} AND user_id = #{user_id}
+  </update>
 
 </mapper>

@@ -1,6 +1,8 @@
 from fastapi import FastAPI, WebSocket, Request, WebSocketDisconnect, status, Query, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 import jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
@@ -8,17 +10,53 @@ import os
 import redis
 from utils.user_manager import ConnectionManager
 from service.alert_manager import AlertManager
+
+from passlib.context import CryptContext
+from utils.jwt_helper import create_access_token, verify_token
+from dotenv import load_dotenv
+from utils.user_manager import ConnectionManager
+from typing import Dict
+
 from json import dumps
+import json
 from fastapi.middleware.cors import CORSMiddleware
 from api.news_router import router as news_router
 from api.auth import router as auth_router
 from api.admin_user import router as admin_user_router
+from api.admin import router as admin_router
+from api.inquiry import router as inq_router
+from api.chat import router as ws_router
+
+from api.bithumb_api import router as bithumb_router, realtime_ws
+
+# --- 음성 AI 관련 모듈 추가  Google Cloud 관련 모듈 추가 ---
+import google.generativeai as genai
+from api.voice_router import router as voice_ai_router
+from google.cloud import speech # 인증 확인을 위해 speech 클라이언트 임포트
+# ---------------------------------
 
 
 load_dotenv()
 
-# docker-compose.yml의 서비스명이 redis이면
+
+
+# --- Gemini API 설정 추가 ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    print("경고: .env 파일에 GEMINI_API_KEY가 설정되지 않았습니다.")
+# -----------------------------
+
+# docker-compose.yml의 서비스명 redis를 
 redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+
+#____________빗썸+제미나이 연동____________
+# 전역 변수로 설정하여 다른 모듈에서 임포트 가능하게 함
+# __all__ = ["redis_client"]
+from api.ai_coin_connect import redis_client
+#______________________________________________
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
@@ -57,8 +95,28 @@ app.include_router(auth_router)
 # admin_user 로그 라우터
 app.include_router(admin_user_router)
 
+# 관리자 페이지에서 받아올 라우터
+app.include_router(admin_router)
+
+# 문의 라우터
+app.include_router(inq_router)
+
+# 채팅 웹소켓 라우터
+app.include_router(ws_router)
+
+# 빗썸 API 라우터
+app.include_router(bithumb_router)
+
+@app.websocket("/ws/realtime")
+async def websocket_endpoint(websocket: WebSocket):
+    await realtime_ws(websocket)
+
 manager = ConnectionManager()
 alert_manager = AlertManager()
+
+# --- 음성 AI 라우터 추가 ---
+app.include_router(voice_ai_router, prefix="/api")
+# -----------------------------
 
 # 웹 채팅 페이지
 @app.get("/", response_class=HTMLResponse)
@@ -89,7 +147,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...), room
     await manager.connect(websocket, room, username)
     
 
-    # 3. 연결 즉시, 최큰 메세지 100개 보내기
+    # 3. 연결 즉시, 최근 메세지 100개 보내기
     recent_msgs = redis_client.lrange(chat_key, -100, -1)
     for msg in recent_msgs:
         await websocket.send_text(msg)
@@ -151,3 +209,40 @@ async def login_page(request: Request):
 async def chat_page(request: Request):
     return templates.TemplateResponse("chat.html", {"request": request})
 
+
+# [추가 3] Redis 디버깅을 위한 새로운 엔드포인트 추가
+@app.get("/api/debug/redis-keys")
+async def debug_redis_keys():
+    """Redis에 저장된 ticker 키들 확인 (디버깅용)"""
+    try:
+        keys = redis_client.keys("ticker:*")
+        result = {}
+        for key in keys:
+            data = redis_client.get(key)
+            if data:
+                parsed = json.loads(data)
+                result[key] = {
+                    "closing_price": parsed.get("closing_price", "N/A"),
+                    "symbol": parsed.get("symbol", "N/A"),
+                    "timestamp": parsed.get("date", "N/A")
+                }
+        return {
+            "total_keys": len(keys),
+            "keys": result
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    
+@app.get("/api/debug/test-voice-price/{symbol}")  
+async def test_voice_price(symbol: str):
+    """음성 AI에서 사용하는 가격 조회 함수 테스트"""
+    from api.voice_router import get_realtime_price
+    
+    result = get_realtime_price(symbol.upper())
+    
+    return {
+        "symbol": symbol,
+        "result": result,
+        "has_data": result is not None,
+        "closing_price": result.get('closing_price') if result else None
+    }

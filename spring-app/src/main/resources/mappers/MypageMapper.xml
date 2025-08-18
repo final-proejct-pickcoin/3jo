@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.finalproject.pickcoin.repository.MypageRepository">
+	
+    <!-- 사용자 북마크한 코인만 -->
+<select id="find_bookmarked_only" parameterType="long"
+        resultType="com.finalproject.pickcoin.domain.Market_item">
+            SELECT
+                a.asset_id,
+                a.asset_name,
+                a.asset_type,
+                a.symbol,
+                a.market,
+                1 AS is_bookmarked
+            FROM favorite f
+            JOIN asset a ON a.asset_id = f.asset_id
+            WHERE f.user_id = #{user_id}
+            ORDER BY a.asset_id
+</select>
+
+<!-- 사용자 북마크 안 한 코인만 -->
+<select id="find_unbookmarked_only" parameterType="long"
+        resultType="com.finalproject.pickcoin.domain.Market_item">
+            SELECT
+                a.asset_id,
+                a.asset_name,
+                a.asset_type,
+                a.symbol,
+                a.market,
+                0 AS is_bookmarked
+            FROM asset a
+            LEFT JOIN favorite f
+                ON f.asset_id = a.asset_id
+            AND f.user_id  = #{user_id}
+            WHERE f.asset_id IS NULL
+            ORDER BY a.asset_id
+</select>
+
+<!-- 이메일 통해 user_id 조회 -->
+<select id="getUserIdByEmail" parameterType="string" resultType="int">
+            SELECT user_id
+            FROM users
+            WHERE email = #{email}
+            LIMIT 1
+</select>
+
+    <insert id="insert_bookmark" parameterType="com.finalproject.pickcoin.domain.Favorite">
+        <!-- 북마크 추가 -->
+        INSERT INTO favorite (user_id, asset_id)
+        VALUES (#{user_id}, #{asset_id});
+
+    </insert>
+
+    <delete id="delete_bookmark" parameterType="com.finalproject.pickcoin.domain.Favorite">
+        <!-- 북마크 삭제 -->
+        DELETE FROM favorite
+        WHERE user_id = #{user_id} AND asset_id = #{asset_id};
+
+    </delete>
+    
+</mapper>

@@ -33,16 +33,25 @@ out/
 /nbdist/
 /.nb-gradle/
 
+
 ### VS Code ###
 .vscode/
 
 ### mysql ###
 mysql_data/
 
+## redis ##
+redis_data/
+
 ## python ##
 *.pyc
 __pycache__/
 .venv/
+venv/
 
 ## react ##
 node_modules/
+*/venv
+
+## gcp key ##
+key/pickcoin-687a99cb3128.json

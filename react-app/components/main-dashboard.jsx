@@ -18,12 +18,12 @@ export const MainDashboard = () => {
   useEffect(() => {
     if (user && !user.isOnboardingCompleted) setTimeout(startOnboarding, 1000)
   }, [user, startOnboarding])
-  const isAdmin = user?.email.includes("admin")
+  const isAdmin = user?.email?.includes("admin") ?? false
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-0 pt-6 pb-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex justify-evenly w-full">
             <TabsTrigger value="trading" data-tour="trading-tab"
@@ -38,7 +38,7 @@ export const MainDashboard = () => {
             >커뮤니티</TabsTrigger>
             <TabsTrigger value="ai"
               className="flex-1 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:shadow rounded-md"
-            >AI 어시스턴트</TabsTrigger>
+            >고객센터</TabsTrigger>
             {isAdmin && <TabsTrigger value="admin">관리자</TabsTrigger>}
           </TabsList>
 

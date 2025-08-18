@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.finalproject.pickcoin.repository.MarketRepository">
+	
+    <select id="find_bookmarked_asset" resultType="integer">
+        <!-- 관심코인 테이블에서 사용자 id값을 기준으로 코인 id 검색(추후 북마크 별 표시구분용) -->
+        SELECT asset_id from favorite
+        WHERE user_id = #{user_id}
+        ORDER BY asset_id;
+    </select>
+
+    <select id="find_asset_and_bookmark" parameterType="long" resultType="com.finalproject.pickcoin.domain.Market_item">
+        <!-- 관심코인 테이블에서 사용자 id를 기준으로 코인 id를 검색하고, join을 통해 해당 코인의 상세 정보를 가져옴 -->
+        SELECT 
+            a.asset_id,
+            a.asset_name,
+            a.asset_type,
+            a.symbol,
+            a.market,
+            f.user_id AS user_id,
+            Case when f.user_id is not null then 1 else 0 end as is_bookmarked
+        FROM asset AS a
+        LEFT JOIN favorite AS f
+                ON f.asset_id = a.asset_id
+                and f.user_id = #{user_id}
+        ORDER BY a.asset_id;
+
+    </select>
+
+    <insert id="insert_bookmark" parameterType="com.finalproject.pickcoin.domain.Favorite">
+        <!-- 북마크 추가 -->
+        INSERT INTO favorite (user_id, asset_id)
+        VALUES (#{user_id}, #{asset_id});
+
+    </insert>
+
+    <delete id="delete_bookmark" parameterType="com.finalproject.pickcoin.domain.Favorite">
+        <!-- 북마크 삭제 -->
+        DELETE FROM favorite
+        WHERE user_id = #{user_id} AND asset_id = #{asset_id};
+
+    </delete>
+    
+</mapper>

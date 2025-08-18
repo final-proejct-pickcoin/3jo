@@ -1,8 +1,67 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
-	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.finalproject.pickcoin.repository.ReportRepository">
-	
+
+  <!-- 컬럼 ↔ 필드 매핑 -->
+  <resultMap id="ReportMap" type="com.finalproject.pickcoin.domain.Report">
+    <id     property="report_id"   column="report_id"/>
+    <result property="reporter_id" column="reporter_id"/>
+    <result property="reported_id" column="reported_id"/>
+    <result property="reported_type" column="reported_type"
+            javaType="com.finalproject.pickcoin.enums.EntityType"
+            typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+    <result property="description" column="description"/>
+    <result property="status" column="status"
+            javaType="com.finalproject.pickcoin.enums.ReportStatus"
+            typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+    <result property="createdAt"   column="created_at"/>
+    <result property="processedAt" column="processed_at"/>
+  </resultMap>
+
+  <!-- 신고 생성 -->
+  <insert id="insert" parameterType="com.finalproject.pickcoin.domain.Report"
+          useGeneratedKeys="true" keyProperty="report_id">
+     INSERT INTO report
+    (reporter_id, reported_id, reported_type, description, status, created_at)
+    VALUES
+    (#{reporter_id},
+     #{reported_id},
+     #{reported_type, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+     #{description},
+     #{status, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+     NOW(6))
+  </insert>
+
+  <!-- 중복신고 체크 -->
+  <select id="exists" resultType="int">
+    SELECT COUNT(1)
+    FROM report
+    WHERE reporter_id  = #{reporter_id}
+      AND reported_type = #{reported_type, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+      AND reported_id   = #{reported_id}
+  </select>
+
+  <!-- 목록 (status 없으면 전체) -->
+  <select id="findAll" resultMap="ReportMap">
+    SELECT *
+    FROM report
+    <where>
+      <if test="status != null">
+        status = #{status, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+      </if>
+    </where>
+    ORDER BY created_at DESC
+  </select>
+
+  <!-- 상태 변경 + 처리시간 기록 -->
+  <update id="updateStatus">
+    UPDATE report
+    SET status = #{status, typeHandler=org.apache.ibatis.type.EnumTypeHandler},
+        processed_at = NOW(6)
+    WHERE report_id = #{report_id}
+  </update>
 
 </mapper>
