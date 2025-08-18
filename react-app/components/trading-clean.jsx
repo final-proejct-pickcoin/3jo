@@ -238,58 +238,136 @@ export const TradingInterface = () => {
     const [loading, setLoading] = useState(true);
     const [fetchError, setFetchError] = useState("");
 
+    // trading-clean.jsx의 fetchCoins 함수 개선
     useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        setLoading(true);
-        setFetchError("");
-        console.log('🔄 빗썸 코인 목록 요청...');
-        // 환경에 따라 API 주소 자동 결정
-        const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:8000/api/coins'
-          : 'http://host.docker.internal:8000/api/coins';
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        if (data.status === 'success' && data.data && Array.isArray(data.data)) {
-          console.log(`✅ ${data.total_count}개 코인 로드 성공`);
-          setCoinList(data.data.map(coin => ({
-            symbol: coin.symbol,
-            name: coin.korean_name || coin.symbol,
-            englishName: coin.english_name || coin.symbol,
-            price: coin.current_price || 0,
-            change: coin.change_rate || 0,
-            changeAmount: coin.change_amount || 0,
-            volume: (coin.volume / 1000000).toFixed(0),
-            trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
-            marketWarning: coin.market_warning || 'NONE'
-          })));
-        } else {
-          console.error('❌ 빗썸 데이터 형식 오류:', data);
-          setFetchError('데이터 형식 오류');
-          setCoinList([
-            { symbol: "BTC", name: "비트코인", price: 95000000, change: 0.37, changeAmount: 350000, volume: "200000", trend: "up" },
-            { symbol: "ETH", name: "이더리움", price: 4200000, change: 0.59, changeAmount: 25000, volume: "150000", trend: "up" },
-            { symbol: "XRP", name: "리플", price: 2800, change: 0.32, changeAmount: 9, volume: "100000", trend: "up" },
-            { symbol: "ADA", name: "에이다", price: 1250, change: -1.2, changeAmount: -15, volume: "80000", trend: "down" },
-            { symbol: "SOL", name: "솔라나", price: 245000, change: 2.1, changeAmount: 5000, volume: "70000", trend: "up" }
-          ]);
-        }
-      } catch (e) {
-        console.error('❌ 빗썸 코인 목록 조회 실패:', e);
-        setFetchError('네트워크 오류');
-        setCoinList([
-          { symbol: "BTC", name: "비트코인", price: 95000000, change: 0.37, changeAmount: 350000, volume: "200000", trend: "up" },
-          { symbol: "ETH", name: "이더리움", price: 4200000, change: 0.59, changeAmount: 25000, volume: "150000", trend: "up" },
-          { symbol: "XRP", name: "리플", price: 2800, change: 0.32, changeAmount: 9, volume: "100000", trend: "up" },
-          { symbol: "ADA", name: "에이다", price: 1250, change: -1.2, changeAmount: -15, volume: "80000", trend: "down" },
-          { symbol: "SOL", name: "솔라나", price: 245000, change: 2.1, changeAmount: 5000, volume: "70000", trend: "up" }
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCoins();
-  }, []);
+        const fetchCoins = async () => {
+          try {
+            setLoading(true);
+            setFetchError("");
+            console.log('🔄 빗썸 코인 목록 요청...');
+            
+            // ✅ 추가: 타임아웃과 재시도 로직
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+            
+            // 환경에 따라 API 주소 자동 결정
+            const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+              ? 'http://localhost:8000/api/coins'
+              : 'http://host.docker.internal:8000/api/coins';
+              
+            console.log(`🌐 API 요청 URL: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
+              signal: controller.signal,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('📊 API 응답 데이터:', {
+              status: data.status,
+              totalCount: data.total_count,
+              firstCoin: data.data?.[0]
+            });
+            
+            if (data.status === 'success' && data.data && Array.isArray(data.data)) {
+              console.log(`✅ ${data.total_count}개 코인 로드 성공`);
+              setCoinList(data.data.map(coin => ({
+                symbol: coin.symbol,
+                name: coin.korean_name || coin.symbol,
+                englishName: coin.english_name || coin.symbol,
+                price: coin.current_price || 0,
+                change: coin.change_rate || 0,
+                changeAmount: coin.change_amount || 0,
+                volume: (coin.volume / 1000000).toFixed(0),
+                trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
+                marketWarning: coin.market_warning || 'NONE'
+              })));
+            } else {
+              console.error('❌ 빗썸 데이터 형식 오류:', data);
+              throw new Error('API 응답 데이터 형식 오류');
+            }
+          } catch (e) {
+            console.error('❌ 빗썸 코인 목록 조회 실패:', e);
+            setFetchError(e.message);
+            
+            // ✅ 폴백 데이터도 더 많이 제공
+            setCoinList([
+              { symbol: "BTC", name: "비트코인", price: 95000000, change: 0.37, changeAmount: 350000, volume: "200000", trend: "up" },
+              { symbol: "ETH", name: "이더리움", price: 4200000, change: 0.59, changeAmount: 25000, volume: "150000", trend: "up" },
+              { symbol: "XRP", name: "리플", price: 2800, change: 0.32, changeAmount: 9, volume: "100000", trend: "up" },
+              { symbol: "ADA", name: "에이다", price: 1250, change: -1.2, changeAmount: -15, volume: "80000", trend: "down" },
+              { symbol: "SOL", name: "솔라나", price: 245000, change: 2.1, changeAmount: 5000, volume: "70000", trend: "up" },
+              { symbol: "DOT", name: "폴카닷", price: 8500, change: 1.5, changeAmount: 125, volume: "60000", trend: "up" },
+              { symbol: "LINK", name: "체인링크", price: 34800, change: 3.42, changeAmount: 1150, volume: "75627", trend: "up" },
+              { symbol: "LTC", name: "라이트코인", price: 160000, change: -0.8, changeAmount: -1300, volume: "45000", trend: "down" }
+            ]);
+          } finally {
+            setLoading(false);
+          }
+        };
+        fetchCoins();
+      }, []);
+  //   useEffect(() => {
+  //   const fetchCoins = async () => {
+  //     try {
+  //       setLoading(true);
+  //       setFetchError("");
+  //       console.log('🔄 빗썸 코인 목록 요청...');
+  //       // 환경에 따라 API 주소 자동 결정
+  //       const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  //         ? 'http://localhost:8000/api/coins'
+  //         : 'http://host.docker.internal:8000/api/coins';
+  //       const response = await fetch(apiUrl);
+  //       const data = await response.json();
+  //       if (data.status === 'success' && data.data && Array.isArray(data.data)) {
+  //         console.log(`✅ ${data.total_count}개 코인 로드 성공`);
+  //         setCoinList(data.data.map(coin => ({
+  //           symbol: coin.symbol,
+  //           name: coin.korean_name || coin.symbol,
+  //           englishName: coin.english_name || coin.symbol,
+  //           price: coin.current_price || 0,
+  //           change: coin.change_rate || 0,
+  //           changeAmount: coin.change_amount || 0,
+  //           volume: (coin.volume / 1000000).toFixed(0),
+  //           trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
+  //           marketWarning: coin.market_warning || 'NONE'
+  //         })));
+  //       } else {
+  //         console.error('❌ 빗썸 데이터 형식 오류:', data);
+  //         setFetchError('데이터 형식 오류');
+  //         setCoinList([
+  //           { symbol: "BTC", name: "비트코인", price: 95000000, change: 0.37, changeAmount: 350000, volume: "200000", trend: "up" },
+  //           { symbol: "ETH", name: "이더리움", price: 4200000, change: 0.59, changeAmount: 25000, volume: "150000", trend: "up" },
+  //           { symbol: "XRP", name: "리플", price: 2800, change: 0.32, changeAmount: 9, volume: "100000", trend: "up" },
+  //           { symbol: "ADA", name: "에이다", price: 1250, change: -1.2, changeAmount: -15, volume: "80000", trend: "down" },
+  //           { symbol: "SOL", name: "솔라나", price: 245000, change: 2.1, changeAmount: 5000, volume: "70000", trend: "up" }
+  //         ]);
+  //       }
+  //     } catch (e) {
+  //       console.error('❌ 빗썸 코인 목록 조회 실패:', e);
+  //       setFetchError('네트워크 오류');
+  //       setCoinList([
+  //         { symbol: "BTC", name: "비트코인", price: 95000000, change: 0.37, changeAmount: 350000, volume: "200000", trend: "up" },
+  //         { symbol: "ETH", name: "이더리움", price: 4200000, change: 0.59, changeAmount: 25000, volume: "150000", trend: "up" },
+  //         { symbol: "XRP", name: "리플", price: 2800, change: 0.32, changeAmount: 9, volume: "100000", trend: "up" },
+  //         { symbol: "ADA", name: "에이다", price: 1250, change: -1.2, changeAmount: -15, volume: "80000", trend: "down" },
+  //         { symbol: "SOL", name: "솔라나", price: 245000, change: 2.1, changeAmount: 5000, volume: "70000", trend: "up" }
+  //       ]);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   fetchCoins();
+  // }, []);
 
   // 실시간 데이터 업데이트 부분 useMemo로 최적화
   const updatedCoinList = useMemo(() => {
