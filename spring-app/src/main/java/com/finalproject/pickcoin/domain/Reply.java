@@ -20,7 +20,9 @@ public class Reply {
     private Integer reply_id;    
     private Integer user_id;
     private Integer post_id;
+    private Integer parent_id;
     private String content;
+    private String author;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", updatable = false)

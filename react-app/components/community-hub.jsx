@@ -94,7 +94,7 @@ export const CommunityHub = () => {
   const [likedPostIds, setLikedPostIds] = useState([])
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
-  const availableTags = ["BTC", "ETH", "DeFi", "NFT", "Technical Analysis", "News", "Portfolio", "Trading Tips"]
+  // const availableTags = ["BTC", "ETH", "DeFi", "NFT", "Technical Analysis", "News", "Portfolio", "Trading Tips"]
 
 // 신고 기능
 const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -102,6 +102,19 @@ const [reportReason, setReportReason] = useState("")
 const [reportDetail, setReportDetail] = useState("")
 const [reportTargetId, setReportTargetId] = useState(null)
 const [alreadyReportedIds, setAlreadyReportedIds] = useState([])
+
+// 댓글 기능
+  const [openReplyPostId, setOpenReplyPostId] = useState(null) // 어떤 게시글 댓글창이 열렸는지
+  const [replies, setReplies] = useState([])                    // 현재 열린 게시글의 댓글 목록
+  const [newReply, setNewReply] = useState("") 
+  const [replyCounts, setReplyCounts] = useState({})
+
+// 대댓글/수정/삭제용 상태 
+const [openChildOf, setOpenChildOf] = useState(null)
+const [childrenMap, setChildrenMap] = useState({})
+const [childTextMap, setChildTextMap] = useState({})                 // parent_id => 입력값
+const [editingReplyId, setEditingReplyId] = useState(null)           // 수정 중인 reply_id
+const [editReplyText, setEditReplyText] = useState("")               // 수정 텍스트
 
 const checkReported = async (postId) => {
   try {
@@ -334,6 +347,113 @@ useEffect(() => {
     }
   }
 
+  // 댓글 추가 api 함수 
+  const fetchReplies = async (postId) => {
+  try {
+    const res  = await axios.get(`http://localhost:8080/community/${postId}/replies`);
+    const list = Array.isArray(res.data) ? res.data : [];
+    setReplies(list);
+    setOpenReplyPostId(postId);
+    setReplyCounts(prev => ({ ...prev, [postId]: list.length }));
+
+    // 🔧 댓글창 열 때 상태 리셋 (여기 추가)
+    setChildrenMap({});
+    setOpenChildOf(null);
+    setEditingReplyId(null);
+    setEditReplyText("");
+  } catch (err) {
+    console.error("댓글 불러오기 실패:", err);
+}
+  };
+
+  const submitReply = async (postId) => {
+    if (!newReply.trim()) return
+    if (!currentUser.user_id) return alert("로그인 후 이용해주세요.")
+    try {
+      // 컨트롤러: POST /community/{postId}/replies
+      await axios.post(`http://localhost:8080/community/${postId}/replies`, {
+        post_id: postId,
+        user_id: currentUser.user_id,
+        content: newReply
+      })
+      setNewReply("")
+      fetchReplies(postId)
+    } catch (err) {
+      console.error("댓글 등록 실패:", err)
+    }
+  }
+
+   // **[추가]** 특정 부모 댓글의 자식 댓글 목록 조회
+  const fetchChildren = async (parentId) => {
+    try {
+      const res = await axios.get(`http://localhost:8080/community/replies/${parentId}/children`)
+      const list = Array.isArray(res.data) ? res.data : []
+      setChildrenMap(prev => ({ ...prev, [parentId]: list }))
+    } catch (e) {
+      console.error("대댓글 불러오기 실패:", e)
+    }
+  }
+
+  // **[추가]** 대댓글 등록
+  const submitChild = async (parentId) => {
+    const text = (childTextMap[parentId] || "").trim()
+    if (!text) return
+    if (!currentUser.user_id) return alert("로그인 후 이용해주세요.")
+    try {
+      // 컨트롤러: POST /community/replies/{parentId}
+      await axios.post(`http://localhost:8080/community/replies/${parentId}`, {
+        post_id: openReplyPostId,            // 선택(있으면 좋음)
+        user_id: currentUser.user_id,
+        content: text
+      })
+      setChildTextMap(prev => ({ ...prev, [parentId]: "" }))
+      await fetchChildren(parentId)
+    } catch (e) {
+      console.error("대댓글 등록 실패:", e)
+    }
+  }
+
+  // **[추가]** 댓글/대댓글 수정 시작
+  const startEdit = (reply) => {
+    if (safeToNumber(currentUser.user_id) !== safeToNumber(reply.user_id)) {
+      return alert("본인 댓글만 수정할 수 있습니다.")
+    }
+    setEditingReplyId(reply.reply_id)
+    setEditReplyText(reply.content || "")
+  }
+
+  // **[추가]** 댓글/대댓글 저장
+  const saveEdit = async (replyId, parentId) => {
+    const text = editReplyText.trim()
+    if (!text) return
+    try {
+      // 컨트롤러: PUT /community/replies/{replyId}?userId=&content=
+      await axios.put(`http://localhost:8080/community/replies/${replyId}`, null, {
+        params: { userId: currentUser.user_id, content: text }
+      })
+      setEditingReplyId(null)
+      setEditReplyText("")
+      await fetchReplies(openReplyPostId)
+      if (parentId) await fetchChildren(parentId)
+    } catch (e) {
+      console.error("댓글 수정 실패:", e)
+    }
+  }
+
+  // **[추가]** 댓글/대댓글 삭제
+  const removeReply = async (replyId, parentId) => {
+    if (!window.confirm("삭제하시겠습니까?")) return
+    try {
+      // 컨트롤러: DELETE /community/replies/{replyId}?userId=
+      await axios.delete(`http://localhost:8080/community/replies/${replyId}`, {
+        params: { userId: currentUser.user_id }
+      })
+      await fetchReplies(openReplyPostId)
+      if (parentId) await fetchChildren(parentId)
+    } catch (e) {
+      console.error("댓글 삭제 실패:", e)
+    }
+  }
 
   return (
     <div className="grid lg:grid-cols-3 gap-6">
@@ -366,7 +486,7 @@ useEffect(() => {
                 className="min-h-[100px]"
               />
 
-              <div className="flex flex-wrap gap-2">
+              {/* <div className="flex flex-wrap gap-2">
                 {availableTags.map((tag) => (
                   <Badge
                     key={tag}
@@ -383,7 +503,7 @@ useEffect(() => {
                     {tagToKr(tag)}
                   </Badge>
                 ))}
-              </div>
+              </div> */}
 
               <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">{newPost.length}/500자</p>
@@ -447,6 +567,7 @@ useEffect(() => {
                       ))}
                     </div>
 
+
                     <div className="flex items-center space-x-4 pt-2">
                       <Button
                         variant="ghost"
@@ -458,9 +579,21 @@ useEffect(() => {
                         {post.like_count || 0}
                       </Button>
 
-                      <Button variant="ghost" size="sm">
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        {post.comments || 0}
+                       {/* 댓글 추가: 버튼 클릭 시 댓글창 토글/로드  */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (openReplyPostId === post.post_id) {
+                            setOpenReplyPostId(null)      // 닫기
+                          } else {
+                            fetchReplies(post.post_id)    // 열면서 목록 로드
+                          }
+                        }}
+                      >
+                         <MessageCircle className="h-4 w-4 mr-1" />
+                        {/* ★ 추가: 댓글 숫자 표기 */}
+                        {replyCounts[post.post_id] ?? post.reply_count ?? post.comments ?? 0}
                       </Button>
 
                       {/* 신고 버튼 추가 */}
@@ -475,32 +608,32 @@ useEffect(() => {
                       </Button>
 
                       {reportModalOpen && (
-  <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>게시글 신고</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <select value={reportReason} onChange={(e) => setReportReason(e.target.value)}>
-          <option value="">신고 사유 선택</option>
-          <option value="욕설/비방">욕설/비방</option>
-          <option value="광고/홍보">광고/홍보</option>
-          <option value="음란물">음란물</option>
-          <option value="기타">기타</option>
-        </select>
-        <Textarea
-          placeholder="상세 사유를 입력하세요..."
-          value={reportDetail}
-          onChange={(e) => setReportDetail(e.target.value)}
-        />
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setReportModalOpen(false)}>취소</Button>
-          <Button onClick={handleSubmitReport}>제출</Button>
-        </div>
-      </div>
-    </DialogContent>
-  </Dialog>
-)}
+                        <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>게시글 신고</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-3">
+                              <select value={reportReason} onChange={(e) => setReportReason(e.target.value)}>
+                                <option value="">신고 사유 선택</option>
+                                <option value="욕설/비방">욕설/비방</option>
+                                <option value="광고/홍보">광고/홍보</option>
+                                <option value="음란물">음란물</option>
+                                <option value="기타">기타</option>
+                              </select>
+                              <Textarea
+                                placeholder="상세 사유를 입력하세요..."
+                                value={reportDetail}
+                                onChange={(e) => setReportDetail(e.target.value)}
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setReportModalOpen(false)}>취소</Button>
+                                <Button onClick={handleSubmitReport}>제출</Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        )}
 
 
 
@@ -510,6 +643,132 @@ useEffect(() => {
                         공유
                       </Button>
                     </div>
+
+                      {/* ---------- 댓글 영역 ---------- */}
+                    {openReplyPostId === post.post_id && (
+                      <div className="mt-3 space-y-3 border-t pt-3">
+                        {/* 댓글 목록 */}
+                        <div className="space-y-3">
+                          {replies.length === 0 && (
+                            <p className="text-xs text-muted-foreground">아직 댓글이 없습니다.</p>
+                          )}
+                          {replies.map((r) => (
+                            <div key={r.reply_id} className="text-sm">
+                              {/* **[추가]** 댓글 단위: 수정/삭제/대댓글 */}
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  {editingReplyId === r.reply_id ? (
+                                    <div className="space-y-2">
+                                      <Textarea
+                                        value={editReplyText}
+                                        onChange={(e) => setEditReplyText(e.target.value)}
+                                        className="min-h-[60px]"
+                                      />
+                                      <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => saveEdit(r.reply_id, null)}>저장</Button>
+                                        <Button size="sm" variant="outline" onClick={() => { setEditingReplyId(null); setEditReplyText(""); }}>취소</Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span className="font-semibold mr-2">{r.author || `#${r.user_id}`}</span>
+                                      <span>{r.content}</span>
+                                    </>
+                                  )}
+                                </div>
+                                {safeToNumber(currentUser.user_id) === safeToNumber(r.user_id) && editingReplyId !== r.reply_id && (
+                                  <div className="shrink-0 flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => startEdit(r)}>수정</Button>
+                                    <Button size="sm" variant="destructive" onClick={() => removeReply(r.reply_id, null)}>삭제</Button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* **[추가]** 대댓글 토글 & 입력 */}
+                              <div className="mt-2 ml-4">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const next = openChildOf === r.reply_id ? null : r.reply_id
+                                    setOpenChildOf(next)
+                                    if (next) fetchChildren(r.reply_id)
+                                  }}
+                                >
+                                  댓글 더보기
+                                </Button>
+
+                                {openChildOf === r.reply_id && (
+                                  <div className="mt-2 space-y-2">
+                                    {/* 대댓글 목록 */}
+                                    <div className="space-y-2">
+                                      {(childrenMap[r.reply_id] || []).map((c) => (
+                                        <div key={c.reply_id} className="pl-3 border-l text-sm">
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                              {editingReplyId === c.reply_id ? (
+                                                <div className="space-y-2">
+                                                  <Textarea
+                                                    value={editReplyText}
+                                                    onChange={(e) => setEditReplyText(e.target.value)}
+                                                    className="min-h-[60px]"
+                                                  />
+                                                  <div className="flex gap-2">
+                                                    <Button size="sm" onClick={() => saveEdit(c.reply_id, r.reply_id)}>저장</Button>
+                                                    <Button size="sm" variant="outline" onClick={() => { setEditingReplyId(null); setEditReplyText(""); }}>취소</Button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <span className="font-semibold mr-2">{c.author || `#${c.user_id}`}</span>
+                                                  <span>{c.content}</span>
+                                                </>
+                                              )}
+                                            </div>
+                                            {safeToNumber(currentUser.user_id) === safeToNumber(c.user_id) && editingReplyId !== c.reply_id && (
+                                              <div className="shrink-0 flex gap-2">
+                                                <Button size="sm" variant="outline" onClick={() => startEdit(c)}>수정</Button>
+                                                <Button size="sm" variant="destructive" onClick={() => removeReply(c.reply_id, r.reply_id)}>삭제</Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* 대댓글 입력 */}
+                                    <div className="flex items-start gap-2">
+                                      <Textarea
+                                        value={childTextMap[r.reply_id] || ""}
+                                        onChange={(e) =>
+                                          setChildTextMap(prev => ({ ...prev, [r.reply_id]: e.target.value }))
+                                        }
+                                        placeholder="대댓글을 입력하세요..."
+                                        className="min-h-[50px] flex-1"
+                                      />
+                                      <Button onClick={() => submitChild(r.reply_id)}>등록</Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 댓글 입력 */}
+                        <div className="flex items-start gap-2">
+                          <Textarea
+                            value={newReply}
+                            onChange={(e) => setNewReply(e.target.value)}
+                            placeholder="댓글을 입력하세요..."
+                            className="min-h-[50px] flex-1"
+                          />
+                          <Button onClick={() => submitReply(post.post_id)}>등록</Button>
+                        </div>
+                      </div>
+                    )}
+
+
                   </div>
                 </div>
               </CardContent>
