@@ -13,6 +13,8 @@ import { toast } from "sonner"
 import TradingChart from "@/components/trading-chart"
 import { CurrencyToggle } from "@/components/currency-toggle"
 
+
+
 // 임시 코인 정보 패널 컴포넌트
 const CoinInfoPanel = ({ coin }) => {
   if (!coin) {
@@ -129,7 +131,7 @@ export const TradingInterface = () => {
                 
                 // 가격 변화 방향 계산
                 const priceDirection = closePrice > prevPrice ? 'up' : 
-                                     closePrice < prevPrice ? 'down' : 'same';
+                  closePrice < prevPrice ? 'down' : 'same';
 
                 const newData = {
                   ...prev,
@@ -358,6 +360,20 @@ const totalAmountKRW = useMemo(
   () => Math.floor((orderPrice || 0) * (orderQty || 0)),
   [orderPrice, orderQty]
 );
+
+// 거래내역 서브탭 상태
+const [historyTab, setHistoryTab] = useState("미체결");
+
+// (데모) 미체결/체결 리스트 — 나중에 API 결과로 교체하면 됨
+const openOrders = useMemo(() => ([
+  { id: 1, t: "12:10:11", side: "매수", qty: "0.005", price: "163,210,000" },
+  { id: 2, t: "12:03:22", side: "매도", qty: "0.002", price: "163,230,000" },
+]), []);
+
+const filledOrders = useMemo(() => ([
+  { id: 11, t: "12:01:02", side: "매수", qty: "0.003", price: "163,200,000" },
+  { id: 12, t: "11:58:45", side: "매도", qty: "0.001", price: "163,180,000" },
+]), []);
 
   return (
     <div className="w-full p-0 space-y-4">
@@ -766,28 +782,58 @@ const totalAmountKRW = useMemo(
               )}
 
               {/* 거래내역 */}
-              {orderTab === "거래내역" && (
-                <div className="text-xs">
-                  <div className="text-gray-500 mb-2">최근 체결/주문 내역</div>
-                  <div className="border rounded">
-                    <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
-                      <div>시간</div><div>구분</div><div>수량(BTC)</div><div>가격(KRW)</div>
+                {orderTab === "거래내역" && (
+                  <div className="text-xs">
+                    {/* 미체결 / 체결 토글 */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded-md border text-xs ${
+                          historyTab === "미체결"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "text-gray-600 border-gray-200"
+                        }`}
+                        onClick={() => setHistoryTab("미체결")}
+                      >
+                        미체결
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded-md border text-xs ${
+                          historyTab === "체결"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "text-gray-600 border-gray-200"
+                        }`}
+                        onClick={() => setHistoryTab("체결")}
+                      >
+                        체결
+                      </button>
                     </div>
-                    {/* 실제 데이터 연결 가능 */}
-                    {[
-                      { t: "12:03:11", type: "매수", qty: "0.003", price: "163,210,000" },
-                      { t: "12:01:02", type: "매도", qty: "0.002", price: "163,180,000" },
-                    ].map((r, i) => (
-                      <div key={i} className="grid grid-cols-4 p-2 border-b last:border-b-0">
-                        <div>{r.t}</div>
-                        <div className={r.type === "매수" ? "text-emerald-600" : "text-red-600"}>{r.type}</div>
-                        <div>{r.qty}</div>
-                        <div className="text-right">{r.price}</div>
+
+                    {/* 리스트 */}
+                    <div className="border rounded">
+                      <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
+                        <div>시간</div>
+                        <div>구분</div>
+                        <div>수량(BTC)</div>
+                        <div className="text-right">가격(KRW)</div>
                       </div>
-                    ))}
+
+                      {(historyTab === "미체결" ? openOrders : filledOrders).map((r) => (
+                        <div key={r.id} className="grid grid-cols-4 p-2 border-b last:border-b-0">
+                          <div>{r.t}</div>
+                          <div className={r.side === "매수" ? "text-emerald-600" : "text-red-600"}>{r.side}</div>
+                          <div>{r.qty}</div>
+                          <div className="text-right">{r.price}</div>
+                        </div>
+                      ))}
+
+                      {(historyTab === "미체결" ? openOrders : filledOrders).length === 0 && (
+                        <div className="p-4 text-center text-gray-400">내역이 없습니다.</div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
 
           </div>
