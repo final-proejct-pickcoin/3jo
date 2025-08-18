@@ -553,7 +553,8 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                             
                             # 로그 출력 (너무 많지 않게)
                             if message_count % 10 == 0:
-                                print(f"📊 빗썸 실시간 ({message_count}): {symbol} = {close_price}")
+                                pass
+                                # print(f"📊 빗썸 실시간 ({message_count}): {symbol} = {close_price}")
                         
                         # 하트비트 체크 (60초마다)
                         if time.time() - last_heartbeat > 60:

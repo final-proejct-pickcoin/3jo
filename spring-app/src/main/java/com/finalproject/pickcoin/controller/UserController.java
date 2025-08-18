@@ -51,6 +51,18 @@ public class UserController {
 
         // logger.info("=========register 호출 ===========");
         Map<String, Object> result = new HashMap<>();
+        
+        try{
+            MDC.put("event_type", "register");
+            MDC.put("email", email);
+            logger.info("[회원가입 시도] name={}", name);
+        }finally{
+            MDC.remove("event_type");
+            MDC.remove("email");
+        }
+        
+
+
         if (userService.findByEmail(email).isPresent()) {
             result.put("error", "이미 존재하는 이메일입니다.");
             return ResponseEntity.badRequest().body(result);
@@ -89,6 +101,15 @@ public class UserController {
             user.setVerificationToken(null);
             userService.save(user);
 
+            try{
+                MDC.put("event_type", "register");
+                MDC.put("email", user.getEmail());
+                logger.info("[회원가입 성공] name={}", user.getEmail());
+            }finally{
+                MDC.remove("event_type");
+                MDC.remove("email");
+            }
+            
             return ResponseEntity.ok("이메일 인증이 완료되었습니다.");
         }else{
             return ResponseEntity.badRequest().body("유효하지 않은 링크입니다.");
@@ -104,9 +125,11 @@ public class UserController {
         logged_users.add(email);
         try{
             MDC.put("event_type", "login");
-        logger.info("유저 로그인 발생 - 사용자: {}", email);
+            MDC.put("email", email);
+            logger.info("유저 로그인 발생 - 사용자: {}", email);
         }finally{
             MDC.remove("event_type");
+            MDC.remove("email");
         }
         
         
@@ -157,7 +180,7 @@ public class UserController {
         logged_users.add(email);
         try{
             MDC.put("event_type", "login");
-        logger.info("유저 로그인 발생 - 사용자: {}", email);
+            logger.info("유저 로그인 발생 - 사용자: {}", email);
         }finally{
             MDC.remove("event_type");
         }        

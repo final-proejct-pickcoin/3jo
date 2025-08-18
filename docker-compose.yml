@@ -88,9 +88,10 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - xpack.security.http.ssl.enabled=false
-      - xpack.security.enrollment.enabled=true
+      - xpack.security.enrollment.enabled=false
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
+      
   logstash:
     image: docker.elastic.co/logstash/logstash:8.17.4
     ports:

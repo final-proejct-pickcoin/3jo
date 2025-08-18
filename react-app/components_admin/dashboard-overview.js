@@ -38,6 +38,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { createContext } from "vm";
 
 const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -82,6 +83,16 @@ export default function DashboardOverview({ isDarkMode }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tradingEnabled, setTradingEnabled] = useState(true);
 
+  const [interval, setInterval] = useState("month"); // 기본: 일별
+  const [userTrend, setUserTrend] = useState([]);  // { date, count } 데이터 배열
+  const [latestTotal, setLatestTotal] = useState(0);
+  const INTERVAL_OPTIONS = [
+    { label: "시간별", value: "hour" },
+    { label: "일별", value: "day" },
+    { label: "주간별", value: "week" },
+    { label: "월간별", value: "month" },
+  ];
+
   // 실시간 데이터 시뮬레이션
   useEffect(() => {
     const interval = setInterval(() => {
@@ -122,6 +133,19 @@ export default function DashboardOverview({ isDarkMode }) {
     console.log(`KYC ${id} review`);
     // 실제로는 KYC 상세 페이지로 이동
   };
+
+  useEffect(() => {
+    const fetchInterval = interval || "month";
+    fetch(`http://localhost:8000/api/stats/users?interval=${fetchInterval}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setUserTrend(data);
+        if (data && data.length > 0) {
+          setLatestTotal(data[data.length - 1].count); // 마지막 항목의 count
+        }
+      });
+
+  },[interval])
 
   return (
     <div className="space-y-6">
@@ -177,7 +201,7 @@ export default function DashboardOverview({ isDarkMode }) {
                   총 사용자
                 </p>
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  {stats.totalUsers.toLocaleString()}
+                  {latestTotal}
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
@@ -365,6 +389,63 @@ export default function DashboardOverview({ isDarkMode }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 총 사용자 추이 */}
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
+              <Users className="h-5 w-5 mr-2 text-green-500" />
+              총 사용자 수 추이
+            </CardTitle>
+            {/* 집계 기준 선택 */}
+            <select
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+              className={isDarkMode ? "bg-gray-700 text-white border-gray-500 rounded p-1" : "bg-gray-50 text-gray-900 rounded p-1"}
+            >
+              {INTERVAL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </CardHeader>
+          <CardContent>
+            {/* KPI 카드 */}
+            <div className={`mb-4 text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+              최근 {interval === "day" ? "일" : interval === "week" ? "주간" : interval ==="hour" ? "시간" : "월"} 기준 총 사용자수:&nbsp;
+              <span className="text-green-600">{latestTotal}</span>
+            </div>
+            {/* 선그래프 */}
+            {userTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={userTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => {
+                      if (interval === "hour") {
+                        // 시간만: '2025-08-18T16:00:00.000+09:00' → '16시'
+                        const hour = value.slice(11, 13);
+                        return `${hour}시`;
+                      } else if (interval === "day") {
+                        // 월-일: '2025-08-18...' → '08-18'
+                        return value.slice(5, 10); // MM-DD
+                      } else if (interval === "month") {
+                        // 월: '2025-08...' → '08월'
+                        return value.slice(5, 7) + "월";
+                      } else {
+                        return value;
+                      }
+                    }}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#38b2ac" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={`${isDarkMode ? "text-gray-400" : "text-gray-600"} text-center py-20`}>데이터가 없습니다.</div>
+            )}
+          </CardContent>
+        </Card>
         {/* 승인 대기 출금 요청 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader>
@@ -412,51 +493,6 @@ export default function DashboardOverview({ isDarkMode }) {
                     거부
                   </Button>
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* KYC 인증 대기 */}
-        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-          <CardHeader>
-            <CardTitle
-              className={`text-lg font-semibold flex items-center ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              <Shield className="h-5 w-5 mr-2 text-blue-500" />
-              KYC 인증 대기
-            </CardTitle>
-            <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              검토가 필요한 KYC 신청 ({stats.kycPending}건)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {kycPending.map((kyc) => (
-              <div
-                key={kyc.id}
-                className={`flex items-center justify-between p-3 ${
-                  isDarkMode ? "bg-gray-700" : "bg-gray-50"
-                } rounded-lg`}
-              >
-                <div>
-                  <p className={`font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                    {kyc.user}
-                  </p>
-                  <p className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    {kyc.level} &bull; {kyc.submitted}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleKycReview(kyc.id)}
-                  className={isDarkMode ? "border-gray-600 text-gray-200 hover:bg-gray-700" : ""}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  검토
-                </Button>
               </div>
             ))}
           </CardContent>

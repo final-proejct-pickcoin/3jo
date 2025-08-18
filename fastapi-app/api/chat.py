@@ -42,7 +42,7 @@ async def chat_endpoint(websocket: WebSocket, room_id: str):
                 msg_obj["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 # 문자열 변환
-                save_redis = json.dumps(msg_obj)
+                save_redis = json.dumps(msg_obj, ensure_ascii=False)
 
                 # Redis에 퍼블리시(지금은 필요 없는듯.)
                 await redis.publish(room_id, data)
@@ -71,7 +71,7 @@ async def chat_endpoint(websocket: WebSocket, room_id: str):
     # 둘 다 동시에 실행
     await asyncio.gather(read_from_ws(), read_from_redis())
 
-# 전체 대화봉록 가져오기
+# 전체 대화목록 가져오기
 @router.get("/chat/history/{room_id}")
 async def get_chat_history(room_id: str):
     redis = await get_redis()

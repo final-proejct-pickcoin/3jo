@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 import pymysql
 from pymysql.cursors import DictCursor
 from pydantic import BaseModel
 from typing import List
+from .elasticsearch import get_user_trend
 
 
 
@@ -106,6 +107,7 @@ def getinq():
                     FROM inquiry i
                         LEFT JOIN users u
                         ON i.user_id = u.user_id
+                    ORDER BY i.created_at DESC
                   """
 
             cursor.execute(sql)
@@ -142,3 +144,13 @@ def userStatus(user_id: int, is_verified: bool):
     finally:
         conn.close()
     pass
+
+# 엘라스틱서치에서 유저 추이 가져오기.
+@router.get("/api/stats/users")
+def stats_users(interval: str = Query("day", enum=["hour", "day", "week", "month"])):
+    """
+    총 사용자수 추이: 일별, 주간별, 월간별 (React에서 호출)
+    """
+    result = get_user_trend(interval)
+    return result
+
