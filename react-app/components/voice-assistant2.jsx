@@ -56,7 +56,7 @@ export const VoiceAssistant2 = () => {
   const chatLogRef = useRef(null); // 채팅 로그 스크롤 참조
 
   // --- 🔥 새로 추가: TTS 관리 참조 ---
-  const speechSynthesisRef = useRef(null); // 현재 재생 중인 TTS 참조
+  // const speechSynthesisRef = useRef(null); // 현재 재생 중인 TTS 참조
   const currentUtteranceRef = useRef(null); // 현재 SpeechSynthesisUtterance 참조
 
   // --- 작업 추적 참조 ---
@@ -139,7 +139,10 @@ export const VoiceAssistant2 = () => {
     
     // 음성 재생 오류 시 상태 업데이트
     utterance.onerror = (event) => {
-      console.error("🚨 TTS 재생 오류:", event.error);
+      // interrupted 오류는 로그 출력하지 않음
+      if (event.error !== 'interrupted') {
+        console.error("🚨 TTS 재생 오류:", event.error);
+      }
       setIsSpeaking(false);
       currentUtteranceRef.current = null;
     };
@@ -212,7 +215,7 @@ export const VoiceAssistant2 = () => {
     console.log("🧹 현재 작업 정리 중...");
   
     // 🔥 진행 중인 TTS 중단
-    stopCurrentSpeech();
+    // stopCurrentSpeech();
     
     // 음성 인식 작업 중단
     if (transcribeTaskRef.current) {
@@ -325,15 +328,37 @@ export const VoiceAssistant2 = () => {
           }
         ]);
 
+        // 🔥 TTS 호출 전 상세 로그
+        console.log("🔊 TTS 호출 시도 - 텍스트:", data.botResponseText?.substring(0, 100));
+        console.log("🔊 TTS 호출 시도 - 텍스트 타입:", typeof data.botResponseText);
+        console.log("🔊 TTS 호출 시도 - 텍스트 길이:", data.botResponseText?.length);
+
+        if (data.botResponseText && data.botResponseText.trim()) {
+          console.log("✅ TTS 호출 실행");
+          // 🔥 TTS 호출에 짧은 지연 추가 (interrupted 문제 해결)
+          setTimeout(() => {
+            console.log("⏰ 지연 후 TTS 실행");
+            speakText(data.botResponseText);
+          }, 300); // 300ms 지연
+        } else {
+          console.warn("⚠️ TTS 호출 실패: 응답 텍스트가 비어있음");
+        }     
         // 🔥 새로운 응답 TTS 재생
-        speakText(data.botResponseText);
+        // speakText(data.botResponseText);
         setStatusMessage('응답 완료');
 
         // setIsListening(false);
         // stopListening();
 
+        // 🔥 TTS 실행 중에는 cleanup 하지 않도록 수정
+        setTimeout(() => {
+          if (!isSpeaking) { // TTS가 실행 중이 아닐 때만 cleanup
+            cleanupCurrentOperation();
+          }
+        }, 100);        
+
         // 작업 완료 후 상태 정리
-        cleanupCurrentOperation();
+        // cleanupCurrentOperation();
         setIsLoadingCoinData(false);
         break;
 
@@ -547,19 +572,19 @@ export const VoiceAssistant2 = () => {
     // 🔥 텍스트 제출 시 진행 중인 TTS 즉시 중단
     stopCurrentSpeech();
 
-    // ✅ [추가] 음성 인식 중이면 차단하고 안내
+    // 음성 인식 중이면 차단하고 안내
     if (currentOperationRef.current === 'voice') {
       setStatusMessage('음성 인식이 진행 중입니다. 음성 인식을 중단하고 다시 시도해주세요.');
       return;
     }
 
-    // ✅ [추가] 이미 텍스트 처리 중이면 차단
+    // 이미 텍스트 처리 중이면 차단
     if (currentOperationRef.current === 'text') {
       setStatusMessage('이전 메시지를 처리 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
 
-    // [추가] 코인 관련 키워드 감지 및 로딩 상태 표시
+    // 코인 관련 키워드 감지 및 로딩 상태 표시
     const coinKeywords = ['가격', '시세', '코인', '비트', '이더', '리플'];
     const hasCoinQuery = coinKeywords.some(keyword => textInput.includes(keyword));
     
@@ -568,7 +593,7 @@ export const VoiceAssistant2 = () => {
     }
     
     try {
-        currentOperationRef.current = 'text'; // ✅ [추가] 텍스트 처리 모드 설정
+        currentOperationRef.current = 'text'; // 텍스트 처리 모드 설정
         setConnectionState('connected');
         
         const ws = await ensureWebSocketConnection();
@@ -578,14 +603,14 @@ export const VoiceAssistant2 = () => {
         };
         ws.send(JSON.stringify(message));
         setStatusMessage('생각 중...');
-        setTextInput('');
+        setTextInput(''); // 입력 필드 초기화
         
     } catch (error) {
         console.error('❌ 텍스트 전송 실패:', error);
         setStatusMessage('메시지 전송 실패. 연결을 확인해주세요.');
         setLastError('메시지 전송 실패');
         
-        // ✅ [추가] 오류 시 상태 초기화
+        // 오류 시 상태 초기화
         currentOperationRef.current = 'idle';
         setIsLoadingCoinData(false);
     }
@@ -595,34 +620,51 @@ export const VoiceAssistant2 = () => {
   //   }
   // };
 
-  // 상태 초기화 함수 - 더 철저한 정리
+  /**
+   * 모든 상태를 초기화하는 함수
+   * - TTS 중단 포함 🔥
+   * - 철저한 정리
+   */
   const resetStates = () => {
-      cleanupCurrentOperation(); // ✅ [추가] 현재 작업 정리
-      setIsSpeaking(false);
-      setUserTranscript("");
-      setBotResponse("");
-      setTextInput("");
-      setStatusMessage("대기 중");
-      setIsLoadingCoinData(false);
-      setLastError(""); // ✅ [추가] 오류 상태도 초기화
-      setConnectionState('disconnected');
+    console.log("🔄 상태 초기화");
+
+    cleanupCurrentOperation(); // 현재 작업 정리
+    stopCurrentSpeech(); // TTS 중단
+    setIsSpeaking(false);
+    setUserTranscript("");
+    setBotResponse("");
+    setTextInput("");
+    setStatusMessage("대기 중");
+    setIsLoadingCoinData(false);
+    setLastError(""); // 오류 상태도 초기화
+    setConnectionState('disconnected');
   }
 
+  // ---창 토글 핸들러 ---
+  /**
+   * 음성 비서 창 열기/닫기 처리 함수
+   * - 창 닫을 때 모든 작업 정리 🔥
+   */
   const handleToggleVisibility = () => {
+    console.log("👁️ 음성 비서 창 토글");
+
     if (isVisible) {
+      // 창 닫을 때 진행 중인 TTS 즉시 중단
+      stopCurrentSpeech();
+
       stopListening();
       if (socketRef.current) {
           socketRef.current.close();
           socketRef.current = null;
       }
-      // ✅ [추가] 창 닫을 때도 모든 작업 정리
+      // 창 닫을 때도 모든 작업 정리
       cleanupCurrentOperation();
     }
     resetStates();
     setIsVisible(!isVisible);
   }
 
-  // [추가] 코인 가격 정보 파싱 및 표시 함수
+  // 코인 가격 정보 파싱 및 표시 함수
   const formatCoinInfo = (text) => {
     // 가격 정보가 포함된 텍스트에서 숫자와 변동률 추출
     const priceRegex = /(\d{1,3}(,\d{3})*)\s*원/g;
@@ -694,6 +736,12 @@ export const VoiceAssistant2 = () => {
               <Badge variant={statusBadge.variant} className={`text-xs ${statusBadge.color}`}>
                 {statusBadge.text}
               </Badge>
+              {isSpeaking && (
+                <Badge variant="outline" className="text-xs text-blue-600">
+                  <Volume2 className="h-3 w-3 mr-1" />
+                  음성재생중
+                </Badge>
+              )}              
               <Button variant="ghost" size="sm" onClick={handleToggleVisibility}>
                 <X className="h-5 w-5"/>
               </Button>
@@ -739,7 +787,7 @@ export const VoiceAssistant2 = () => {
                 <div className="p-3 bg-green-50 rounded-lg text-left">
                   <p className="text-sm font-medium text-green-700">AI 답변:</p>
                   <div 
-                    className="text-sm text-green-600"
+                    className="text-sm text-green-600 break-words"
                     dangerouslySetInnerHTML={{ __html: formatCoinInfo(chat.bot) }}
                   />
                 </div>
@@ -755,13 +803,23 @@ export const VoiceAssistant2 = () => {
                 </div>
             )}
 
+            {/* TTS 재생 중 표시 (개선된 버전) */}
             {isSpeaking && (
                 <div className="p-3 text-left">
                     <div className="inline-flex items-center gap-2">
                         <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                             <Volume2 className="h-5 w-5 text-green-600 pulse-glow" />
                         </div>
-                        <p className="text-md text-muted-foreground">응답 중...</p>
+                        <div>
+                          <p className="text-md text-muted-foreground">응답 중...</p>
+                          {/* 🔥 TTS 중단 버튼 추가 */}
+                          <button 
+                            onClick={stopCurrentSpeech}
+                            className="text-xs text-red-500 hover:text-red-700 underline mt-1"
+                          >
+                            음성 중단
+                          </button>              
+                        </div>
                     </div>
                 </div>
             )}
@@ -783,10 +841,11 @@ export const VoiceAssistant2 = () => {
                 <Button
                     type="button"
                     onClick={handleMicButtonClick}
-                    disabled={isSpeaking || !!textInput || currentOperationRef.current === 'text'}
+                    disabled={!!textInput || currentOperationRef.current === 'text'} // isSpeaking 제거
                     variant={isListening ? "destructive" : connectionState === 'error' ? "secondary" : "secondary"}
                     size="icon"
                     className="rounded-full flex-shrink-0"
+                    title={isListening ? "음성 인식 중단" : "음성으로 질문하기"}
                 >
                   {isListening ? (
                     <MicOff className="h-5 w-5" />
@@ -802,6 +861,8 @@ export const VoiceAssistant2 = () => {
                         ? "연결 오류 - 새로고침 후 다시 시도하세요" 
                         : currentOperationRef.current === 'voice' 
                         ? "음성 인식 중..." 
+                        : isSpeaking
+                        ? "음성 재생 중..."
                         : "코인 가격, 시세 등을 물어보세요..."
                     }
                     value={textInput}
@@ -819,6 +880,7 @@ export const VoiceAssistant2 = () => {
                       currentOperationRef.current !== 'idle' ||
                       connectionState === 'error'
                     }
+                    title="텍스트로 질문하기"
                 >
                     <Send className="h-5 w-5" />
                 </Button>
@@ -872,6 +934,15 @@ export const VoiceAssistant2 = () => {
                   <div>브라우저 주소창 옆 🔒 아이콘 → 마이크 허용</div>
                 </div>
               )}
+
+              {isSpeaking && (
+                <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  <div className="font-semibold mb-1">🔊 음성 재생 중</div>
+                  <div>• 새 질문 시 자동으로 음성이 중단됩니다</div>
+                  <div>• "음성 중단" 버튼으로 수동 중단 가능</div>
+                </div>
+              )}
+
             </div>
         </CardFooter>
       </Card>
