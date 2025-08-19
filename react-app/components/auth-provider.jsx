@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
-      console.log("일반로그인 시 유저데이타", profile)
+      // console.log("일반로그인 시 유저데이타", profile)
       sessionStorage.setItem("auth_token", data.access_token)
       sessionStorage.setItem(
         "user_data",
