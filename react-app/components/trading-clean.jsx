@@ -1290,7 +1290,7 @@ export const TradingInterface = () => {
 
     const connectWebSocket = () => {
       // ✅ 올바른 경로로 수정
-      const wsUrl = 'ws://localhost:8000/ws/realtime';  // main.py의 경로
+      const wsUrl = 'ws://localhost:8000/api/realtime';  // main.py의 경로
       console.log(`🔌 연결 시도: ${wsUrl}`);
 
       try {
@@ -1312,9 +1312,12 @@ export const TradingInterface = () => {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('📨 WebSocket 메시지 수신:', data.type, data.content?.symbol);
             
             if (data.type === 'ticker' && data.content) {
               const content = data.content;
+              console.log('💰 실시간 가격:', content.symbol, content.closePrice, content.chgRate);
+
               // 오직 빗썸 24H 틱 데이터만 반영 (중복/오류 방지)
               if (content.tickType && content.tickType !== '24H') return;
               const symbol = content.symbol;
@@ -1437,10 +1440,14 @@ export const TradingInterface = () => {
             ? 'http://localhost:8000/api/coins/btc'
             : 'http://localhost:8000/api/coins'
 
-          const response = await fetch(apiUrl);
-          const data = await response.json();
+          console.log(`📡 API URL: ${apiUrl}`);
 
+          const response = await fetch(apiUrl);
+          console.log(`📊 Response status: ${response.status}`);
+
+          const data = await response.json();       
           console.log('📦 API Response data:', data);
+          console.log('📦 First 3 coins:', data.data?.slice(0, 3));
 
           if (data.status === 'success' && data.data && Array.isArray(data.data)) {
             console.log(`✅ ${activeTab} 마켓 ${data.data.length}개 코인 로드 성공`);
@@ -1457,8 +1464,15 @@ export const TradingInterface = () => {
               trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
               marketWarning: coin.market_warning || 'NONE'
             }));
+
+            console.log('🎯 Mapped coins:', mappedCoins.slice(0, 3));
+
             // 모든 코인 다 보여주기 (slice 등 제한 없음)
             setCoinList(mappedCoins);
+            setLoading(false); // 이미 있지만 확실히 하기 위해
+            console.log('💪 coinList 업데이트 완료, 길이:', mappedCoins.length);
+          } else {
+            console.error('❌ API 응답 구조 오류:', data);
           }
         } catch (e) {
           console.error(`❌ ${activeTab} 마켓 조회 실패:`, e);
@@ -1474,75 +1488,83 @@ export const TradingInterface = () => {
   // 가격 하이라이트 상태 관리
   // 하이라이트 상태 관리 (현재가: 파랑, 전일대비: 베이지)
   const [highlighted, setHighlighted] = useState({});
-  useEffect(() => {
-    coinList.forEach(coin => {
-      // BTC 마켓은 실시간 키가 symbol+'_BTC'임에 주의
-      const realtimeInfo = activeTab === 'BTC'
-        ? realTimeData[coin.symbol + '_BTC']
-        : realTimeData[coin.symbol + '_KRW'];
-      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
-        const price = parseInt(realtimeInfo.closePrice);
-        const change = parseFloat(realtimeInfo.chgRate);
-        const changeAmount = parseInt(realtimeInfo.chgAmt);
-        const prevHighlight = highlighted[coin.symbol] || {};
-        // 현재가 변경 체크
-        if (prevHighlight.price !== price) {
-          setHighlighted(prev => ({
-            ...prev,
-            [coin.symbol]: {
-              ...prev[coin.symbol],
-              priceHL: true,
-              price,
-            }
-          }));
-          setTimeout(() => {
-            setHighlighted(prev => ({
-              ...prev,
-              [coin.symbol]: {
-                ...prev[coin.symbol],
-                priceHL: false,
-                price,
-              }
-            }));
-          }, 350);
-        }
-        // 전일대비 변경 체크 (변동률 또는 변동금액 중 하나라도 변경)
-        if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
-          setHighlighted(prev => ({
-            ...prev,
-            [coin.symbol]: {
-              ...prev[coin.symbol],
-              changeHL: true,
-              change,
-              changeAmount,
-            }
-          }));
-          setTimeout(() => {
-            setHighlighted(prev => ({
-              ...prev,
-              [coin.symbol]: {
-                ...prev[coin.symbol],
-                changeHL: false,
-                change,
-                changeAmount,
-              }
-            }));
-          }, 350);
-        }
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realTimeData, coinList]);
+  // useEffect(() => {
+  //   coinList.forEach(coin => {
+  //     // BTC 마켓은 실시간 키가 symbol+'_BTC'임에 주의
+  //     const realtimeKey = activeTab === 'BTC'
+  //       ? coin.symbol + '_BTC'
+  //       : coin.symbol + '_KRW';
+
+  //     const realtimeInfo = realTimeData[realtimeKey];
+
+  //     if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
+  //       const price = parseInt(realtimeInfo.closePrice);
+  //       const change = parseFloat(realtimeInfo.chgRate);
+  //       const changeAmount = parseInt(realtimeInfo.chgAmt);
+  //       const prevHighlight = highlighted[coin.symbol] || {};
+
+  //       // 현재가 변경 체크 (이전 값과 다를 때만 업데이트)
+  //       if (prevHighlight.price !== price) {
+  //         setHighlighted(prev => ({
+  //           ...prev,
+  //           [coin.symbol]: {
+  //             ...prev[coin.symbol],
+  //             priceHL: true,
+  //             price,
+  //           }
+  //         }));
+
+  //         setTimeout(() => {
+  //           setHighlighted(prev => ({
+  //             ...prev,
+  //             [coin.symbol]: {
+  //               ...prev[coin.symbol],
+  //               priceHL: false,
+  //               price,
+  //             }
+  //           }));
+  //         }, 350);
+  //       }
+
+  //       // 전일대비 변경 체크 (변동률 또는 변동금액 중 하나라도 변경)
+  //       if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
+  //         setHighlighted(prev => ({
+  //           ...prev,
+  //           [coin.symbol]: {
+  //             ...prev[coin.symbol],
+  //             changeHL: true,
+  //             change,
+  //             changeAmount,
+  //           }
+  //         }));
+  //         setTimeout(() => {
+  //           setHighlighted(prev => ({
+  //             ...prev,
+  //             [coin.symbol]: {
+  //               ...prev[coin.symbol],
+  //               changeHL: false,
+  //               change,
+  //               changeAmount,
+  //             }
+  //           }));
+  //         }, 350);
+  //       }
+  //     }
+  //   });
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [realTimeData, activeTab]);
 
   const updatedCoinList = useMemo(() => {
-    return coinList.map(coin => {
-      // BTC 마켓은 실시간 키가 symbol+'_BTC', KRW 마켓은 symbol+'_KRW'
+    console.log('🔄 updatedCoinList 계산 중, coinList 길이:', coinList.length); // ✅ 추가
+    
+    const result = coinList.map(coin => {
       const marketKey = activeTab === 'BTC' ? '_BTC' : '_KRW';
       const realtimeInfo = realTimeData[coin.symbol + marketKey];
-      if (realtimeInfo && !isNaN(realtimeInfo.closePrice) && !isNaN(realtimeInfo.chgRate) && !isNaN(realtimeInfo.chgAmt) && !isNaN(realtimeInfo.value)) {
-        // 거래대금(백만 단위) 천단위 콤마 표시
+      
+      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
         const millionValue = Math.round(parseFloat(realtimeInfo.value) / 1000000);
         const formattedVolume = millionValue.toLocaleString() + ' 백만';
+        
         return {
           ...coin,
           price: parseInt(realtimeInfo.closePrice),
@@ -1552,27 +1574,39 @@ export const TradingInterface = () => {
           volume: formattedVolume
         };
       } else {
-        // 실시간 데이터가 없으면 빈칸/0
         return {
           ...coin,
-          price: 0,
-          change: 0,
-          changeAmount: 0,
-          trend: 'same',
-          volume: ''
+          price: coin.price || 0,
+          change: coin.change || 0,
+          changeAmount: coin.changeAmount || 0,
+          trend: coin.change > 0 ? 'up' : coin.change < 0 ? 'down' : 'same',
+          volume: coin.volume ? `${Math.round(coin.volume / 1000000).toLocaleString()} 백만` : ''
         };
       }
     });
+  
+    console.log('✅ updatedCoinList 결과 길이:', result.length); // ✅ 추가
+    return result;
   }, [coinList, realTimeData, activeTab]);
 
-  // 실시간 검색 필터: 한글명 또는 심볼(영문) 포함 시 즉시 필터링
+  // filteredCoinList useMemo에 로그 추가
   const filteredCoinList = useMemo(() => {
-    if (!searchTerm.trim()) return updatedCoinList;
+    console.log('🔍 filteredCoinList 계산 중, updatedCoinList 길이:', updatedCoinList.length); // ✅ 추가
+    console.log('🔍 검색어:', searchTerm); // ✅ 추가
+    
+    if (!searchTerm.trim()) {
+      console.log('🔍 검색어 없음, 전체 반환:', updatedCoinList.length); // ✅ 추가
+      return updatedCoinList;
+    }
+    
     const lower = searchTerm.trim().toLowerCase();
-    return updatedCoinList.filter(coin =>
+    const filtered = updatedCoinList.filter(coin =>
       (coin.name && coin.name.toLowerCase().includes(lower)) ||
       (coin.symbol && coin.symbol.toLowerCase().includes(lower))
     );
+    
+    console.log('🔍 필터링 후 길이:', filtered.length); // ✅ 추가
+    return filtered;
   }, [searchTerm, updatedCoinList]);
 
   // 시세/코인정보 탭 상태
