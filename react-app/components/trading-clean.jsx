@@ -1264,7 +1264,7 @@ export const TradingInterface = () => {
   // State hooks for UI controls
   // (중복 제거) 검색어 상태는 한 번만 선언
   const [selectedCoin, setSelectedCoin] = useState("BTC");
-  const [activeTab, setActiveTab] = useState("원화");
+  const [activeTab, setActiveTab] = useState("원화"); // "원화" or "BTC"
   const [showSettings, setShowSettings] = useState(false);
   const [realTimeData, setRealTimeData] = useState({});
   const [wsConnected, setWsConnected] = useState(false);
@@ -1537,9 +1537,8 @@ export const TradingInterface = () => {
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
       // BTC 마켓은 실시간 키가 symbol+'_BTC', KRW 마켓은 symbol+'_KRW'
-      const realtimeInfo = activeTab === 'BTC'
-        ? realTimeData[coin.symbol + '_BTC']
-        : realTimeData[coin.symbol + '_KRW'];
+      const marketKey = activeTab === 'BTC' ? '_BTC' : '_KRW';
+      const realtimeInfo = realTimeData[coin.symbol + marketKey];
       if (realtimeInfo && !isNaN(realtimeInfo.closePrice) && !isNaN(realtimeInfo.chgRate) && !isNaN(realtimeInfo.chgAmt) && !isNaN(realtimeInfo.value)) {
         // 거래대금(백만 단위) 천단위 콤마 표시
         const millionValue = Math.round(parseFloat(realtimeInfo.value) / 1000000);
@@ -1780,19 +1779,22 @@ const filledOrders = useMemo(() => ([
           <div className="w-full" style={{ height: combinedHeight }}>
             {view === "chart" ? (
               <TradingChart
-                symbol={`${selectedCoin}/KRW`}
-                koreanName={updatedCoinList.find(c => c.symbol === selectedCoin)?.name || selectedCoin} // ✅ 이거 추가
+                symbol={`${selectedCoin}/${activeTab === 'BTC' ? 'BTC' : 'KRW'}`}
+                koreanName={updatedCoinList.find(c => c.symbol === selectedCoin)?.name || selectedCoin}
                 height={combinedHeight}
                 theme="light"
-                realTimeData={realTimeData[selectedCoin + '_KRW']}
-                currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice
-                  ? parseInt(realTimeData[selectedCoin + '_KRW'].closePrice)
+                realTimeData={realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')]}
+                currentPrice={realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')]?.closePrice
+                  ? parseInt(realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')].closePrice)
                   : updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 163172000
                 }
+                market={activeTab}
               />
             ) : (
-              <CoinInfoPanel coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} 
-              realTimeData={realTimeData[selectedCoin + '_KRW']}
+              <CoinInfoPanel 
+                coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} 
+                realTimeData={realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')]}
+                market={activeTab}
               />
             )}
           </div>
