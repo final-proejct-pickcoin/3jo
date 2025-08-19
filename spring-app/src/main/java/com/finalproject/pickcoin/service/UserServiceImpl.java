@@ -63,4 +63,14 @@ public class UserServiceImpl implements UserService {
         
         return usersRepository.findByProviderAndProviderId(provider, providerId);
     }
+
+    @Override
+    public Optional<Users> findByGoogleId(String googleId) {
+        return usersRepository.findByGoogleId(googleId);
+    }
+
+    @Override
+    public Optional<Users> findByKakaoId(String kakaoId) {
+        return usersRepository.findByKakaoId(kakaoId);
+    }
 }

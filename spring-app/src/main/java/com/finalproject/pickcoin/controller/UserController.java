@@ -201,82 +201,57 @@ public class UserController {
         }        
 
         Map<String, Object> result = new HashMap<>();
-
-        Optional<Users> existingUser = userService.findByEmail(email);
         Users user = null;
 
-        // 1) provider + providerId 로 1차 식별 (이미 연동된 경우)
+        // 0) providerId로 소셜 연결된 유저 먼저 탐색 (googleId/kakaoId → 없으면 레거시 provider+providerId)
         if (providerId != null && !providerId.isBlank()) {
-            user = userService.findByProviderAndProviderId(provider, providerId).orElse(null);
-        }
-
-         // 2) (구글) 검증된 이메일 매칭: email로 기존 유저 찾기
-        if (user == null && email != null && !email.isBlank()) {
-            // 구글은 email_verified=true가 보통이므로 email 우선 매칭
-            user = userService.findByEmail(email).orElse(null);
-            if (user != null) {
-                // 연동정보 최신화
-                user.setProvider(provider);
-                user.setProviderId(providerId);
-                userService.save(user);
-            }
-        }
-
-         // 3) 전화번호 매칭 (카카오/구글 공통. OTP 후 phone이 넘어오는 시점에 동작)
-        if (user == null && phone != null && !phone.isBlank()) {
-            // 전화번호 정규화(선택): 010-1234-5678 -> 01012345678 / +8210... -> 010...
-            String normalized = phone.replaceAll("[^0-9]", "");
-            if (normalized.startsWith("82")) normalized = "0" + normalized.substring(2);
-
-            user = userService.findByPhone(normalized).orElse(null);
-            if (user != null) {
-                user.setProvider(provider);
-                user.setProviderId(providerId);
-                if (user.getEmail() == null || user.getEmail().isBlank()) {
-                    user.setEmail(email);
-                }
-                // phone은 기존 계정의 것을 그대로 유지
-                userService.save(user);
-            }
-        }
-
-        if (existingUser.isEmpty()) {
-
-            user = new Users();
-            user.setEmail(email);
-            user.setName(email.split("@")[0]); // 이메일 앞부분을 닉네임으로 사용
-            user.setProvider(provider);
-            user.setProviderId(providerId);
-            user.setVerified(true); // 소셜 로그인은 이메일 인증 생략
-            user.setCreatedAt(LocalDateTime.now());
-            user.setRole(Role.USER);
-            user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); //password는 null 안되므로 임의 값 설정
-
-                // provider별 추가 로직
             if ("google".equalsIgnoreCase(provider)) {
-                // logger.info("구글 신규 가입 처리 로직 실행");
-                
+                user = userService.findByGoogleId(providerId).orElse(null);
             } else if ("kakao".equalsIgnoreCase(provider)) {
-                // logger.info("카카오 신규 가입 처리 로직 실행");
-                
+                user = userService.findByKakaoId(providerId).orElse(null);
             }
-
-            // logger.info("신규 유저 저장 전: {}", user);
-            userService.save(user);
-            // logger.info("신규 유저 저장 완료");
-        } else {
-            // 기존 유저
-            user = existingUser.get();
-            // logger.info("기존 유저: {}", user);
-
-            // provider 정보가 다르면 업데이트
-            if (!provider.equalsIgnoreCase(user.getProvider())) {
-                user.setProvider(provider);
-                user.setProviderId(providerId);
-                userService.save(user);
-                // logger.info("기존 유저 provider 정보 업데이트 완료");
+            if (user == null) {
+                user = userService.findByProviderAndProviderId(provider, providerId).orElse(null);
             }
         }
+
+        // 1) 전화번호가 들어왔다면(예: 이미 OTP를 마치고 재호출) 전화번호로 매칭
+        String normalizedPhone = null;
+        if (user == null && phone != null && !phone.isBlank()) {
+            normalizedPhone = phone.replaceAll("[^0-9]", "");
+            if (normalizedPhone.startsWith("82")) normalizedPhone = "0" + normalizedPhone.substring(2);
+            user = userService.findByPhone(normalizedPhone).orElse(null);
+        }
+
+        // 2) 이메일로 매칭 (일반 가입 → 소셜 연결 시나리오)
+        if (user == null && email != null && !email.isBlank()) {
+            user = userService.findByEmail(email).orElse(null);
+        }
+
+        // 3) 여기서도 못 찾았으면 → **절대 insert 하지 말고** 전화번호 연결 요구
+        if (user == null) {
+            String temp = jwtHelper.createAccessToken(
+                (email != null ? email : provider + "::" + (providerId != null ? providerId : UUID.randomUUID().toString())),
+                Map.of("provider", provider, "providerId", providerId == null ? "" : providerId)
+            );
+            Map<String, Object> body = new HashMap<>();
+            body.put("needPhone", true);
+            body.put("socialEmail", email);
+            body.put("temp_token", temp);
+            // 프론트: OTP 요청 → /phone/verify-otp → /link-social 순서로 진행
+            return ResponseEntity.status(428).body(body); // 428 Precondition Required
+        }
+
+        // 4) 기존 유저를 찾은 경우에만 소셜 정보 채워넣기(업데이트)
+        boolean hasPid = (providerId != null && !providerId.isBlank());
+        if ("google".equalsIgnoreCase(provider) && hasPid && user.getGoogleId() == null) user.setGoogleId(providerId);
+        if ("kakao".equalsIgnoreCase(provider)  && hasPid && user.getKakaoId()  == null) user.setKakaoId(providerId);
+        if ((user.getEmail() == null || user.getEmail().isBlank()) && email != null) user.setEmail(email);
+        user.setProvider(provider);
+        if (hasPid && (user.getProviderId() == null || user.getProviderId().isBlank())) {
+            user.setProviderId(providerId); // (레거시 유지용)
+        }
+        userService.save(user);
 
 
 
@@ -371,98 +346,103 @@ public class UserController {
     }
 
     @PostMapping("/link-social")
-public ResponseEntity<Map<String, Object>> linkSocial(
-        @RequestParam String email,
-        @RequestParam String phone,
-        @RequestParam String otp,
-        @RequestParam String provider,
-        @RequestParam(required = false) String providerId,
-        @RequestParam(name = "temp_token", required = false) String tempToken // 선택
-) {
-    // 1) OTP 검증 (컨트롤러의 otpStore/otpExpire는 email 기준으로 저장되어 있음)
-    String saved = otpStore.get(email);
-    LocalDateTime expiresAt = otpExpire.get(email);
-    if (saved == null || expiresAt == null || expiresAt.isBefore(LocalDateTime.now()) || !saved.equals(otp)) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", "OTP_INVALID_OR_EXPIRED"));
-    }
+    public ResponseEntity<Map<String, Object>> linkSocial(
+            @RequestParam String email,
+            @RequestParam String phone,
+            @RequestParam String otp,
+            @RequestParam String provider,
+            @RequestParam(required = false) String providerId,
+            @RequestParam(name = "temp_token", required = false) String tempToken // 선택
+    ) {
+        // 0) OTP 검증
+        String saved = otpStore.get(email);
+        LocalDateTime expiresAt = otpExpire.get(email);
+        if (saved == null || expiresAt == null || expiresAt.isBefore(LocalDateTime.now()) || !saved.equals(otp)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "OTP_INVALID_OR_EXPIRED"));
+        }
 
-    // 2) 전화번호 정규화
-    String normalized = phone.replaceAll("[^0-9]", "");
-    if (normalized.startsWith("82")) normalized = "0" + normalized.substring(2);
+        // 1) 전화번호 정규화
+        String normalized = phone.replaceAll("[^0-9]", "");
+        if (normalized.startsWith("82")) normalized = "0" + normalized.substring(2);
 
-    // 3) 소셜 시도 중인 '현재 사용자' 로드
-    Users user = userService.findByEmail(email).orElse(null);
-    if (user == null && providerId != null) {
-        user = userService.findByProviderAndProviderId(provider, providerId).orElse(null);
-    }
-    if (user == null) {
-        // 혹시 소셜로그인에서 아직 레코드가 안만들어진 경우 대비
-        user = new Users();
-        user.setEmail(email);
-        user.setName(email != null ? email.split("@")[0] : null);
-        user.setProvider(provider);
-        user.setProviderId(providerId);
-        user.setVerified(true); // 소셜은 이메일 인증 스킵
-        user.setCreatedAt(LocalDateTime.now());
+        // 2) "전화번호 소유자(owner)"를 최우선으로 조회
+        Users owner = userService.findByPhone(normalized).orElse(null);
+
+        // 3) 보조 조회: 이메일로 기존 사용자 찾기 (일반가입자의 이메일일 수 있음)
+        Users byEmail = null;
+        if (owner == null && email != null && !email.isBlank()) {
+            byEmail = userService.findByEmail(email).orElse(null);
+        }
+
+        // 4) 보조 조회: providerId 로 이미 연결된 사용자 찾기
+        Users byProv = null;
+        if (owner == null && providerId != null && !providerId.isBlank()) {
+            if ("google".equalsIgnoreCase(provider)) {
+                byProv = userService.findByGoogleId(providerId).orElse(null);
+            } else if ("kakao".equalsIgnoreCase(provider)) {
+                byProv = userService.findByKakaoId(providerId).orElse(null);
+            }
+            if (byProv == null) {
+                byProv = userService.findByProviderAndProviderId(provider, providerId).orElse(null);
+            }
+        }
+
+        // 5) 최종 대상 사용자 결정 (owner > byEmail > byProv)
+        Users user = (owner != null) ? owner : (byEmail != null ? byEmail : byProv);
+
+        // 6) 그래도 못 찾았을 때만 "새로 생성"
+        if (user == null) {
+            user = new Users();
+            user.setEmail(email);
+            user.setName(
+                (email != null && email.contains("@"))
+                    ? email.substring(0, email.indexOf('@'))
+                    : (providerId != null ? provider + "_" + providerId : "user")
+            );
+            user.setProvider(provider);
+            user.setProviderId(providerId);
+            user.setVerified(true); // 소셜은 이메일 인증 스킵
+            user.setCreatedAt(LocalDateTime.now());
+            // 전화번호도 바로 세팅 (우리가 OTP로 검증 완료했으므로)
+            user.setPhone(normalized);
+            userService.save(user);
+        }
+
+        // 7) 기존 사용자(특히 owner)를 쓸 때는 전화번호/소셜 정보 "연결만"
+        if (user.getPhone() == null || user.getPhone().isBlank()) {
+            user.setPhone(normalized); // owner면 이미 있을 것
+        }
+
+        boolean hasPid = (providerId != null && !providerId.isBlank());
+        if ("google".equalsIgnoreCase(provider) && hasPid && user.getGoogleId() == null) user.setGoogleId(providerId);
+        if ("kakao".equalsIgnoreCase(provider)  && hasPid && user.getKakaoId()  == null) user.setKakaoId(providerId);
+        if (user.getProvider() == null) user.setProvider(provider);
+        if (hasPid && (user.getProviderId() == null || user.getProviderId().isBlank())) {
+            user.setProviderId(providerId); // 레거시 유지용
+        }
+        // 이메일은 기존 일반가입 이메일을 덮지 않도록: 비어있을 때만 세팅
+        if ((user.getEmail() == null || user.getEmail().isBlank()) && email != null && !email.isBlank()) {
+            user.setEmail(email);
+        }
         userService.save(user);
-    }
 
-    // 4) 전화번호의 '원래 주인' 조회  (※ 예전: "전화번호 UNIQUE 충돌 확인 (요청대로 409 유지)")
-    var conflictOpt = userService.findByPhone(normalized);
-
-    if (conflictOpt.isPresent() && !Objects.equals(conflictOpt.get().getUser_id(), user.getUser_id())) {
-        // ▶ 병합: 번호 주인(owner) 계정으로 소셜을 붙이고 그 계정으로 로그인 완료
-        Users owner = conflictOpt.get();
-
-        // 필요 시 소셜 정보 업데이트(필드명은 현재 엔티티에 맞게)
-        if (owner.getProvider() == null) owner.setProvider(provider);
-        if (owner.getProviderId() == null && providerId != null) owner.setProviderId(providerId);
-        if (owner.getPhone() == null) owner.setPhone(normalized); // 방어적 세팅
-
-        userService.save(owner);
-
-        // 6) 일회성 OTP 제거
+        // 8) OTP 정리
         otpStore.remove(email);
         otpExpire.remove(email);
 
-        // 7) 토큰 발급 & 응답 (프론트 기대 키에 맞춤)  — owner 기준
-        String access = jwtHelper.createAccessToken(owner.getEmail(), Map.of("name", owner.getName()));
-        String refresh = jwtHelper.createRefreshToken(owner.getEmail(), 14);
+        // 9) 토큰 발급 & 응답
+        String access = jwtHelper.createAccessToken(user.getEmail(), Map.of("name", user.getName()));
+        String refresh = jwtHelper.createRefreshToken(user.getEmail(), 14);
 
         Map<String, Object> result = new HashMap<>();
         result.put("access_token", access);
         result.put("refresh_token", refresh);
-        result.put("email", owner.getEmail());
-        result.put("user_id", owner.getUser_id());
-        result.put("name", owner.getName());
-        result.put("provider", owner.getProvider());
+        result.put("email", user.getEmail());
+        result.put("user_id", user.getUser_id());
+        result.put("name", user.getName());
+        result.put("provider", user.getProvider());
         result.put("needPhone", false);
-        return ResponseEntity.ok(result);
-    }
-
-    // 5) 업데이트 & 저장
-    user.setPhone(normalized);
-    if (user.getProvider() == null) user.setProvider(provider);
-    if (user.getProviderId() == null && providerId != null) user.setProviderId(providerId);
-    userService.save(user);
-
-    // 6) 일회성 OTP 제거
-    otpStore.remove(email);
-    otpExpire.remove(email);
-
-    // 7) 토큰 발급 & 응답 (프론트 기대 키에 맞춤)
-    String access = jwtHelper.createAccessToken(user.getEmail(), Map.of("name", user.getName()));
-    String refresh = jwtHelper.createRefreshToken(user.getEmail(), 14);
-
-    Map<String, Object> result = new HashMap<>();
-    result.put("access_token", access);
-    result.put("refresh_token", refresh);
-    result.put("email", user.getEmail());
-    result.put("user_id", user.getUser_id());
-    result.put("name", user.getName());
-    result.put("provider", user.getProvider());
-    result.put("needPhone", false);
     return ResponseEntity.ok(result);
 }
 

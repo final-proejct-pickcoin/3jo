@@ -59,4 +59,10 @@ public class Users {
 
     @Column(nullable = true, unique = true, length = 50)
     private String phone;
+
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
+    @Column(name = "kakao_id", unique = true)
+    private String kakaoId;
 }
