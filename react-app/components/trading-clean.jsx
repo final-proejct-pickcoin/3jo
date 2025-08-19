@@ -1396,7 +1396,7 @@ export const TradingInterface = () => {
     };
   }, []);
 
-  // WebSocket 통계 가져오기
+  // WebSocket 통계 가져오기 404 에러 이거 필요한 건지 확인해야함.
   useEffect(() => {
     const fetchStats = async () => {
     try {

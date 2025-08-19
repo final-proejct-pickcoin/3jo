@@ -1,13 +1,10 @@
 "use client";
 import React, { useEffect } from "react";
-                        // [
-                        //   { pair: "BTC/USDT", volume: "28,450", fee: "0.08" },
-                        //   { pair: "ETH/USDT", volume: "15,230", fee: "0.10" },
-                        //   { pair: "ADA/USDT", volume: "8,920", fee: "0.15" },
-                        //   { pair: "USDT/KRW", volume: "5,000", fee: "0.05" }, // 예시: USDT 심볼은 남김
-                        // ]
-                        // .filter(item => !item.pair.endsWith("/USDT") || item.pair.startsWith("USDT/"))
-                        // .map((item, index) => (
+
+import { useState } from "react";
+import { Bell, Settings, Search, Users, TrendingUp, FileText, Activity, DollarSign, Eye, Ban, Edit, Trash2, Plus, LogOut, Moon, Sun, Shield, Server, Download, MoreHorizontal, CheckCircle, XCircle, AlertTriangle, MessageSquare, User, Key, HelpCircle, ChevronDown, Archive } from "lucide-react";
+import { Button } from "@/components_admin/ui/button";
+import { Input } from "@/components_admin/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components_admin/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components_admin/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components_admin/ui/table";
@@ -1409,4 +1406,3 @@ export default function Component() {
     </div>
   );
 }
-

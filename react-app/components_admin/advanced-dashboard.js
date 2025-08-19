@@ -59,21 +59,39 @@ const CHART_COLORS = [
   COLORS.teal,
 ];
 
-import { fetchBtcMarketCoins } from "@/lib/fetch-btc-market";
-
-// 실시간 BTC 마켓 데이터 상태
-const [btcMarketData, setBtcMarketData] = useState([]);
-
-useEffect(() => {
-  fetchBtcMarketCoins().then((data) => {
-    setBtcMarketData(data);
-  });
-  // 30초마다 갱신
-  const interval = setInterval(() => {
-    fetchBtcMarketCoins().then((data) => setBtcMarketData(data));
-  }, 30000);
-  return () => clearInterval(interval);
-}, []);
+// Mock real-time data
+const tradingPairData = [
+  {
+    name: "BTC/USDT",
+    value: 45,
+    volume: 28450.67,
+    change: 2.34,
+  },
+  {
+    name: "ETH/USDT",
+    value: 25,
+    volume: 15230.45,
+    change: -1.23,
+  },
+  {
+    name: "ADA/USDT",
+    value: 15,
+    volume: 8920.12,
+    change: 5.67,
+  },
+  {
+    name: "DOT/USDT",
+    value: 10,
+    volume: 5670.89,
+    change: 3.45,
+  },
+  {
+    name: "Others",
+    value: 5,
+    volume: 2340.56,
+    change: 0.89,
+  },
+];
 const performanceData = [
   {
     time: "00:00",
@@ -403,17 +421,17 @@ export default function AdvancedDashboard() {
             <ResponsiveContainer width="100%" height={350}>
               <PieChart>
                 <Pie
-                  data={btcMarketData}
+                  data={tradingPairData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ korean_name, percent }) => `${korean_name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={100}
                   fill="#8884d8"
-                  dataKey="volume"
+                  dataKey="value"
                   stroke="none"
                 >
-                  {btcMarketData.map((entry, index) => (
+                  {tradingPairData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={CHART_COLORS[index % CHART_COLORS.length]}
@@ -427,15 +445,13 @@ export default function AdvancedDashboard() {
                     borderRadius: "8px",
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                   }}
-                  formatter={(value, name, props) => [value.toLocaleString(), "거래대금"]}
-                  labelFormatter={(label) => label}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-4 space-y-2">
-              {btcMarketData.map((coin, index) => (
+              {tradingPairData.map((pair, index) => (
                 <div
-                  key={coin.symbol}
+                  key={index}
                   className="flex items-center justify-between p-2 rounded-lg bg-gray-50"
                 >
                   <div className="flex items-center">
@@ -443,18 +459,17 @@ export default function AdvancedDashboard() {
                       className="w-3 h-3 rounded-full mr-3"
                       style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                     />
-                    <span className="font-medium">{coin.korean_name} ({coin.symbol})</span>
+                    <span className="font-medium">{pair.name}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge
-                      variant={coin.change_rate > 0 ? "default" : "destructive"}
+                      variant={pair.change > 0 ? "default" : "destructive"}
                       className="text-xs"
                     >
-                      {coin.change_rate > 0 ? "+" : ""}
-                      {coin.change_rate}%
+                      {pair.change > 0 ? "+" : ""}
+                      {pair.change}%
                     </Badge>
-                    <span className="text-sm text-gray-600">{coin.current_price.toLocaleString()} BTC</span>
-                    <span className="text-xs text-gray-400">{coin.volume.toLocaleString()} BTC</span>
+                    <span className="text-sm text-gray-600">{pair.volume.toLocaleString()} BTC</span>
                   </div>
                 </div>
               ))}
@@ -570,9 +585,8 @@ export default function AdvancedDashboard() {
               <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
               <div className="flex-1">
                 <p className="font-medium text-green-800">대용량 거래 처리완료</p>
-                {/* USDT 마켓 관련 문구 제거 */}
                 <p className="text-sm text-green-600">
-                  대용량 거래가 성공적으로 체결되었습니다.
+                  BTC/USDT 거래쌍에서 1,000 BTC 거래가 성공적으로 체결되었습니다.
                 </p>
               </div>
               <span className="text-xs text-green-600">방금 전</span>
