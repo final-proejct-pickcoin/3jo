@@ -255,10 +255,10 @@ public class UserController {
                 // provider별 추가 로직
             if ("google".equalsIgnoreCase(provider)) {
                 // logger.info("구글 신규 가입 처리 로직 실행");
-                
+                // 필요하면 구글 전용 처리 추가
             } else if ("kakao".equalsIgnoreCase(provider)) {
                 // logger.info("카카오 신규 가입 처리 로직 실행");
-                
+                // 필요하면 카카오 전용 처리 추가
             }
 
             // logger.info("신규 유저 저장 전: {}", user);

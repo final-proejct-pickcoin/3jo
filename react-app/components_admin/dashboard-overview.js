@@ -61,7 +61,6 @@ const coinData = [
 const pendingWithdrawals = [
   { id: 1, user: "user123", amount: "1.2345 BTC", time: "5분 전", status: "대기" },
   { id: 2, user: "user456", amount: "15.67 ETH", time: "12분 전", status: "대기" },
-  { id: 3, user: "user789", amount: "5000 USDT", time: "18분 전", status: "대기" },
 ];
 const kycPending = [
   { id: 1, user: "newuser1", level: "Level 2", submitted: "2시간 전" },
