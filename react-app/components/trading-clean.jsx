@@ -1797,145 +1797,310 @@ const filledOrders = useMemo(() => ([
             )}
           </div>
           {/* 하단: 오더북/체결강도/정보패널/주문 (이미지와 동일하게 4단 배치) */}
-          {view === "chart" && (
-            <div className="w-full flex flex-row mt-6" style={{ height: 600, marginTop: '62px' }}>
-              {/* 오더북 (매수/매도) */}
-              <div className="flex flex-col w-[230px] border-r border-gray-200 bg-blue-50">
-                {/* 상단 매도호가 */}
-                <div className="flex-1 flex flex-col-reverse overflow-hidden">
-                  {[
-                    { qty: '0.025', price: '163,209,000', change: '+0.06%' },
-                    { qty: '0.045', price: '163,200,000', change: '+0.05%' },
-                    { qty: '0.038', price: '163,175,000', change: '+0.03%' },
-                    { qty: '0.025', price: '163,172,000', change: '+0.03%' },
-                    { qty: '0.028', price: '163,171,000', change: '+0.03%' },
-                    { qty: '0.723', price: '163,170,000', change: '+0.03%' },
-                    { qty: '0.919', price: '163,169,000', change: '+0.03%' },
-                    { qty: '0.018', price: '163,168,000', change: '+0.03%' },
-                  ].map((row, i) => (
-                    <div key={i} className="grid grid-cols-3 text-xs h-6 items-center hover:bg-blue-100">
-                      <div className="text-blue-700 text-left pl-2 font-mono">{row.qty}</div>
-                      <div className="text-center font-bold font-mono">{row.price}</div>
-                      <div className="text-right pr-2 font-mono text-red-500">{row.change}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* 체결강도 */}
-                <div className="bg-white border-y border-gray-200 py-1 px-2 text-xs text-center">
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="font-bold text-base text-red-600">163,166,000</span>
-                    <span className="text-red-500 font-semibold">+0.03%</span>
+          <div className="w-full flex flex-row" style={{ height: 600, marginTop: '10px' }}>
+            {/* 오더북 (매수/매도) */}
+            <div className="flex flex-col w-[230px] border-r border-gray-200 bg-blue-50">
+              {/* 상단 매도호가 */}
+              <div className="flex-1 flex flex-col-reverse overflow-hidden">
+                {[
+                  { qty: '0.025', price: '163,209,000', change: '+0.06%' },
+                  { qty: '0.045', price: '163,200,000', change: '+0.05%' },
+                  { qty: '0.038', price: '163,175,000', change: '+0.03%' },
+                  { qty: '0.025', price: '163,172,000', change: '+0.03%' },
+                  { qty: '0.028', price: '163,171,000', change: '+0.03%' },
+                  { qty: '0.723', price: '163,170,000', change: '+0.03%' },
+                  { qty: '0.919', price: '163,169,000', change: '+0.03%' },
+                  { qty: '0.018', price: '163,168,000', change: '+0.03%' },
+                ].map((row, i) => (
+                  <div key={i} className="grid grid-cols-3 text-xs h-6 items-center hover:bg-blue-100">
+                    <div className="text-blue-700 text-left pl-2 font-mono">{row.qty}</div>
+                    <div className="text-center font-bold font-mono">{row.price}</div>
+                    <div className="text-right pr-2 font-mono text-red-500">{row.change}</div>
                   </div>
-                </div>
-                {/* 하단 매수호가 */}
-                <div className="flex-1 overflow-hidden">
-                  {[
-                    { qty: '0.019', price: '163,165,000', change: '+0.03%' },
-                    { qty: '0.101', price: '163,149,000', change: '+0.02%' },
-                    { qty: '0.000', price: '163,147,000', change: '+0.02%' },
-                    { qty: '0.009', price: '163,140,000', change: '+0.01%' },
-                    { qty: '0.001', price: '163,123,000', change: '+0.01%' },
-                  ].map((row, i) => (
-                    <div key={i} className="flex flex-row text-xs h-6 items-center hover:bg-blue-100">
-                      <div className="flex-1 text-center font-semibold font-mono">{row.price}</div>
-                      <div className="flex-1 text-right pr-2 text-red-500">{row.change}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* 하단 수량 */}
-                <div className="flex justify-between items-center bg-white border-t border-gray-200 px-2 py-1 text-xs">
-                  <span className="font-semibold">3.370</span>
-                  <span className="text-gray-500">수량(BTC)</span>
-                  <span className="font-semibold">2.049</span>
+                ))}
+              </div>
+              {/* 체결강도 */}
+              <div className="bg-white border-y border-gray-200 py-1 px-2 text-xs text-center">
+                {/* <div className="flex justify-between items-center">
+                  <span className="text-blue-700 font-semibold">체결강도</span>
+                  <span className="text-red-600 font-bold">+169.59%</span>
+                </div> */}
+                <div className="flex justify-between items-center mt-1">
+                  <span className="font-bold text-base text-red-600">163,166,000</span>
+                  <span className="text-red-500 font-semibold">+0.03%</span>
                 </div>
               </div>
-              {/* 정보 패널 */}
-              <div className="flex flex-col w-[220px] bg-white border-r border-gray-200 px-3 py-2 text-xs justify-between">
-                <div>
-                  <div className="mb-2">
-                    <span className="font-semibold">거래량</span>
-                    <span className="float-right">1,233 BTC</span>
+              {/* 하단 매수호가 */}
+              <div className="flex-1 overflow-hidden">
+                {[
+                  { qty: '0.019', price: '163,165,000', change: '+0.03%' },
+                  { qty: '0.101', price: '163,149,000', change: '+0.02%' },
+                  { qty: '0.000', price: '163,147,000', change: '+0.02%' },
+                  { qty: '0.009', price: '163,140,000', change: '+0.01%' },
+                  { qty: '0.001', price: '163,123,000', change: '+0.01%' },
+                ].map((row, i) => (
+                  <div key={i} className="flex flex-row text-xs h-6 items-center hover:bg-blue-100">
+                    {/* <div className="flex-1 text-blue-700 text-right pr-2 font-mono">{row.qty}</div> */}
+                    <div className="flex-1 text-center font-semibold font-mono">{row.price}</div>
+                    <div className="flex-1 text-right pr-2 text-red-500">{row.change}</div>
                   </div>
-                  <div className="mb-2">
-                    <span className="font-semibold">거래대금</span>
-                    <span className="float-right">200,963 백만원</span>
-                    <div className="text-[10px] text-gray-400">(최근24시간)</div>
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-semibold">52주 최고</span>
-                    <span className="float-right">166,800,000</span>
-                    <div className="text-[10px] text-gray-400">(2025.07.14)</div>
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-semibold">52주 최저</span>
-                    <span className="float-right">72,100,000</span>
-                    <div className="text-[10px] text-gray-400">(2024.08.05)</div>
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-semibold">전일종가</span>
-                    <span className="float-right">163,118,000</span>
-                  </div>
-                  <div className="mb-2">
-                    <span className="font-semibold">당일고가</span>
-                    <span className="float-right text-red-500">163,627,000</span>
-                    <div className="text-[10px] text-red-400 float-right">+0.31%</div>
-                  </div>
-                  <div>
-                    <span className="font-semibold">당일저가</span>
-                    <span className="float-right text-blue-500">162,916,000</span>
-                    <div className="text-[10px] text-blue-400 float-right">-0.12%</div>
-                  </div>
-                </div>
+                ))}
               </div>
-              {/* 주문 영역 */}
-              <div className="flex-1 flex flex-col bg-white px-6 py-4">
-                <div className="flex border-b border-gray-200 mb-4">
-                  <button className="flex-1 py-2 text-sm text-gray-500">매수</button>
-                  <button className="flex-1 py-2 text-sm border-b-2 border-blue-500 text-blue-500 font-semibold">매도</button>
-                  <button className="flex-1 py-2 text-sm text-gray-500">간편주문</button>
-                  <button className="flex-1 py-2 text-sm text-gray-500">거래내역</button>
-                </div>
-                <div className="flex items-center gap-4 mb-2">
-                  <span className="text-xs font-semibold">주문유형</span>
-                  <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
-                    <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
-                  </label>
-                  <label className="flex items-center gap-1 text-xs text-gray-400">
-                    <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
-                  </label>
-                  <label className="flex items-center gap-1 text-xs text-gray-400">
-                    <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
-                  </label>
-                  <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
-                </div>
-                <div className="text-xs text-gray-400 mb-2">주문가능</div>
-                <div className="mb-2">
-                  <div className="text-xs font-semibold mb-1">매도가격 (KRW)</div>
-                  <div className="flex items-center border rounded h-10">
-                    <input type="text" value="163,257,000" readOnly className="flex-1 px-2 border-0 bg-transparent text-right font-semibold" />
-                    <button className="w-8 h-8 text-gray-400">-</button>
-                    <button className="w-8 h-8 text-gray-400">+</button>
-                  </div>
-                </div>
-                <div className="mb-2">
-                  <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
-                  <input type="text" placeholder="0" className="w-full border rounded h-10 px-2 mb-2" />
-                  <div className="flex gap-2">
-                    <button className="flex-1 border rounded py-1 text-xs">10%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">25%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">50%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">100%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">직접입력</button>
-                  </div>
-                </div>
-                <div className="mb-2">
-                  <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
-                  <input type="text" placeholder="0" className="w-full border rounded h-10 px-2" />
-                </div>
-                <div className="text-[11px] text-gray-400 mt-2">* 최소주문금액 : KRW · 수수료(부가세 포함) : -%</div>
+              {/* 하단 수량 */}
+              <div className="flex justify-between items-center bg-white border-t border-gray-200 px-2 py-1 text-xs">
+                <span className="font-semibold">3.370</span>
+                <span className="text-gray-500">수량(BTC)</span>
+                <span className="font-semibold">2.049</span>
               </div>
             </div>
-          )}
+            {/* 정보 패널 */}
+            <div className="flex flex-col w-[220px] bg-white border-r border-gray-200 px-3 py-2 text-xs justify-between">
+              <div>
+                <div className="mb-2">
+                  <span className="font-semibold">거래량</span>
+                  <span className="float-right">1,233 BTC</span>
+                </div>
+                <div className="mb-2">
+                  <span className="font-semibold">거래대금</span>
+                  <span className="float-right">200,963 백만원</span>
+                  <div className="text-[10px] text-gray-400">(최근24시간)</div>
+                </div>
+                <div className="mb-2">
+                  <span className="font-semibold">52주 최고</span>
+                  <span className="float-right">166,800,000</span>
+                  <div className="text-[10px] text-gray-400">(2025.07.14)</div>
+                </div>
+                <div className="mb-2">
+                  <span className="font-semibold">52주 최저</span>
+                  <span className="float-right">72,100,000</span>
+                  <div className="text-[10px] text-gray-400">(2024.08.05)</div>
+                </div>
+                <div className="mb-2">
+                  <span className="font-semibold">전일종가</span>
+                  <span className="float-right">163,118,000</span>
+                </div>
+                <div className="mb-2">
+                  <span className="font-semibold">당일고가</span>
+                  <span className="float-right text-red-500">163,627,000</span>
+                  <div className="text-[10px] text-red-400 float-right">+0.31%</div>
+                </div>
+                <div>
+                  <span className="font-semibold">당일저가</span>
+                  <span className="float-right text-blue-500">162,916,000</span>
+                  <div className="text-[10px] text-blue-400 float-right">-0.12%</div>
+                </div>
+              </div>
+            </div>
+            {/* 주문 영역 */}
+            <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
+              {/* 탭 헤더 */}
+              <div className="flex border-b border-gray-200 mb-4">
+                {["매수", "매도", "간편주문", "거래내역"].map((t) => (
+                  <button
+                    key={t}
+                    className={`flex-1 py-2 text-sm ${
+                      orderTab === t
+                        ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
+                        : "text-gray-500"
+                    }`}
+                    onClick={() => setOrderTab(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {/* 매수/매도 탭 공통 */}
+              {orderTab === "매수" || orderTab === "매도" ? (
+                <>
+                  {/* 주문유형 */}
+                  <div className="flex items-center gap-4 mb-3">
+                    <span className="text-xs font-semibold">주문유형</span>
+                    <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
+                      <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
+                    </label>
+                    <label className="flex items-center gap-1 text-xs text-gray-400">
+                      <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
+                    </label>
+                    <label className="flex items-center gap-1 text-xs text-gray-400">
+                      <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
+                    </label>
+                    <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
+                  </div>
+
+                  
+                  {/* 가격 */}
+                  <div className="text-xs font-semibold mb-1 flex items-center justify-between">
+                    <span>{orderTab === "매도" ? "매도가격 (KRW)" : "매수가격 (KRW)"}</span>
+                    <span
+                      className={[
+                        "ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] border",
+                        priceDir === "up" ? "text-red-600 border-red-200 bg-red-50"
+                        : priceDir === "down" ? "text-blue-600 border-blue-200 bg-blue-50"
+                        : "text-gray-600 border-gray-200 bg-gray-50"
+                      ].join(" ")}
+                      title="실시간 현재가"
+                    >
+                      현재가 {formatKRW(currentPriceKRW)} KRW
+                      {priceDir === "up" && <span className="ml-1">▲</span>}
+                      {priceDir === "down" && <span className="ml-1">▼</span>}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center border rounded h-10">
+                    <input
+                      type="text"
+                      value={formatKRW(orderPrice)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        setOrderPrice(raw ? parseInt(raw, 10) : 0);
+                      }}
+                      className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
+                    />
+                    <button className="w-8 h-8 text-gray-400" type="button"
+                            onClick={() => setOrderPrice(p => Math.max(0, p - 100))}>-</button>
+                    <button className="w-8 h-8 text-gray-400" type="button"
+                            onClick={() => setOrderPrice(p => p + 100)}>+</button>
+                  </div>
+
+                  {/* 수량 */}
+                  <div className="mb-3">
+                    <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
+                    <input
+                      type="text"
+                      value={orderQty ? orderQty : ""}               // 비어 있으면 빈칸
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^\d.]/g, ""); // 숫자/소수점만 허용
+                        setOrderQty(v === "" ? 0 : Number(v));
+                      }}
+                      placeholder="0"
+                      className="w-full border rounded h-10 px-2 mb-2"
+                    />
+                    <div className="flex gap-2">
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.1).toFixed(6)))}>+0.1</button>
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.25).toFixed(6)))}>+0.25</button>
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.5).toFixed(6)))}>+0.5</button>
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(0)}>초기화</button>
+                    </div>
+                  </div>
+
+                  {/* 총액(표시용) */}
+                    <div className="mb-3">
+                      <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatKRW(totalAmountKRW)}
+                        className="w-full border rounded h-10 px-2 bg-gray-50"
+                      />
+                    </div>
+
+                  {/* ✅ 매수/매도 탭별 버튼 */}
+                  {orderTab === "매수" && (
+                    <button
+                      className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
+                      type="button"
+                      onClick={() => console.log("매수 전송")}
+                    >
+                      매수
+                    </button>
+                  )}
+                  {orderTab === "매도" && (
+                    <button
+                      className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
+                      type="button"
+                      onClick={() => console.log("매도 전송")}
+                    >
+                      매도
+                    </button>
+                  )}
+
+                  <div className="text-[11px] text-gray-400 mt-3">
+                    * 최소주문금액 : KRW · 수수료(부가세 포함) : -%
+                  </div>
+                </>
+              ) : null}
+
+              {/* 간편주문 */}
+              {orderTab === "간편주문" && (
+                <div className="flex flex-col gap-4">
+                  <div className="text-xs text-gray-500">
+                    원하는 비율을 선택하고 즉시 주문하세요.
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {["10%", "25%", "50%", "75%", "100%"].map(p => (
+                      <button key={p} className="border rounded py-2 text-xs hover:bg-gray-50">
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="flex-1 h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90">
+                      매수
+                    </button>
+                    <button className="flex-1 h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90">
+                      매도
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 거래내역 */}
+                {orderTab === "거래내역" && (
+                  <div className="text-xs">
+                    {/* 미체결 / 체결 토글 */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded-md border text-xs ${
+                          historyTab === "미체결"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "text-gray-600 border-gray-200"
+                        }`}
+                        onClick={() => setHistoryTab("미체결")}
+                      >
+                        미체결
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded-md border text-xs ${
+                          historyTab === "체결"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "text-gray-600 border-gray-200"
+                        }`}
+                        onClick={() => setHistoryTab("체결")}
+                      >
+                        체결
+                      </button>
+                    </div>
+
+                    {/* 리스트 */}
+                    <div className="border rounded">
+                      <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
+                        <div>시간</div>
+                        <div>구분</div>
+                        <div>수량(BTC)</div>
+                        <div className="text-right">가격(KRW)</div>
+                      </div>
+
+                      {(historyTab === "미체결" ? openOrders : filledOrders).map((r) => (
+                        <div key={r.id} className="grid grid-cols-4 p-2 border-b last:border-b-0">
+                          <div>{r.t}</div>
+                          <div className={r.side === "매수" ? "text-emerald-600" : "text-red-600"}>{r.side}</div>
+                          <div>{r.qty}</div>
+                          <div className="text-right">{r.price}</div>
+                        </div>
+                      ))}
+
+                      {(historyTab === "미체결" ? openOrders : filledOrders).length === 0 && (
+                        <div className="p-4 text-center text-gray-400">내역이 없습니다.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+            </div>
+
+          </div>
         </div>
       </div>
   </div>
