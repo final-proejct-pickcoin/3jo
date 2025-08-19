@@ -92,21 +92,6 @@ export default function DashboardOverview({ isDarkMode }) {
     { label: "월간별", value: "month" },
   ];
 
-  // 실시간 데이터 시뮬레이션
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStats((prev) => ({
-        ...prev,
-        onlineUsers: prev.onlineUsers + Math.floor(Math.random() * 20 - 10),
-        systemLoad: Math.max(
-          0,
-          Math.min(100, prev.systemLoad + Math.floor(Math.random() * 6 - 3))
-        ),
-      }));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
