@@ -10,6 +10,11 @@ public interface UserService {
         void save(Users user);
         Optional<Users> findByVerificationToken(String token);
 
+        Optional<Users> findByPhone(String phone);
+        Optional<Users> findByProviderAndProviderId(String provider, String providerId);
+
         // 인증 만료시 데이터베이스에서 삭제
         void deleteExpiredUnverifiedUsers();
+
+        
 }
