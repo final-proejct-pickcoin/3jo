@@ -53,4 +53,14 @@ public class UserServiceImpl implements UserService {
         }
     }
     
+    @Override
+    public Optional<Users> findByPhone(String phone) {
+        return usersRepository.findByPhone(phone);
+    }
+
+    @Override
+    public Optional<Users> findByProviderAndProviderId(String provider, String providerId) {
+        
+        return usersRepository.findByProviderAndProviderId(provider, providerId);
+    }
 }
