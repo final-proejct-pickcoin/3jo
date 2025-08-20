@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.finalproject.pickcoin.repository.TradeRepository">
+
+    <!-- =========================매수======================= -->
+
+    <!-- 1) 주문 생성: insert_order(Orders o, int order_type_code, int status_code) -->
+    <insert id="insert_order">
+    INSERT INTO orders
+    (user_id, order_type, asset_id, price, amount, unconcluded_amount, status)
+    VALUES
+    (#{param1.user_id}, #{param2}, #{param1.asset_id}, #{param1.price},
+    #{param1.amount}, #{param1.unconcluded_amount}, #{param3})
+    </insert>
+
+    <select id="last_id" resultType="long">
+    SELECT LAST_INSERT_ID()
+    </select>
+
+    <!-- 2) 지갑 보장: 유니크 키가 있을 때 -->
+    <insert id="ensure_wallet">
+    INSERT INTO wallet (user_id, asset_id, amount)
+    VALUES (#{param1}, #{param2}, 0)
+    ON DUPLICATE KEY UPDATE user_id = user_id
+    </insert>
+
+    <!-- (유니크 키가 없을시 사용)
+    <insert id="ensure_wallet">
+    INSERT INTO wallet (user_id, asset_id, amount)
+    SELECT #{param1}, #{param2}, 0
+    FROM DUAL
+    WHERE NOT EXISTS (
+        SELECT 1 FROM wallet WHERE user_id=#{param1} AND asset_id=#{param2}
+    )
+    </insert>
+    -->
+
+    <!-- 3) 잠금 조회 -->
+    <select id="select_wallet_for_update" resultType="map">
+    SELECT wallert_id AS walletId, amount
+    FROM wallet
+    WHERE user_id=#{param1} AND asset_id=#{param2}
+    FOR UPDATE
+    </select>
+
+    <!-- 5-1) 코인 수량 증가 -->
+    <update id="add_coin_amount">
+    UPDATE wallet
+    SET amount = amount + #{param3}
+    WHERE user_id=#{param1} AND asset_id=#{param2}
+    </update>
+
+    <!-- 5-2) KRW 잔액 감소/증가 (delta 전달) -->
+    <update id="add_wallet_amount">
+    UPDATE wallet
+    SET amount = amount + #{param3}
+    WHERE user_id=#{param1} AND asset_id=#{param2}
+    </update>
+
+    <!-- 6) 체결 기록 -->
+    <insert id="insert_transaction">
+    INSERT INTO transaction (order_id, price, amount, fee, created_at)
+    VALUES (#{param1}, #{param2}, #{param3}, #{param4}, NOW(6))
+    </insert>
+
+    <!-- 7) 주문 종결 -->
+    <update id="conclude_order">
+    UPDATE orders
+    SET status = #{param2}, unconcluded_amount = 0
+    WHERE order_id = #{param1}
+    </update>
+
+    <!-- Helper: KRW asset_id -->
+    <select id="krw_asset_id" resultType="long">
+    SELECT asset_id FROM asset WHERE symbol='KRW' LIMIT 1
+    </select>
+
+
+    <!-- =========================매도======================= -->
+<!-- 코인 수량 감소: 매도 -->
+<update id="sub_coin_amount">
+    UPDATE wallet
+    SET amount = amount - #{param3}
+    WHERE user_id = #{param1} AND asset_id = #{param2}
+</update>
+
+<!-- 보유자산 리스트: amount>0 -->
+<select id="holdings" resultType="map">
+    SELECT
+    a.asset_id   AS assetId,
+    a.symbol     AS symbol,
+    a.asset_name AS assetName,
+    a.market     AS market,
+    w.amount     AS amount
+    FROM wallet w
+    JOIN asset a ON a.asset_id = w.asset_id
+    WHERE w.user_id = #{param1}
+    AND w.amount > 0
+    ORDER BY a.asset_id
+</select>
+
+<!-- KRW 잔액 -->
+<select id="krw_balance" resultType="java.math.BigDecimal">
+    SELECT w.amount
+    FROM wallet w
+    JOIN asset a ON a.asset_id = w.asset_id
+    WHERE w.user_id = #{param1}
+    AND a.symbol = 'KRW'
+    LIMIT 1
+</select>
+
+<!-- 거래내역(최근 200건) -->
+<select id="find_trades" resultType="map">
+    SELECT
+    t.tx_id      AS txId,
+    t.order_id   AS orderId,
+    o.user_id    AS userId,
+    o.asset_id   AS assetId,
+    o.order_type AS orderTypeCode,  -- 0:BUY, 1:SELL
+    o.status     AS statusCode,     -- 0:UNCONCLUDED, 1:CONCLUDED
+    t.price      AS price,
+    t.amount     AS amount,
+    t.fee        AS fee,
+    t.created_at AS createdAt
+    FROM transaction t
+    JOIN orders o ON o.order_id = t.order_id
+    WHERE o.user_id = #{param1}
+    ORDER BY t.tx_id DESC
+    LIMIT 200
+</select>
+
+
+</mapper>

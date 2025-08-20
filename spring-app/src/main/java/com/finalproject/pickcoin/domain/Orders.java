@@ -1,6 +1,6 @@
 package com.finalproject.pickcoin.domain;
 
-import com.finalproject.pickcoin.enums.DefaultStatus;
+import com.finalproject.pickcoin.enums.OrderStatus;
 import com.finalproject.pickcoin.enums.TradeType;
 
 import jakarta.persistence.Entity;
@@ -22,5 +22,5 @@ public class Orders {
     private Double price;
     private Double amount;
     private Double unconcluded_amount;
-    private DefaultStatus status;
+    private OrderStatus status;
 }

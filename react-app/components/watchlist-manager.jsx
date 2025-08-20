@@ -31,36 +31,6 @@ function parseJwt(token) {
     return null;
   }
 }
-
-// 2) 이메일 → user_id 조회 (백엔드에 맞는 URL 하나로 변경)
-// async function fetchUserIdByEmail(email, token) {
-//  //백엔드에 실제로 있는 “조회용 GET API 하나”로 변경
-//   //예시 후보(하나만 살리고 나머진 지워도 됨):
-//   const url = `/api/auth/me`;                                   // 토큰만으로 현재 유저 반환형
-//   //const url = `/api/users/by-email?email=${encodeURIComponent(email)}`; // 이메일 쿼리형
-//   //const url = `/api/users/email/${encodeURIComponent(email)}`;          // 이메일 path형
-
-//   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-//   if (!res.ok) throw new Error("user_id 조회 실패");
-//   const data = await res.json();
-
-//   //응답 스키마에 맞게 user_id 뽑기 (필요시 키 이름 수정)
-//   //return data.user_id ?? data.id ?? data?.data?.user_id ?? data?.data?.id ?? null;
-// }
-//====================
-// AuthController 만들기 전
-// async function fetchUserIdFromToken(token) {
-//   const res = await fetch("http://localhost:8080/api/auth/me", {
-//     headers: { Authorization: `Bearer ${token}` },
-//   });
-//   if (!res.ok) throw new Error("user_id 조회 실패");
-//   const data = await res.json();
-//   return data.user_id ?? null;
-// }
-
-
-//===================
-
 // AuthController 만들고 나서
 async function fetchUserIdFromToken(token) {
   try {
@@ -114,7 +84,7 @@ export default function MyPageWatchlist() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [user_id, setUserId] = useState(null); // 초기값 null로 설정
-  //const [user_id, setUserId] = useState(default_user_id); // 초기값 12로 설정
+
 
   const [token, setToken] = useState(null);
 
@@ -125,23 +95,7 @@ export default function MyPageWatchlist() {
   const [newAlertCond, setNewAlertCond] = useState("above");
   const [newAlertValue, setNewAlertValue] = useState("");
 
-  // useEffect(() => {
-  //   setLoading(true);
-  //   Promise.all([
-  //     axios.get(`${API_BASE}/bookmarks/list`, { params: { user_id: user_id } }),
-  //     axios.get(`${API_BASE}/assets/unbookmarked`, { params: { user_id: user_id } }),
-  //   ])
-  //     .then(([wlRes, candRes]) => {
-  //       // 알림 배열 초기화(없으면 [])
-  //       const wl = (Array.isArray(wlRes.data) ? wlRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
-  //       const cd = (Array.isArray(candRes.data) ? candRes.data : []).map(it => ({ ...it, alerts: it.alerts ?? [] }));
-  //       setWatchlist(wl);
-  //       setCandidates(cd);
-  //     })
-  //     .catch(e => console.error("[mypage load]", e?.response?.status, e?.message))
-  //     .finally(() => setLoading(false));
-  // }, []);
-
+  
   useEffect(() => {
   if (!user_id) return;
   setLoading(true);
@@ -224,52 +178,6 @@ export default function MyPageWatchlist() {
     setNewAlertCond("above");
   };
 
-  //======================
-
-
-// useEffect(() => {
-//     if (typeof window === "undefined") return;
-//     const t = sessionStorage.getItem("auth_token")
-// //            || sessionStorage.getItem("jwtToken")
-// //            || sessionStorage.getItem("access_token");
-//     setToken(t);
-//     if (!t) return;
-
-//     const claims = parseJwt(t);
-//     const directId = claims?.uid ?? claims?.user_id ?? claims?.user_id ?? claims?.id;
-
-//     if (directId != null) {
-//       setUserId(Number(directId));
-//       return;
-//     }
-
-//     const email = claims?.sub || claims?.email || claims?.username;
-//     if (!email) return;
-
-//     fetchUserIdByEmail(email, t)
-//       .then(id => setUserId(Number(id)))
-//       .catch(err => console.warn("user_id 조회 실패:", err));
-//   }, []);
-
-// useEffect(() => {
-//   if (typeof window === "undefined") return;
-//   const t = sessionStorage.getItem("auth_token");
-//   setToken(t);
-//   if (!t) return;
-
-//   const claims = parseJwt(t);
-//   const directId = claims?.uid ?? claims?.user_id ?? claims?.id;
-//   if (directId != null) {
-//     setUserId(Number(directId));
-//     return;
-//   }
-//   // 토큰에 id가 없으면 임시 API로 조회
-//   fetchUserIdFromToken(t)
-//     .then(id => id && setUserId(Number(id)))
-//     .catch(err => console.warn("user_id 조회 실패:", err));
-// }, []);
-
-
 
   useEffect(() => {
     //if (!user_id || !token) return;
@@ -332,9 +240,9 @@ if (tokenValue) {
   }
 }
 //변경된 user_id값 최종 확인
-useEffect(() => {
-  console.log("user_id 변경됨:", user_id);
-}, [user_id]);
+// useEffect(() => {
+//   console.log("user_id 변경됨:", user_id);
+// }, [user_id]);
 
 //===========================================================================================
   const removeAlert = (asset_id, idx) => {

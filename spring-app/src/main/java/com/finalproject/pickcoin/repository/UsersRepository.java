@@ -19,4 +19,4 @@ public interface UsersRepository extends CrudRepository<Users, Integer> {
 
     @Query(value = "SELECT * FROM users WHERE is_verified = false AND expires_at < :now", nativeQuery = true)
     List<Users> findExpiredUnverifiedUsers(@Param("now") LocalDateTime now);
-} 
+}
