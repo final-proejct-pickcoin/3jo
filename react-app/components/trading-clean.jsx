@@ -14,6 +14,9 @@ import TradingChart from "@/components/trading-chart"
 import { CurrencyToggle } from "@/components/currency-toggle"
 
 
+//거래 관련
+const TRADE_API = "http://localhost:8080/api/trade";
+
 // 자동 심볼-ID 매핑 캐시
 let symbolToIdCache = {};
 let cacheExpiry = 0;
@@ -472,23 +475,6 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
             <span>{coin.price.toLocaleString()}</span>
           )}
         </div>
-        </div>
-      </div>
-    );
-  return (
-    <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md border border-gray-100">
-        <div className="relative">
-          <div className="animate-spin w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl">📊</span>
-            </div>
-          </div>
-          <div className="text-xl font-bold text-gray-800 mb-2">{coin.name} 심층 분석 중</div>
-          <div className="text-gray-600">
-            3개 거래소 + 글로벌 데이터를<br/>
-            실시간으로 통합 분석하고 있어요
-          </div>
         </div>
       </div>
     );
@@ -1233,6 +1219,173 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
 };
 
 export const TradingInterface = () => {
+  //사용자 id 추출
+  //const [user_id, setUserId] = useState(null);
+  const [user_id, setUserId] = useState(null);
+
+//======== 사용자 ID 가져오기========
+// useEffect(() => {
+// //토큰값을 빼 user_mail변수에 저장
+// const tokenValue = sessionStorage.getItem("auth_token");
+// if (tokenValue) {
+//   const payload = JSON.parse(atob(tokenValue.split('.')[1]));
+//   const user_mail = payload.email || payload.sub || null;
+// //이메일 값 확인
+//   console.log("이메일:", user_mail);
+// //이메일값 정상적으로 들어왔을때 id값 반환 응답 백엔드 url 호출()
+//     if (user_mail) {
+//     fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
+//       .then(res => res.json())
+//       .then(data => {
+//       if(data && data.user_id != null) {
+//       setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
+//       }
+//       })
+//       .catch(err => console.error(err));
+//   }
+// }
+// }, []);
+
+// ======== 사용자 ID 가져오기 (가볍게) ========
+useEffect(() => {
+  // 0) 캐시가 있으면 바로 반영 → 초기 렌더 가벼움
+  const cached = sessionStorage.getItem("cached_user_id");
+  if (cached && user_id == null) setUserId(Number(cached));
+
+  // 1) 토큰 파싱(기존 그대로)
+  const tokenValue = sessionStorage.getItem("auth_token");
+  if (!tokenValue) return;
+
+  let payload = null;
+  try {
+    payload = JSON.parse(atob(tokenValue.split(".")[1]));
+  } catch (_) {
+    return; // 잘못된 토큰이면 종료
+  }
+
+  const user_mail = payload.email || payload.sub || null;
+  if (!user_mail) return;
+
+  // 2) 언마운트/중복 방지
+  let mounted = true;
+  const controller = new AbortController();
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 0));
+
+  // 3) 유휴 시간에 네트워크 요청 실행
+  idle(() => {
+    if (!mounted) return;
+    fetch(
+      `http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`,
+      { signal: controller.signal, headers: { Accept: "application/json" } }
+    )
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data) => {
+        if (!mounted) return;
+        if (data && data.user_id != null) {
+          const idNum = Number(data.user_id);
+          setUserId(idNum);
+          sessionStorage.setItem("cached_user_id", String(idNum)); // 다음 진입 가속화
+        }
+      })
+      .catch((err) => {
+        if (err?.name !== "AbortError") console.error(err);
+      });
+  });
+
+  // 4) 정리
+  return () => {
+    mounted = false;
+    controller.abort();
+  };
+}, []);
+
+//=======매도 매수 관련
+  const [assetId, setAssetId] = useState("");  // 숫자 ID (예: BTC의 asset_id)
+  const [price, setPrice]   = useState("");    // 현재가 (시장가를 서버결정으로 바꾸면 안보내도 됨)
+  const [qty, setQty]       = useState("");    // 수량
+//  const [loading, setLoading] = useState(false);
+
+  const total = useMemo(() => {
+    const q = parseFloat(qty || "0");
+    const p = parseFloat(price || "0");
+    if (!isFinite(q * p)) return 0;
+    return q * p;
+  }, [qty, price]);
+
+  // 주문 성공 후 마이페이지가 즉시 갱신되도록 브로드캐스트
+  const refreshPortfolio = async () => {
+    try {
+      const [h, k, t] = await Promise.all([
+        axios.get(`${TRADE_API}/holdings`,    { params: { user_id: USER_ID } }),
+        axios.get(`${TRADE_API}/krw_balance`, { params: { user_id: USER_ID } }),
+        axios.get(`${TRADE_API}/trades`,      { params: { user_id: USER_ID } }),
+      ]);
+      window.dispatchEvent(
+        new CustomEvent("portfolio:updated", {
+          detail: { holdings: h.data, krw: k.data?.krw, trades: t.data },
+        })
+      );
+    } catch (e) {
+      console.error("포트폴리오 리프레시 실패", e);
+    }
+  };
+
+  const guard = () => {
+    if (!assetId) return "assetId(자산 ID)를 입력하세요.";
+    if (!qty) return "수량(qty)을 입력하세요.";
+    if (!price) return "가격(price)을 입력하세요.";
+    return null;
+  };
+
+  // ✅ await 붙는 자리: 버튼 핸들러 내부
+  const handleBuy = async () => {
+    const msg = guard();
+    if (msg) return alert(msg);
+    try {
+      setLoading(true);
+      const body = {
+        // PlaceOrderRequest 그대로 사용
+        user_id: USER_ID,
+        asset_id: Number(assetId),
+        amount: qty,   // 문자열 OK (서버 BigDecimal)
+        price: price,  // 서버가 가격결정이면 이 필드 제거 가능
+      };
+      const { data } = await axios.post(`${TRADE_API}/market_buy`, body);
+      alert(`매수 체결! 주문번호 ${data.order_id}`);
+      await refreshPortfolio();
+      setQty("");
+    } catch (e) {
+      alert(e.response?.data?.error ?? "매수 실패");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSell = async () => {
+    const msg = guard();
+    if (msg) return alert(msg);
+    try {
+      setLoading(true);
+      const body = {
+        user_id: USER_ID,
+        asset_id: Number(assetId),
+        amount: qty,
+        price: price,
+      };
+      const { data } = await axios.post(`${TRADE_API}/market_sell`, body);
+      alert(`매도 체결! 주문번호 ${data.order_id}`);
+      await refreshPortfolio();
+      setQty("");
+    } catch (e) {
+      alert(e.response?.data?.error ?? "매도 실패");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  //=======
+
+
   // Responsive height: Coin list matches main chart+order book+order panel area (red box)
   const mainPanelRef = useRef(null);
   const [combinedHeight, setCombinedHeight] = useState(600);
@@ -1887,54 +2040,221 @@ const filledOrders = useMemo(() => ([
                   </div>
                 </div>
               </div>
-              {/* 주문 영역 */}
-              <div className="flex-1 flex flex-col bg-white px-6 py-4">
-                <div className="flex border-b border-gray-200 mb-4">
-                  <button className="flex-1 py-2 text-sm text-gray-500">매수</button>
-                  <button className="flex-1 py-2 text-sm border-b-2 border-blue-500 text-blue-500 font-semibold">매도</button>
-                  <button className="flex-1 py-2 text-sm text-gray-500">간편주문</button>
-                  <button className="flex-1 py-2 text-sm text-gray-500">거래내역</button>
-                </div>
-                <div className="flex items-center gap-4 mb-2">
-                  <span className="text-xs font-semibold">주문유형</span>
-                  <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
-                    <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
-                  </label>
-                  <label className="flex items-center gap-1 text-xs text-gray-400">
-                    <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
-                  </label>
-                  <label className="flex items-center gap-1 text-xs text-gray-400">
-                    <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
-                  </label>
-                  <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
-                </div>
-                <div className="text-xs text-gray-400 mb-2">주문가능</div>
-                <div className="mb-2">
-                  <div className="text-xs font-semibold mb-1">매도가격 (KRW)</div>
+            
+            {/* 주문 영역 */}
+            <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
+              {/* 탭 헤더 */}
+              <div className="flex border-b border-gray-200 mb-4">
+                {["매수", "매도", "거래내역"].map((t) => (
+                  <button
+                    key={t}
+                    className={`flex-1 py-2 text-sm ${
+                      orderTab === t
+                        ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
+                        : "text-gray-500"
+                    }`}
+                    onClick={() => setOrderTab(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {/* 매수/매도 탭 공통 */}
+              {orderTab === "매수" || orderTab === "매도" ? (
+                <>
+                  {/* 주문유형 */}
+                  <div className="flex items-center gap-4 mb-3">
+                    <span className="text-xs font-semibold">주문유형</span>
+                    <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
+                      <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
+                    </label>
+                    <label className="flex items-center gap-1 text-xs text-gray-400">
+                      <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
+                    </label>
+                    <label className="flex items-center gap-1 text-xs text-gray-400">
+                      <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
+                    </label>
+                    <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
+                  </div>
+
+                  
+                  {/* 가격 */}
+                  <div className="text-xs font-semibold mb-1 flex items-center justify-between">
+                    <span>{orderTab === "매도" ? "매도가격 (KRW)" : "매수가격 (KRW)"}</span>
+                    <span
+                      className={[
+                        "ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] border",
+                        priceDir === "up" ? "text-red-600 border-red-200 bg-red-50"
+                        : priceDir === "down" ? "text-blue-600 border-blue-200 bg-blue-50"
+                        : "text-gray-600 border-gray-200 bg-gray-50"
+                      ].join(" ")}
+                      title="실시간 현재가"
+                    >
+                      현재가 {formatKRW(currentPriceKRW)} KRW
+                      {priceDir === "up" && <span className="ml-1">▲</span>}
+                      {priceDir === "down" && <span className="ml-1">▼</span>}
+                    </span>
+                  </div>
+
                   <div className="flex items-center border rounded h-10">
-                    <input type="text" value="163,257,000" readOnly className="flex-1 px-2 border-0 bg-transparent text-right font-semibold" />
-                    <button className="w-8 h-8 text-gray-400">-</button>
-                    <button className="w-8 h-8 text-gray-400">+</button>
+                    <input
+                      type="text"
+                      value={formatKRW(orderPrice)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        setOrderPrice(raw ? parseInt(raw, 10) : 0);
+                      }}
+                      className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
+                    />
+                    <button className="w-8 h-8 text-gray-400" type="button"
+                            onClick={() => setOrderPrice(p => Math.max(0, p - 100))}>-</button>
+                    <button className="w-8 h-8 text-gray-400" type="button"
+                            onClick={() => setOrderPrice(p => p + 100)}>+</button>
                   </div>
-                </div>
-                <div className="mb-2">
-                  <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
-                  <input type="text" placeholder="0" className="w-full border rounded h-10 px-2 mb-2" />
+
+                  {/* 수량 */}
+                  <div className="mb-3">
+                    <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
+                    <input
+                      type="text"
+                      value={orderQty ? orderQty : ""}               // 비어 있으면 빈칸
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^\d.]/g, ""); // 숫자/소수점만 허용
+                        setOrderQty(v === "" ? 0 : Number(v));
+                      }}
+                      placeholder="0"
+                      className="w-full border rounded h-10 px-2 mb-2"
+                    />
+                    <div className="flex gap-2">
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.1).toFixed(6)))}>+0.1</button>
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.25).toFixed(6)))}>+0.25</button>
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.5).toFixed(6)))}>+0.5</button>
+                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(0)}>초기화</button>
+                    </div>
+                  </div>
+
+                  {/* 총액(표시용) */}
+                    <div className="mb-3">
+                      <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formatKRW(totalAmountKRW)}
+                        className="w-full border rounded h-10 px-2 bg-gray-50"
+                      />
+                    </div>
+
+                  {/* ✅ 매수/매도 탭별 버튼 */}
+                  {orderTab === "매수" && (
+                    <button
+                      className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
+                      type="button"
+                      onClick={() => console.log("매수 전송")}
+                    >
+                      매수
+                    </button>
+                  )}
+                  {orderTab === "매도" && (
+                    <button
+                      className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
+                      type="button"
+                      onClick={() => console.log("매도 전송")}
+                    >
+                      매도
+                    </button>
+                  )}
+
+                  <div className="text-[11px] text-gray-400 mt-3">
+                    * 최소주문금액 : KRW · 수수료(부가세 포함) : -%
+                  </div>
+                </>
+              ) : null}
+
+              {/* 간편주문 */}
+              {/* {orderTab === "간편주문" && (
+                <div className="flex flex-col gap-4">
+                  <div className="text-xs text-gray-500">
+                    원하는 비율을 선택하고 즉시 주문하세요.
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {["10%", "25%", "50%", "75%", "100%"].map(p => (
+                      <button key={p} className="border rounded py-2 text-xs hover:bg-gray-50">
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
-                    <button className="flex-1 border rounded py-1 text-xs">10%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">25%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">50%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">100%</button>
-                    <button className="flex-1 border rounded py-1 text-xs">직접입력</button>
+                    <button className="flex-1 h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90">
+                      매수
+                    </button>
+                    <button className="flex-1 h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90">
+                      매도
+                    </button>
                   </div>
                 </div>
+              )} */}
+
+              {/* 거래내역 */}
+                {orderTab === "거래내역" && (
+                  <div className="text-xs">
+                    {/* 미체결 / 체결 토글 */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded-md border text-xs ${
+                          historyTab === "미체결"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "text-gray-600 border-gray-200"
+                        }`}
+                        onClick={() => setHistoryTab("미체결")}
+                      >
+                        미체결
+                      </button>
+                      <button
+                        type="button"
+                        className={`px-3 py-1 rounded-md border text-xs ${
+                          historyTab === "체결"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : "text-gray-600 border-gray-200"
+                        }`}
+                        onClick={() => setHistoryTab("체결")}
+                      >
+                        체결
+                      </button>
+                    </div>
+
+                    {/* 리스트 */}
+                    <div className="border rounded">
+                      <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
+                        <div>시간</div>
+                        <div>구분</div>
+                        <div>수량(BTC)</div>
+                        <div className="text-right">가격(KRW)</div>
+                      </div>
+
+                      {(historyTab === "미체결" ? openOrders : filledOrders).map((r) => (
+                        <div key={r.id} className="grid grid-cols-4 p-2 border-b last:border-b-0">
+                          <div>{r.t}</div>
+                          <div className={r.side === "매수" ? "text-emerald-600" : "text-red-600"}>{r.side}</div>
+                          <div>{r.qty}</div>
+                          <div className="text-right">{r.price}</div>
+                        </div>
+                      ))}
+
+                      {(historyTab === "미체결" ? openOrders : filledOrders).length === 0 && (
+                        <div className="p-4 text-center text-gray-400">내역이 없습니다.</div>
+                      )}
+                    </div>
+                  </div>
+                )}</div>
                 <div className="mb-2">
                   <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
                   <input type="text" placeholder="0" className="w-full border rounded h-10 px-2" />
                 </div>
                 <div className="text-[11px] text-gray-400 mt-2">* 최소주문금액 : KRW · 수수료(부가세 포함) : -%</div>
               </div>
-            </div>
+            
           )}
         </div>
       </div>
