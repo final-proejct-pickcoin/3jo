@@ -1417,7 +1417,7 @@ useEffect(() => {
   // State hooks for UI controls
   // (중복 제거) 검색어 상태는 한 번만 선언
   const [selectedCoin, setSelectedCoin] = useState("BTC");
-  const [activeTab, setActiveTab] = useState("원화");
+  const [activeTab, setActiveTab] = useState("원화"); // "원화" or "BTC"
   const [showSettings, setShowSettings] = useState(false);
   const [realTimeData, setRealTimeData] = useState({});
   const [wsConnected, setWsConnected] = useState(false);
@@ -1443,7 +1443,7 @@ useEffect(() => {
 
     const connectWebSocket = () => {
       // ✅ 올바른 경로로 수정
-      const wsUrl = 'ws://localhost:8000/ws/realtime';  // main.py의 경로
+      const wsUrl = 'ws://localhost:8000/api/realtime';  // main.py의 경로
       console.log(`🔌 연결 시도: ${wsUrl}`);
 
       try {
@@ -1465,9 +1465,12 @@ useEffect(() => {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('📨 WebSocket 메시지 수신:', data.type, data.content?.symbol);
             
             if (data.type === 'ticker' && data.content) {
               const content = data.content;
+              console.log('💰 실시간 가격:', content.symbol, content.closePrice, content.chgRate);
+
               // 오직 빗썸 24H 틱 데이터만 반영 (중복/오류 방지)
               if (content.tickType && content.tickType !== '24H') return;
               const symbol = content.symbol;
@@ -1590,10 +1593,14 @@ useEffect(() => {
             ? 'http://localhost:8000/api/coins/btc'
             : 'http://localhost:8000/api/coins'
 
-          const response = await fetch(apiUrl);
-          const data = await response.json();
+          console.log(`📡 API URL: ${apiUrl}`);
 
+          const response = await fetch(apiUrl);
+          console.log(`📊 Response status: ${response.status}`);
+
+          const data = await response.json();       
           console.log('📦 API Response data:', data);
+          console.log('📦 First 3 coins:', data.data?.slice(0, 3));
 
           if (data.status === 'success' && data.data && Array.isArray(data.data)) {
             console.log(`✅ ${activeTab} 마켓 ${data.data.length}개 코인 로드 성공`);
@@ -1610,8 +1617,15 @@ useEffect(() => {
               trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
               marketWarning: coin.market_warning || 'NONE'
             }));
+
+            console.log('🎯 Mapped coins:', mappedCoins.slice(0, 3));
+
             // 모든 코인 다 보여주기 (slice 등 제한 없음)
             setCoinList(mappedCoins);
+            setLoading(false); // 이미 있지만 확실히 하기 위해
+            console.log('💪 coinList 업데이트 완료, 길이:', mappedCoins.length);
+          } else {
+            console.error('❌ API 응답 구조 오류:', data);
           }
         } catch (e) {
           console.error(`❌ ${activeTab} 마켓 조회 실패:`, e);
@@ -1630,15 +1644,19 @@ useEffect(() => {
   useEffect(() => {
     coinList.forEach(coin => {
       // BTC 마켓은 실시간 키가 symbol+'_BTC'임에 주의
-      const realtimeInfo = activeTab === 'BTC'
-        ? realTimeData[coin.symbol + '_BTC']
-        : realTimeData[coin.symbol + '_KRW'];
+      const realtimeKey = activeTab === 'BTC'
+        ? coin.symbol + '_BTC'
+        : coin.symbol + '_KRW';
+
+      const realtimeInfo = realTimeData[realtimeKey];
+
       if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
         const price = parseInt(realtimeInfo.closePrice);
         const change = parseFloat(realtimeInfo.chgRate);
         const changeAmount = parseInt(realtimeInfo.chgAmt);
         const prevHighlight = highlighted[coin.symbol] || {};
-        // 현재가 변경 체크
+
+        // 현재가 변경 체크 (이전 값과 다를 때만 업데이트)
         if (prevHighlight.price !== price) {
           setHighlighted(prev => ({
             ...prev,
@@ -1648,6 +1666,7 @@ useEffect(() => {
               price,
             }
           }));
+
           setTimeout(() => {
             setHighlighted(prev => ({
               ...prev,
@@ -1657,8 +1676,9 @@ useEffect(() => {
                 price,
               }
             }));
-          }, 350);
+          }, 100);
         }
+
         // 전일대비 변경 체크 (변동률 또는 변동금액 중 하나라도 변경)
         if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
           setHighlighted(prev => ({
@@ -1680,23 +1700,24 @@ useEffect(() => {
                 changeAmount,
               }
             }));
-          }, 350);
+          }, 500);
         }
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realTimeData, coinList]);
+  }, [realTimeData, activeTab]);
 
   const updatedCoinList = useMemo(() => {
-    return coinList.map(coin => {
-      // BTC 마켓은 실시간 키가 symbol+'_BTC', KRW 마켓은 symbol+'_KRW'
-      const realtimeInfo = activeTab === 'BTC'
-        ? realTimeData[coin.symbol + '_BTC']
-        : realTimeData[coin.symbol + '_KRW'];
-      if (realtimeInfo && !isNaN(realtimeInfo.closePrice) && !isNaN(realtimeInfo.chgRate) && !isNaN(realtimeInfo.chgAmt) && !isNaN(realtimeInfo.value)) {
-        // 거래대금(백만 단위) 천단위 콤마 표시
+    console.log('🔄 updatedCoinList 계산 중, coinList 길이:', coinList.length); // ✅ 추가
+    
+    const result = coinList.map(coin => {
+      const marketKey = activeTab === 'BTC' ? '_BTC' : '_KRW';
+      const realtimeInfo = realTimeData[coin.symbol + marketKey];
+      
+      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
         const millionValue = Math.round(parseFloat(realtimeInfo.value) / 1000000);
         const formattedVolume = millionValue.toLocaleString() + ' 백만';
+        
         return {
           ...coin,
           price: parseInt(realtimeInfo.closePrice),
@@ -1706,28 +1727,70 @@ useEffect(() => {
           volume: formattedVolume
         };
       } else {
-        // 실시간 데이터가 없으면 빈칸/0
         return {
           ...coin,
-          price: 0,
-          change: 0,
-          changeAmount: 0,
-          trend: 'same',
-          volume: ''
+          price: coin.price || 0,
+          change: coin.change || 0,
+          changeAmount: coin.changeAmount || 0,
+          trend: coin.change > 0 ? 'up' : coin.change < 0 ? 'down' : 'same',
+          volume: coin.volume ? `${Math.round(coin.volume / 1000000).toLocaleString()} 백만` : ''
         };
       }
     });
+  
+    console.log('✅ updatedCoinList 결과 길이:', result.length); // ✅ 추가
+    return result;
   }, [coinList, realTimeData, activeTab]);
 
-  // 실시간 검색 필터: 한글명 또는 심볼(영문) 포함 시 즉시 필터링
+  // 정렬 상태 추가
+  const [sortKey, setSortKey] = useState('volume');
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+
+  // 정렬 핸들러
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
+    }
+  };
+
+  // filteredCoinList: 검색 + 정렬
   const filteredCoinList = useMemo(() => {
-    if (!searchTerm.trim()) return updatedCoinList;
-    const lower = searchTerm.trim().toLowerCase();
-    return updatedCoinList.filter(coin =>
-      (coin.name && coin.name.toLowerCase().includes(lower)) ||
-      (coin.symbol && coin.symbol.toLowerCase().includes(lower))
-    );
-  }, [searchTerm, updatedCoinList]);
+    let filtered = updatedCoinList;
+    if (searchTerm.trim()) {
+      const lower = searchTerm.trim().toLowerCase();
+      filtered = updatedCoinList.filter(coin =>
+        (coin.name && coin.name.toLowerCase().includes(lower)) ||
+        (coin.symbol && coin.symbol.toLowerCase().includes(lower))
+      );
+    }
+    // 정렬
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue = a[sortKey];
+      let bValue = b[sortKey];
+      // volume은 문자열(1,234 백만)일 수 있으니 숫자만 추출
+      if (sortKey === 'volume') {
+        aValue = typeof aValue === 'string' ? parseFloat(aValue.replace(/[^\d.]/g, '')) : aValue;
+        bValue = typeof bValue === 'string' ? parseFloat(bValue.replace(/[^\d.]/g, '')) : bValue;
+      }
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
+      if (sortOrder === 'asc') {
+        if (aValue < bValue) return -1;
+        if (aValue > bValue) return 1;
+        return 0;
+      } else {
+        if (aValue > bValue) return -1;
+        if (aValue < bValue) return 1;
+        return 0;
+      }
+    });
+    return sorted;
+  }, [searchTerm, updatedCoinList, sortKey, sortOrder]);
 
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
@@ -1791,7 +1854,7 @@ const filledOrders = useMemo(() => ([
   return (
     <div className="w-full p-0 space-y-4">
     {/* 🚨 연결 상태 표시 추가 */}
-      {/* <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
+      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
         <div className="flex items-center gap-2">
           <span className={`text-xs font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
             {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
@@ -1805,7 +1868,7 @@ const filledOrders = useMemo(() => ([
         <div className="text-sm text-gray-500">
           마지막 업데이트: {new Date().toLocaleTimeString()}
         </div>
-      </div> */}
+      </div>
 
       {/* <div className="flex flex-row gap-4 min-h-screen items-stretch" style={{ height: 'calc(100vh - 100px)' }}> */}
         {/* 좌측: 세로 인덱스 탭 + Coin List */}
@@ -1861,12 +1924,40 @@ const filledOrders = useMemo(() => ([
                 </Tabs>
               </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
-              {/* 컬럼 헤더 */}
+              {/* 컬럼 헤더 (정렬 기능 + UX 개선) */}
               <div className="grid grid-cols-4 gap-2 px-4 py-2 text-xs font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10">
-                <div className="flex items-center gap-1 cursor-pointer">한글명 <span className="text-[10px]">▼</span></div>
-                <div className="text-right flex items-center gap-1 cursor-pointer">현재가 <span className="text-[10px]">▼</span></div>
-                <div className="text-right flex items-center gap-1 cursor-pointer">전일대비 <span className="text-[10px]">▼</span></div>
-                <div className="text-right flex items-center gap-1 cursor-pointer">거래대금 <span className="text-[10px]">▼</span></div>
+                <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('name')}>
+                  한글명
+                  {sortKey === 'name' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
+                <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('price')}>
+                  현재가
+                  {sortKey === 'price' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
+                <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('change')}>
+                  전일대비
+                  {sortKey === 'change' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
+                <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('volume')}>
+                  거래대금
+                  {sortKey === 'volume' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
               </div>
               <div className="overflow-y-auto flex-1 min-h-0" style={{ height: combinedHeight  }}>
                 {loading ? (
@@ -1933,25 +2024,28 @@ const filledOrders = useMemo(() => ([
           <div className="w-full" style={{ height: combinedHeight }}>
             {view === "chart" ? (
               <TradingChart
-                symbol={`${selectedCoin}/KRW`}
-                koreanName={updatedCoinList.find(c => c.symbol === selectedCoin)?.name || selectedCoin} // ✅ 이거 추가
+                symbol={`${selectedCoin}/${activeTab === 'BTC' ? 'BTC' : 'KRW'}`}
+                koreanName={updatedCoinList.find(c => c.symbol === selectedCoin)?.name || selectedCoin}
                 height={combinedHeight}
                 theme="light"
-                realTimeData={realTimeData[selectedCoin + '_KRW']}
-                currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice
-                  ? parseInt(realTimeData[selectedCoin + '_KRW'].closePrice)
+                realTimeData={realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')]}
+                currentPrice={realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')]?.closePrice
+                  ? parseInt(realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')].closePrice)
                   : updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 163172000
                 }
+                market={activeTab}
               />
             ) : (
-              <CoinInfoPanel coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} 
-              realTimeData={realTimeData[selectedCoin + '_KRW']}
+              <CoinInfoPanel 
+                coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} 
+                realTimeData={realTimeData[selectedCoin + (activeTab === 'BTC' ? '_BTC' : '_KRW')]}
+                market={activeTab}
               />
             )}
           </div>
           {/* 하단: 오더북/체결강도/정보패널/주문 (이미지와 동일하게 4단 배치) */}
           {view === "chart" && (
-            <div className="w-full flex flex-row mt-6" style={{ height: 600, marginTop: '62px' }}>
+            <div className="w-full flex flex-row" style={{ height: 600, marginTop: '10px' }}>
               {/* 오더북 (매수/매도) */}
               <div className="flex flex-col w-[230px] border-r border-gray-200 bg-blue-50">
                 {/* 상단 매도호가 */}
@@ -1975,6 +2069,10 @@ const filledOrders = useMemo(() => ([
                 </div>
                 {/* 체결강도 */}
                 <div className="bg-white border-y border-gray-200 py-1 px-2 text-xs text-center">
+                  {/* <div className="flex justify-between items-center">
+                    <span className="text-blue-700 font-semibold">체결강도</span>
+                    <span className="text-red-600 font-bold">+169.59%</span>
+                  </div> */}
                   <div className="flex justify-between items-center mt-1">
                     <span className="font-bold text-base text-red-600">163,166,000</span>
                     <span className="text-red-500 font-semibold">+0.03%</span>
@@ -1990,6 +2088,7 @@ const filledOrders = useMemo(() => ([
                     { qty: '0.001', price: '163,123,000', change: '+0.01%' },
                   ].map((row, i) => (
                     <div key={i} className="flex flex-row text-xs h-6 items-center hover:bg-blue-100">
+                      {/* <div className="flex-1 text-blue-700 text-right pr-2 font-mono">{row.qty}</div> */}
                       <div className="flex-1 text-center font-semibold font-mono">{row.price}</div>
                       <div className="flex-1 text-right pr-2 text-red-500">{row.change}</div>
                     </div>
@@ -2040,222 +2139,217 @@ const filledOrders = useMemo(() => ([
                   </div>
                 </div>
               </div>
-            
-            {/* 주문 영역 */}
-            <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
-              {/* 탭 헤더 */}
-              <div className="flex border-b border-gray-200 mb-4">
-                {["매수", "매도", "거래내역"].map((t) => (
-                  <button
-                    key={t}
-                    className={`flex-1 py-2 text-sm ${
-                      orderTab === t
-                        ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
-                        : "text-gray-500"
-                    }`}
-                    onClick={() => setOrderTab(t)}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-
-              {/* 매수/매도 탭 공통 */}
-              {orderTab === "매수" || orderTab === "매도" ? (
-                <>
-                  {/* 주문유형 */}
-                  <div className="flex items-center gap-4 mb-3">
-                    <span className="text-xs font-semibold">주문유형</span>
-                    <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
-                      <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
-                    </label>
-                    <label className="flex items-center gap-1 text-xs text-gray-400">
-                      <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
-                    </label>
-                    <label className="flex items-center gap-1 text-xs text-gray-400">
-                      <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
-                    </label>
-                    <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
-                  </div>
-
-                  
-                  {/* 가격 */}
-                  <div className="text-xs font-semibold mb-1 flex items-center justify-between">
-                    <span>{orderTab === "매도" ? "매도가격 (KRW)" : "매수가격 (KRW)"}</span>
-                    <span
-                      className={[
-                        "ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] border",
-                        priceDir === "up" ? "text-red-600 border-red-200 bg-red-50"
-                        : priceDir === "down" ? "text-blue-600 border-blue-200 bg-blue-50"
-                        : "text-gray-600 border-gray-200 bg-gray-50"
-                      ].join(" ")}
-                      title="실시간 현재가"
+              {/* 주문 영역 */}
+              <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
+                {/* 탭 헤더 */}
+                <div className="flex border-b border-gray-200 mb-4">
+                  {["매수", "매도", "간편주문", "거래내역"].map((t) => (
+                    <button
+                      key={t}
+                      className={`flex-1 py-2 text-sm ${
+                        orderTab === t
+                          ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
+                          : "text-gray-500"
+                      }`}
+                      onClick={() => setOrderTab(t)}
                     >
-                      현재가 {formatKRW(currentPriceKRW)} KRW
-                      {priceDir === "up" && <span className="ml-1">▲</span>}
-                      {priceDir === "down" && <span className="ml-1">▼</span>}
-                    </span>
-                  </div>
+                      {t}
+                    </button>
+                  ))}
+                </div>
 
-                  <div className="flex items-center border rounded h-10">
-                    <input
-                      type="text"
-                      value={formatKRW(orderPrice)}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/[^\d]/g, "");
-                        setOrderPrice(raw ? parseInt(raw, 10) : 0);
-                      }}
-                      className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
-                    />
-                    <button className="w-8 h-8 text-gray-400" type="button"
-                            onClick={() => setOrderPrice(p => Math.max(0, p - 100))}>-</button>
-                    <button className="w-8 h-8 text-gray-400" type="button"
-                            onClick={() => setOrderPrice(p => p + 100)}>+</button>
-                  </div>
-
-                  {/* 수량 */}
-                  <div className="mb-3">
-                    <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
-                    <input
-                      type="text"
-                      value={orderQty ? orderQty : ""}               // 비어 있으면 빈칸
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/[^\d.]/g, ""); // 숫자/소수점만 허용
-                        setOrderQty(v === "" ? 0 : Number(v));
-                      }}
-                      placeholder="0"
-                      className="w-full border rounded h-10 px-2 mb-2"
-                    />
-                    <div className="flex gap-2">
-                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.1).toFixed(6)))}>+0.1</button>
-                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.25).toFixed(6)))}>+0.25</button>
-                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.5).toFixed(6)))}>+0.5</button>
-                      <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(0)}>초기화</button>
+                {/* 매수/매도 탭 공통 */}
+                {orderTab === "매수" || orderTab === "매도" ? (
+                  <>
+                    {/* 주문유형 */}
+                    <div className="flex items-center gap-4 mb-3">
+                      <span className="text-xs font-semibold">주문유형</span>
+                      <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
+                        <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-gray-400">
+                        <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-gray-400">
+                        <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
+                      </label>
+                      <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
                     </div>
-                  </div>
 
-                  {/* 총액(표시용) */}
-                    <div className="mb-3">
-                      <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
+                    
+                    {/* 가격 */}
+                    <div className="text-xs font-semibold mb-1 flex items-center justify-between">
+                      <span>{orderTab === "매도" ? "매도가격 (KRW)" : "매수가격 (KRW)"}</span>
+                      <span
+                        className={[
+                          "ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] border",
+                          priceDir === "up" ? "text-red-600 border-red-200 bg-red-50"
+                          : priceDir === "down" ? "text-blue-600 border-blue-200 bg-blue-50"
+                          : "text-gray-600 border-gray-200 bg-gray-50"
+                        ].join(" ")}
+                        title="실시간 현재가"
+                      >
+                        현재가 {formatKRW(currentPriceKRW)} KRW
+                        {priceDir === "up" && <span className="ml-1">▲</span>}
+                        {priceDir === "down" && <span className="ml-1">▼</span>}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center border rounded h-10">
                       <input
                         type="text"
-                        readOnly
-                        value={formatKRW(totalAmountKRW)}
-                        className="w-full border rounded h-10 px-2 bg-gray-50"
+                        value={formatKRW(orderPrice)}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^\d]/g, "");
+                          setOrderPrice(raw ? parseInt(raw, 10) : 0);
+                        }}
+                        className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
                       />
+                      <button className="w-8 h-8 text-gray-400" type="button"
+                              onClick={() => setOrderPrice(p => Math.max(0, p - 100))}>-</button>
+                      <button className="w-8 h-8 text-gray-400" type="button"
+                              onClick={() => setOrderPrice(p => p + 100)}>+</button>
                     </div>
 
-                  {/* ✅ 매수/매도 탭별 버튼 */}
-                  {orderTab === "매수" && (
-                    <button
-                      className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
-                      type="button"
-                      onClick={() => console.log("매수 전송")}
-                    >
-                      매수
-                    </button>
-                  )}
-                  {orderTab === "매도" && (
-                    <button
-                      className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
-                      type="button"
-                      onClick={() => console.log("매도 전송")}
-                    >
-                      매도
-                    </button>
-                  )}
-
-                  <div className="text-[11px] text-gray-400 mt-3">
-                    * 최소주문금액 : KRW · 수수료(부가세 포함) : -%
-                  </div>
-                </>
-              ) : null}
-
-              {/* 간편주문 */}
-              {/* {orderTab === "간편주문" && (
-                <div className="flex flex-col gap-4">
-                  <div className="text-xs text-gray-500">
-                    원하는 비율을 선택하고 즉시 주문하세요.
-                  </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {["10%", "25%", "50%", "75%", "100%"].map(p => (
-                      <button key={p} className="border rounded py-2 text-xs hover:bg-gray-50">
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="flex-1 h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90">
-                      매수
-                    </button>
-                    <button className="flex-1 h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90">
-                      매도
-                    </button>
-                  </div>
-                </div>
-              )} */}
-
-              {/* 거래내역 */}
-                {orderTab === "거래내역" && (
-                  <div className="text-xs">
-                    {/* 미체결 / 체결 토글 */}
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        type="button"
-                        className={`px-3 py-1 rounded-md border text-xs ${
-                          historyTab === "미체결"
-                            ? "bg-blue-50 text-blue-600 border-blue-200"
-                            : "text-gray-600 border-gray-200"
-                        }`}
-                        onClick={() => setHistoryTab("미체결")}
-                      >
-                        미체결
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-3 py-1 rounded-md border text-xs ${
-                          historyTab === "체결"
-                            ? "bg-blue-50 text-blue-600 border-blue-200"
-                            : "text-gray-600 border-gray-200"
-                        }`}
-                        onClick={() => setHistoryTab("체결")}
-                      >
-                        체결
-                      </button>
+                    {/* 수량 */}
+                    <div className="mb-3">
+                      <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
+                      <input
+                        type="text"
+                        value={orderQty ? orderQty : ""}               // 비어 있으면 빈칸
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/[^\d.]/g, ""); // 숫자/소수점만 허용
+                          setOrderQty(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="w-full border rounded h-10 px-2 mb-2"
+                      />
+                      <div className="flex gap-2">
+                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.1).toFixed(6)))}>+0.1</button>
+                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.25).toFixed(6)))}>+0.25</button>
+                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.5).toFixed(6)))}>+0.5</button>
+                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(0)}>초기화</button>
+                      </div>
                     </div>
 
-                    {/* 리스트 */}
-                    <div className="border rounded">
-                      <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
-                        <div>시간</div>
-                        <div>구분</div>
-                        <div>수량(BTC)</div>
-                        <div className="text-right">가격(KRW)</div>
+                    {/* 총액(표시용) */}
+                      <div className="mb-3">
+                        <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
+                        <input
+                          type="text"
+                          readOnly
+                          value={formatKRW(totalAmountKRW)}
+                          className="w-full border rounded h-10 px-2 bg-gray-50"
+                        />
                       </div>
 
-                      {(historyTab === "미체결" ? openOrders : filledOrders).map((r) => (
-                        <div key={r.id} className="grid grid-cols-4 p-2 border-b last:border-b-0">
-                          <div>{r.t}</div>
-                          <div className={r.side === "매수" ? "text-emerald-600" : "text-red-600"}>{r.side}</div>
-                          <div>{r.qty}</div>
-                          <div className="text-right">{r.price}</div>
-                        </div>
-                      ))}
+                    {/* ✅ 매수/매도 탭별 버튼 */}
+                    {orderTab === "매수" && (
+                      <button
+                        className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
+                        type="button"
+                        onClick={() => console.log("매수 전송")}
+                      >
+                        매수
+                      </button>
+                    )}
+                    {orderTab === "매도" && (
+                      <button
+                        className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
+                        type="button"
+                        onClick={() => console.log("매도 전송")}
+                      >
+                        매도
+                      </button>
+                    )}
 
-                      {(historyTab === "미체결" ? openOrders : filledOrders).length === 0 && (
-                        <div className="p-4 text-center text-gray-400">내역이 없습니다.</div>
-                      )}
+                    <div className="text-[11px] text-gray-400 mt-3">
+                      * 최소주문금액 : KRW · 수수료(부가세 포함) : -%
+                    </div>
+                  </>
+                ) : null}
+
+                {/* 간편주문 */}
+                {orderTab === "간편주문" && (
+                  <div className="flex flex-col gap-4">
+                    <div className="text-xs text-gray-500">
+                      원하는 비율을 선택하고 즉시 주문하세요.
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {["10%", "25%", "50%", "75%", "100%"].map(p => (
+                        <button key={p} className="border rounded py-2 text-xs hover:bg-gray-50">
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="flex-1 h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90">
+                        매수
+                      </button>
+                      <button className="flex-1 h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90">
+                        매도
+                      </button>
                     </div>
                   </div>
-                )}</div>
-                <div className="mb-2">
-                  <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
-                  <input type="text" placeholder="0" className="w-full border rounded h-10 px-2" />
-                </div>
-                <div className="text-[11px] text-gray-400 mt-2">* 최소주문금액 : KRW · 수수료(부가세 포함) : -%</div>
+                )}
+
+                {/* 거래내역 */}
+                  {orderTab === "거래내역" && (
+                    <div className="text-xs">
+                      {/* 미체결 / 체결 토글 */}
+                      <div className="flex gap-2 mb-3">
+                        <button
+                          type="button"
+                          className={`px-3 py-1 rounded-md border text-xs ${
+                            historyTab === "미체결"
+                              ? "bg-blue-50 text-blue-600 border-blue-200"
+                              : "text-gray-600 border-gray-200"
+                          }`}
+                          onClick={() => setHistoryTab("미체결")}
+                        >
+                          미체결
+                        </button>
+                        <button
+                          type="button"
+                          className={`px-3 py-1 rounded-md border text-xs ${
+                            historyTab === "체결"
+                              ? "bg-blue-50 text-blue-600 border-blue-200"
+                              : "text-gray-600 border-gray-200"
+                          }`}
+                          onClick={() => setHistoryTab("체결")}
+                        >
+                          체결
+                        </button>
+                      </div>
+
+                      {/* 리스트 */}
+                      <div className="border rounded">
+                        <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
+                          <div>시간</div>
+                          <div>구분</div>
+                          <div>수량(BTC)</div>
+                          <div className="text-right">가격(KRW)</div>
+                        </div>
+
+                        {(historyTab === "미체결" ? openOrders : filledOrders).map((r) => (
+                          <div key={r.id} className="grid grid-cols-4 p-2 border-b last:border-b-0">
+                            <div>{r.t}</div>
+                            <div className={r.side === "매수" ? "text-emerald-600" : "text-red-600"}>{r.side}</div>
+                            <div>{r.qty}</div>
+                            <div className="text-right">{r.price}</div>
+                          </div>
+                        ))}
+
+                        {(historyTab === "미체결" ? openOrders : filledOrders).length === 0 && (
+                          <div className="p-4 text-center text-gray-400">내역이 없습니다.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
               </div>
-            
-          )}
+
+            </div>
+          )}  
         </div>
       </div>
   </div>
