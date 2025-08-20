@@ -1488,71 +1488,71 @@ export const TradingInterface = () => {
   // 가격 하이라이트 상태 관리
   // 하이라이트 상태 관리 (현재가: 파랑, 전일대비: 베이지)
   const [highlighted, setHighlighted] = useState({});
-  // useEffect(() => {
-  //   coinList.forEach(coin => {
-  //     // BTC 마켓은 실시간 키가 symbol+'_BTC'임에 주의
-  //     const realtimeKey = activeTab === 'BTC'
-  //       ? coin.symbol + '_BTC'
-  //       : coin.symbol + '_KRW';
+  useEffect(() => {
+    coinList.forEach(coin => {
+      // BTC 마켓은 실시간 키가 symbol+'_BTC'임에 주의
+      const realtimeKey = activeTab === 'BTC'
+        ? coin.symbol + '_BTC'
+        : coin.symbol + '_KRW';
 
-  //     const realtimeInfo = realTimeData[realtimeKey];
+      const realtimeInfo = realTimeData[realtimeKey];
 
-  //     if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
-  //       const price = parseInt(realtimeInfo.closePrice);
-  //       const change = parseFloat(realtimeInfo.chgRate);
-  //       const changeAmount = parseInt(realtimeInfo.chgAmt);
-  //       const prevHighlight = highlighted[coin.symbol] || {};
+      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
+        const price = parseInt(realtimeInfo.closePrice);
+        const change = parseFloat(realtimeInfo.chgRate);
+        const changeAmount = parseInt(realtimeInfo.chgAmt);
+        const prevHighlight = highlighted[coin.symbol] || {};
 
-  //       // 현재가 변경 체크 (이전 값과 다를 때만 업데이트)
-  //       if (prevHighlight.price !== price) {
-  //         setHighlighted(prev => ({
-  //           ...prev,
-  //           [coin.symbol]: {
-  //             ...prev[coin.symbol],
-  //             priceHL: true,
-  //             price,
-  //           }
-  //         }));
+        // 현재가 변경 체크 (이전 값과 다를 때만 업데이트)
+        if (prevHighlight.price !== price) {
+          setHighlighted(prev => ({
+            ...prev,
+            [coin.symbol]: {
+              ...prev[coin.symbol],
+              priceHL: true,
+              price,
+            }
+          }));
 
-  //         setTimeout(() => {
-  //           setHighlighted(prev => ({
-  //             ...prev,
-  //             [coin.symbol]: {
-  //               ...prev[coin.symbol],
-  //               priceHL: false,
-  //               price,
-  //             }
-  //           }));
-  //         }, 350);
-  //       }
+          setTimeout(() => {
+            setHighlighted(prev => ({
+              ...prev,
+              [coin.symbol]: {
+                ...prev[coin.symbol],
+                priceHL: false,
+                price,
+              }
+            }));
+          }, 100);
+        }
 
-  //       // 전일대비 변경 체크 (변동률 또는 변동금액 중 하나라도 변경)
-  //       if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
-  //         setHighlighted(prev => ({
-  //           ...prev,
-  //           [coin.symbol]: {
-  //             ...prev[coin.symbol],
-  //             changeHL: true,
-  //             change,
-  //             changeAmount,
-  //           }
-  //         }));
-  //         setTimeout(() => {
-  //           setHighlighted(prev => ({
-  //             ...prev,
-  //             [coin.symbol]: {
-  //               ...prev[coin.symbol],
-  //               changeHL: false,
-  //               change,
-  //               changeAmount,
-  //             }
-  //           }));
-  //         }, 350);
-  //       }
-  //     }
-  //   });
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [realTimeData, activeTab]);
+        // 전일대비 변경 체크 (변동률 또는 변동금액 중 하나라도 변경)
+        if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
+          setHighlighted(prev => ({
+            ...prev,
+            [coin.symbol]: {
+              ...prev[coin.symbol],
+              changeHL: true,
+              change,
+              changeAmount,
+            }
+          }));
+          setTimeout(() => {
+            setHighlighted(prev => ({
+              ...prev,
+              [coin.symbol]: {
+                ...prev[coin.symbol],
+                changeHL: false,
+                change,
+                changeAmount,
+              }
+            }));
+          }, 500);
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realTimeData, activeTab]);
 
   const updatedCoinList = useMemo(() => {
     console.log('🔄 updatedCoinList 계산 중, coinList 길이:', coinList.length); // ✅ 추가
@@ -1589,25 +1589,55 @@ export const TradingInterface = () => {
     return result;
   }, [coinList, realTimeData, activeTab]);
 
-  // filteredCoinList useMemo에 로그 추가
-  const filteredCoinList = useMemo(() => {
-    console.log('🔍 filteredCoinList 계산 중, updatedCoinList 길이:', updatedCoinList.length); // ✅ 추가
-    console.log('🔍 검색어:', searchTerm); // ✅ 추가
-    
-    if (!searchTerm.trim()) {
-      console.log('🔍 검색어 없음, 전체 반환:', updatedCoinList.length); // ✅ 추가
-      return updatedCoinList;
+  // 정렬 상태 추가
+  const [sortKey, setSortKey] = useState('volume');
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+
+  // 정렬 핸들러
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('desc');
     }
-    
-    const lower = searchTerm.trim().toLowerCase();
-    const filtered = updatedCoinList.filter(coin =>
-      (coin.name && coin.name.toLowerCase().includes(lower)) ||
-      (coin.symbol && coin.symbol.toLowerCase().includes(lower))
-    );
-    
-    console.log('🔍 필터링 후 길이:', filtered.length); // ✅ 추가
-    return filtered;
-  }, [searchTerm, updatedCoinList]);
+  };
+
+  // filteredCoinList: 검색 + 정렬
+  const filteredCoinList = useMemo(() => {
+    let filtered = updatedCoinList;
+    if (searchTerm.trim()) {
+      const lower = searchTerm.trim().toLowerCase();
+      filtered = updatedCoinList.filter(coin =>
+        (coin.name && coin.name.toLowerCase().includes(lower)) ||
+        (coin.symbol && coin.symbol.toLowerCase().includes(lower))
+      );
+    }
+    // 정렬
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue = a[sortKey];
+      let bValue = b[sortKey];
+      // volume은 문자열(1,234 백만)일 수 있으니 숫자만 추출
+      if (sortKey === 'volume') {
+        aValue = typeof aValue === 'string' ? parseFloat(aValue.replace(/[^\d.]/g, '')) : aValue;
+        bValue = typeof bValue === 'string' ? parseFloat(bValue.replace(/[^\d.]/g, '')) : bValue;
+      }
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
+      if (sortOrder === 'asc') {
+        if (aValue < bValue) return -1;
+        if (aValue > bValue) return 1;
+        return 0;
+      } else {
+        if (aValue > bValue) return -1;
+        if (aValue < bValue) return 1;
+        return 0;
+      }
+    });
+    return sorted;
+  }, [searchTerm, updatedCoinList, sortKey, sortOrder]);
 
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
@@ -1741,12 +1771,40 @@ const filledOrders = useMemo(() => ([
                 </Tabs>
               </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
-              {/* 컬럼 헤더 */}
+              {/* 컬럼 헤더 (정렬 기능 + UX 개선) */}
               <div className="grid grid-cols-4 gap-2 px-4 py-2 text-xs font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10">
-                <div className="flex items-center gap-1 cursor-pointer">한글명 <span className="text-[10px]">▼</span></div>
-                <div className="text-right flex items-center gap-1 cursor-pointer">현재가 <span className="text-[10px]">▼</span></div>
-                <div className="text-right flex items-center gap-1 cursor-pointer">전일대비 <span className="text-[10px]">▼</span></div>
-                <div className="text-right flex items-center gap-1 cursor-pointer">거래대금 <span className="text-[10px]">▼</span></div>
+                <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('name')}>
+                  한글명
+                  {sortKey === 'name' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
+                <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('price')}>
+                  현재가
+                  {sortKey === 'price' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
+                <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('change')}>
+                  전일대비
+                  {sortKey === 'change' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
+                <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('volume')}>
+                  거래대금
+                  {sortKey === 'volume' ? (
+                    <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                  ) : (
+                    <span className="text-[10px] text-gray-300">△▽</span>
+                  )}
+                </div>
               </div>
               <div className="overflow-y-auto flex-1 min-h-0" style={{ height: combinedHeight  }}>
                 {loading ? (

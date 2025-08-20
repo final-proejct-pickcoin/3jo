@@ -533,19 +533,44 @@ async def realtime_ws(websocket: WebSocket):
     
     try:
         print("✅ 클라이언트 연결됨")
-        
+
         # 초기 코인 목록 전송
         coins_resp = await get_coin_list()
+        last_coin_list = coins_resp["data"][:] if coins_resp["status"] == "success" else []
         if coins_resp["status"] == "success":
             await websocket.send_text(json.dumps({
                 "type": "initial_coins",
-                "data": coins_resp["data"][:30]  # 상위 30개
+                "data": last_coin_list
             }))
-            print(f"📋 초기 코인 목록 전송: {len(coins_resp['data'])}개")
+            print(f"📋 초기 코인 목록 전송: {len(last_coin_list)}개")
+
+        # 코인 목록 실시간 감시 태스크 (30초마다 체크)
+        async def coin_list_watcher():
+            nonlocal last_coin_list
+            while True:
+                await asyncio.sleep(30)
+                try:
+                    new_resp = await get_coin_list()
+                    if new_resp["status"] == "success":
+                        new_list = new_resp["data"]
+                        # 코인 심볼 기준으로만 비교 (순서, 개수, 심볼)
+                        old_symbols = set(c['symbol'] for c in last_coin_list)
+                        new_symbols = set(c['symbol'] for c in new_list)
+                        if old_symbols != new_symbols:
+                            await websocket.send_text(json.dumps({
+                                "type": "update_coins",
+                                "data": new_list
+                            }))
+                            print(f"� 코인 목록 변경 감지 및 전송: {len(new_list)}개")
+                            last_coin_list = new_list[:]
+                except Exception as e:
+                    print(f"⚠️ 코인 목록 실시간 감시 오류: {e}")
+
+        watcher_task = asyncio.create_task(coin_list_watcher())
 
         # ✅ 실제 빗썸 WebSocket 연결 (개선된 버전)
-        await connect_to_bithumb_websocket(websocket, coins_resp["data"])
-            
+        await connect_to_bithumb_websocket(websocket, last_coin_list)
+
     except WebSocketDisconnect:
         print("❌ 클라이언트 연결 해제")
     except Exception as e:
@@ -553,6 +578,11 @@ async def realtime_ws(websocket: WebSocket):
     finally:
         if websocket in bithumb_manager.connections:
             bithumb_manager.connections.remove(websocket)
+        # watcher_task가 살아있으면 취소
+        try:
+            watcher_task.cancel()
+        except:
+            pass
 
 
 async def connect_to_bithumb_websocket(client_websocket, coins_data):
@@ -577,15 +607,12 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                 except asyncio.TimeoutError:
                     print("⚠️ 빗썸 연결 응답 타임아웃")
                 
-                # KRW 마켓 구독
-                krw_symbols = []
-                btc_symbols = []
-                
-                for coin in coins_data[:30]:  # 먼저 30개만 테스트
-                    krw_symbols.append(coin['symbol'] + '_KRW')
-                    if coin['symbol'] != 'BTC':
-                        btc_symbols.append(coin['symbol'] + '_BTC')
-                
+
+                # KRW 마켓 전체 구독 (coins_data 전체 사용)
+                krw_symbols = [coin['symbol'] + '_KRW' for coin in coins_data]
+                # 필요시 BTC 마켓도 전체 구독하려면 아래 주석 해제
+                # btc_symbols = [coin['symbol'] + '_BTC' for coin in coins_data if coin['symbol'] != 'BTC']
+
                 # KRW 마켓 구독
                 krw_subscribe = {
                     "type": "ticker",
@@ -593,7 +620,7 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                     "tickTypes": ["24H"]
                 }
                 await ws_bithumb.send(json.dumps(krw_subscribe))
-                print(f"🔔 KRW 구독 요청 전송: {len(krw_symbols)}개")
+                print(f"🔔 KRW 구독 요청 전송: {len(krw_symbols)}개 (전체)")
                 
                 # 구독 응답 확인
                 try:
