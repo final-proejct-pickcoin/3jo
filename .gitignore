@@ -52,10 +52,6 @@ venv/
 ## react ##
 node_modules/
 */venv
-<<<<<<< HEAD
 
 ## gcp key ##
 key/pickcoin-687a99cb3128.json
-=======
-"key/pickcoin-687a99cb3128.json" 
->>>>>>> feature_jh
