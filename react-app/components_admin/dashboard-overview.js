@@ -373,12 +373,13 @@ export default function DashboardOverview({ isDarkMode }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <iframe src="http://localhost:5601/app/r/s/sSiLN" height="600" width="800"></iframe>
         {/* 총 사용자 추이 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader className="flex justify-between items-center">
             <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
               <Users className="h-5 w-5 mr-2 text-green-500" />
-              총 사용자 수 추이
+              기간별 사용자 수 추이
             </CardTitle>
             {/* 집계 기준 선택 */}
             <select

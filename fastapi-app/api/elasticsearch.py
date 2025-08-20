@@ -6,7 +6,8 @@ es = Elasticsearch(
     request_timeout=30
 )
 
-def get_user_trend(interval="day"):
+# 기간별 사용자 추이
+def get_user_trend(interval="month"):
     """
     interval: "hour", "day", "week", "month"
     Returns date-wise unique user count list

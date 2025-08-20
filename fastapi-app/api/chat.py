@@ -31,7 +31,7 @@ manager = ConnectionManager()
 async def chat_endpoint(websocket: WebSocket, room_id: str):
     
     await manager.connect(room_id, websocket)
-    print("웹소켓으로 들어옴", room_id)
+    # print("웹소켓으로 들어옴", room_id)
     redis = await get_redis()
     pubsub = redis.pubsub()
     await pubsub.subscribe(room_id)
@@ -40,7 +40,7 @@ async def chat_endpoint(websocket: WebSocket, room_id: str):
         try:
             while True:
                 data = await websocket.receive_text()
-                print("[받은 메시지]", data)
+                # print("[받은 메시지]", data)
 
                 msg_obj = json.loads(data)
                 msg_obj["timestamp"] = datetime.utcnow().isoformat() + "Z"
@@ -65,7 +65,7 @@ async def chat_endpoint(websocket: WebSocket, room_id: str):
                     data = message["data"]
                     if isinstance(data, bytes):
                         data = data.decode()
-                    print("[브로드캐스트]", room_id, data)
+                    # print("[브로드캐스트]", room_id, data)
                     await manager.send_room(room_id, data)
                 await asyncio.sleep(0.01)  # CPU 과부하 방지
         except Exception as e:
