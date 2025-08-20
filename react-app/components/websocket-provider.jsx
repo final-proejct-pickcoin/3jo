@@ -55,6 +55,8 @@ export const WebSocketProvider = ({ children }) => {
 
   const value = {
     marketData,
+    // 여기 추가
+    liveData: marketData,
     isConnected: true,
     subscribe,
     unsubscribe

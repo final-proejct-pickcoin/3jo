@@ -88,7 +88,7 @@ public class UserController {
         user.setName(name);
         user.setPhone(phone);
         user.setRole(Role.USER);
-        user.setVerified(false);  /// ??
+        user.setVerified(false);  // 이메일 인증 전에는 false
         user.setCreatedAt(LocalDateTime.now());
         user.setVerificationToken(token);        
         // 인증 만료 시간 5분
@@ -109,7 +109,7 @@ public class UserController {
         Optional<Users> optionalUser = userService.findByVerificationToken(token);
         if (optionalUser.isPresent()){
             Users user = optionalUser.get();
-            user.setVerified(true);  //???
+            user.setVerified(true);  
             user.setVerificationToken(null);
             userService.save(user);
 
@@ -178,8 +178,6 @@ public class UserController {
         result.put("user_id", user.getUser_id());
         result.put("name", user.getName());
 
-        
-        
         return ResponseEntity.ok(result);
     }
     
@@ -203,7 +201,7 @@ public class UserController {
         Map<String, Object> result = new HashMap<>();
         Users user = null;
 
-        // 0) providerId로 소셜 연결된 유저 먼저 탐색 (googleId/kakaoId → 없으면 레거시 provider+providerId)
+        // 1) providerId로 소셜 연결된 유저 먼저 탐색 (googleId/kakaoId → 없으면 레거시 provider+providerId)
         if (providerId != null && !providerId.isBlank()) {
             if ("google".equalsIgnoreCase(provider)) {
                 user = userService.findByGoogleId(providerId).orElse(null);
@@ -215,7 +213,7 @@ public class UserController {
             }
         }
 
-        // 1) 전화번호가 들어왔다면(예: 이미 OTP를 마치고 재호출) 전화번호로 매칭
+        // 2) 전화번호로 매칭
         String normalizedPhone = null;
         if (user == null && phone != null && !phone.isBlank()) {
             normalizedPhone = phone.replaceAll("[^0-9]", "");
@@ -223,12 +221,12 @@ public class UserController {
             user = userService.findByPhone(normalizedPhone).orElse(null);
         }
 
-        // 2) 이메일로 매칭 (일반 가입 → 소셜 연결 시나리오)
+        // 3) 이메일로 매칭 (일반 가입 → 소셜 연결 시나리오)
         if (user == null && email != null && !email.isBlank()) {
             user = userService.findByEmail(email).orElse(null);
         }
 
-        // 3) 여기서도 못 찾았으면 → **절대 insert 하지 말고** 전화번호 연결 요구
+        // 4) 여기서도 못 찾았으면 →  insert 하지 말고 전화번호 연결 요구
         if (user == null) {
             String temp = jwtHelper.createAccessToken(
                 (email != null ? email : provider + "::" + (providerId != null ? providerId : UUID.randomUUID().toString())),
@@ -301,7 +299,7 @@ public class UserController {
     }
 
 
-    // 전화번호 OTP 검증
+    // 전화번호 OTP 검증 (번호만 추가 저장 => 로그인 상태 유지)
     @PostMapping("/phone/verify-otp")
     public ResponseEntity<?> verifyOtp(
         @RequestParam String email,
@@ -460,6 +458,5 @@ public class UserController {
         
         return ResponseEntity.ok("logout");
     }
-    
 }
 
