@@ -88,7 +88,17 @@ function TradingChart({
           const changeAmount = Number(data.data.fluctate_24H);
           const changeRate = Number(data.data.fluctate_rate_24H);
           const isUp = data.data.fluctate_24H[0] !== "-";
-          if (!ignore) setBithumbInfo({ changeAmount, changeRate, isUp });
+          // Only update state if values actually changed to avoid infinite loop
+          setBithumbInfo(prev => {
+            if (
+              prev.changeAmount === changeAmount &&
+              prev.changeRate === changeRate &&
+              prev.isUp === isUp
+            ) {
+              return prev;
+            }
+            return { changeAmount, changeRate, isUp };
+          });
         }
       } catch {}
     }

@@ -1701,7 +1701,7 @@ const filledOrders = useMemo(() => ([
   return (
     <div className="w-full p-0 space-y-4">
     {/* 🚨 연결 상태 표시 추가 */}
-      {/* <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
+      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
         <div className="flex items-center gap-2">
           <span className={`text-xs font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
             {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
@@ -1715,7 +1715,7 @@ const filledOrders = useMemo(() => ([
         <div className="text-sm text-gray-500">
           마지막 업데이트: {new Date().toLocaleTimeString()}
         </div>
-      </div> */}
+      </div>
 
       {/* <div className="flex flex-row gap-4 min-h-screen items-stretch" style={{ height: 'calc(100vh - 100px)' }}> */}
         {/* 좌측: 세로 인덱스 탭 + Coin List */}
