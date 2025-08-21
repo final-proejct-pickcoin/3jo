@@ -159,12 +159,12 @@ const fetchCoinDetail = async (symbol) => {
 // 코인 아이콘 색상
 const getCoinIconColor = (symbol) => {
   const colors = {
-    'BTC': 'bg-orange-500',
-    'ETH': 'bg-blue-500', 
-    'XRP': 'bg-blue-400',
-    'ADA': 'bg-blue-600',
-    'SOL': 'bg-purple-500',
-    'DOGE': 'bg-yellow-500'
+  'BTC': 'bg-gray-400',
+  'ETH': 'bg-gray-400',
+  'XRP': 'bg-gray-400',
+  'ADA': 'bg-gray-400',
+  'SOL': 'bg-gray-400',
+  'DOGE': 'bg-gray-400'
   };
   return colors[symbol] || 'bg-gray-500';
 };
@@ -404,8 +404,8 @@ const getEstimatedRank = (symbol) => {
 // 코인 아이콘 색상
 const getCoinIconColor = (symbol) => {
  const colors = {
-   'BTC': 'bg-orange-500', 'ETH': 'bg-blue-500', 'XRP': 'bg-blue-400',
-   'ADA': 'bg-blue-600', 'SOL': 'bg-purple-500', 'DOGE': 'bg-yellow-500',
+  'BTC': 'bg-gray-400', 'ETH': 'bg-gray-400', 'XRP': 'bg-gray-400',
+  'ADA': 'bg-gray-400', 'SOL': 'bg-gray-400', 'DOGE': 'bg-gray-400',
  };
  return colors[symbol] || 'bg-gray-500';
 };
@@ -637,15 +637,15 @@ const processcoinDetail = (data) => {
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-lg text-gray-600 font-medium">{coin.symbol}/KRW</span>
                 {realTimeData && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full font-medium">
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
                     ● 실시간 연동
                   </span>
                 )}
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium">
+                <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
                   글로벌 #{coinDetail?.market_cap_rank ? coinDetail.market_cap_rank : '미제공'}위
                 </span>
                 {upbitData?.market_warning !== 'NONE' && (
-                  <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm rounded-full font-medium">
+                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
                     ⚠️ 투자유의
                   </span>
                 )}
@@ -655,7 +655,7 @@ const processcoinDetail = (data) => {
 
           {/* 현재 가격 & 투자 등급 */}
           <div className="grid grid-cols-2 gap-6">
-            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100">
               <div className="text-sm text-emerald-700 font-medium mb-2">💰 현재 가격</div>
               <div className="text-3xl font-bold text-emerald-900 mb-2">
                 {getCurrentPrice().toLocaleString()}원
@@ -674,13 +674,7 @@ const processcoinDetail = (data) => {
               </div>
             </div>
             
-            <div className={`bg-gradient-to-r p-6 rounded-2xl border ${
-              investmentGrade.color === 'purple' ? 'from-purple-50 to-purple-100 border-purple-200' :
-              investmentGrade.color === 'blue' ? 'from-blue-50 to-blue-100 border-blue-200' :
-              investmentGrade.color === 'green' ? 'from-green-50 to-green-100 border-green-200' :
-              investmentGrade.color === 'yellow' ? 'from-yellow-50 to-yellow-100 border-yellow-200' :
-              'from-red-50 to-red-100 border-red-200'
-            }`}>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100">
               <div className={`text-sm font-medium mb-2 ${
                 investmentGrade.color === 'purple' ? 'text-purple-700' :
                 investmentGrade.color === 'blue' ? 'text-blue-700' :
@@ -720,26 +714,26 @@ const processcoinDetail = (data) => {
             🔥 핵심 지표 대시보드
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl text-center">
+            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-2xl mb-2">📊</div>
               <div className="text-xs text-blue-700 mb-1">시가총액</div>
               <div className="text-lg font-bold text-blue-900">
                 {coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
               </div>
             </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl text-center">
+            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-2xl mb-2">💸</div>
               <div className="text-xs text-green-700 mb-1">24시간 거래량</div>
               <div className="text-sm font-bold text-green-900">
                 {coinDetail?.total_volume ? formatLargeNumber(coinDetail.total_volume) + '원' : '미제공'}
               </div>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl text-center">
+            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-2xl mb-2">🔧</div>
               <div className="text-xs text-purple-700 mb-1">개발 활동</div>
               <div className="text-sm font-bold text-purple-900">{getDeveloperActivity()}</div>
             </div>
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl text-center">
+            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-2xl mb-2">👥</div>
               <div className="text-xs text-orange-700 mb-1">커뮤니티</div>
               <div className="text-sm font-bold text-orange-900">{getCommunityStrength()}</div>
@@ -762,7 +756,7 @@ const processcoinDetail = (data) => {
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 p-4 text-center font-medium transition-all duration-200 ${
                 activeTab === tab.id 
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+                  ? 'text-gray-700 border-b-2 border-gray-400 bg-gray-50' 
                   : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
@@ -776,7 +770,7 @@ const processcoinDetail = (data) => {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* 프로젝트 소개 */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-100">
+              <div className="bg-white p-6 rounded-xl border border-gray-100">
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   🔍 {getKoreanName()} 프로젝트 소개
                 </h3>
@@ -791,13 +785,13 @@ const processcoinDetail = (data) => {
               {/* 기본 정보 그리드 */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="bg-white p-4 rounded-lg border border-gray-100">
                     <div className="text-sm text-green-700 mb-2">🎂 출시일</div>
                     <div className="text-lg font-bold text-green-900">
                       {coinDetail?.genesis_date ? new Date(coinDetail.genesis_date).toLocaleDateString() : '미제공'}
                     </div>
                   </div>
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="bg-white p-4 rounded-lg border border-gray-100">
                     <div className="text-sm text-blue-700 mb-2">🏆 글로벌 순위</div>
                     <div className="text-lg font-bold text-blue-900">
                       #{coinDetail?.market_cap_rank || '미제공'}위
@@ -806,7 +800,7 @@ const processcoinDetail = (data) => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <div className="bg-white p-4 rounded-lg border border-gray-100">
                     <div className="text-sm text-yellow-700 mb-2">💎 순환 공급량</div>
                     <div className="text-lg font-bold text-yellow-900">
                       {coinDetail?.circulating_supply && coinDetail.circulating_supply > 0 
@@ -814,7 +808,7 @@ const processcoinDetail = (data) => {
                         : '미제공'}
                     </div>
                   </div>
-                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                  <div className="bg-white p-4 rounded-lg border border-gray-100">
                     <div className="text-sm text-red-700 mb-2">📦 최대 공급량</div>
                     <div className="text-lg font-bold text-red-900">
                       {coinDetail?.max_supply && coinDetail.max_supply > 0 
@@ -827,7 +821,7 @@ const processcoinDetail = (data) => {
 
               {/* 주요 활용 분야 */}
               {coinDetail?.categories && coinDetail.categories.length > 0 && (
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border border-green-100">
+                <div className="bg-white p-6 rounded-xl border border-gray-100">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">🎯 주요 활용 분야</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                    {coinDetail.categories.slice(0, 6).map((category, index) => (
@@ -844,7 +838,7 @@ const processcoinDetail = (data) => {
         {activeTab === 'investment' && (
           <div className="space-y-6">
             {/* 투자 요약 카드 */}
-            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-6 rounded-xl border border-emerald-200">
+            <div className="bg-white p-6 rounded-xl border border-gray-100">
               <h3 className="text-xl font-bold text-gray-900 mb-4">📈 투자 요약 분석</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
@@ -869,7 +863,7 @@ const processcoinDetail = (data) => {
               <div className="space-y-4">
                 <h4 className="text-lg font-bold text-gray-900">💰 가격 정보</h4>
                 
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="bg-white p-4 rounded-lg border border-gray-100">
                   <div className="flex justify-between items-center">
                     <span className="text-red-700 font-medium">24시간 최고가</span>
                     <span className="text-lg font-bold text-red-900">
@@ -878,7 +872,7 @@ const processcoinDetail = (data) => {
                   </div>
                 </div>
                 
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="bg-white p-4 rounded-lg border border-gray-100">
                   <div className="flex justify-between items-center">
                     <span className="text-blue-700 font-medium">24시간 최저가</span>
                     <span className="text-lg font-bold text-blue-900">
@@ -888,7 +882,7 @@ const processcoinDetail = (data) => {
                 </div>
 
                 {coinDetail?.ath && (
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <div className="bg-white p-4 rounded-lg border border-gray-100">
                     <div className="flex justify-between items-center">
                       <span className="text-yellow-700 font-medium">역대 최고가</span>
                       <div className="text-right">
@@ -907,7 +901,7 @@ const processcoinDetail = (data) => {
               <div className="space-y-4">
                 <h4 className="text-lg font-bold text-gray-900">📊 시장 지표</h4>
                 
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="bg-white p-4 rounded-lg border border-gray-100">
                   <div className="flex justify-between items-center">
                     <span className="text-purple-700 font-medium">시가총액</span>
                     <span className="text-lg font-bold text-purple-900">
@@ -916,7 +910,7 @@ const processcoinDetail = (data) => {
                   </div>
                 </div>
                 
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <div className="flex justify-between items-center">
                     <span className="text-green-700 font-medium">24시간 거래량</span>
                     <span className="text-lg font-bold text-green-900">
@@ -928,8 +922,8 @@ const processcoinDetail = (data) => {
                 {coinDetail && typeof coinDetail.price_change_24h === 'number' && (
                   <div className={`p-4 rounded-lg border ${
                     coinDetail.price_change_24h > 0 
-                      ? 'bg-red-50 border-red-200' 
-                      : 'bg-blue-50 border-blue-200'
+                      ? 'bg-gray-50 border-gray-200' 
+                      : 'bg-gray-50 border-gray-200'
                   }`}>
                     <div className="flex justify-between items-center">
                       <span className={`font-medium ${
@@ -950,7 +944,7 @@ const processcoinDetail = (data) => {
             
             {/* 기간별 수익률 */}
             {(coinDetail?.price_change_7d || coinDetail?.price_change_30d || coinDetail?.price_change_1y) && (
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-100">
+              <div className="bg-white p-6 rounded-xl border border-gray-100">
                 <h4 className="text-lg font-bold text-gray-900 mb-4">📈 기간별 수익률</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
@@ -996,7 +990,7 @@ const processcoinDetail = (data) => {
          {activeTab === 'technology' && (
            <div className="space-y-6">
              {/* 기술적 특징 */}
-             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-xl border border-blue-100">
+             <div className="bg-white p-6 rounded-xl border border-gray-100">
                <h3 className="text-xl font-bold text-gray-900 mb-4">🔧 핵심 기술</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  {coinDetail?.hashing_algorithm && (
@@ -1049,7 +1043,7 @@ const processcoinDetail = (data) => {
 
              {/* 개발자 통계 */}
              {(coinDetail?.stars || coinDetail?.forks) && (
-               <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100">
+               <div className="bg-white p-6 rounded-xl border border-gray-100">
                  <h3 className="text-lg font-bold text-gray-900 mb-4">👨‍💻 개발자 통계</h3>
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                    {coinDetail?.stars && (
@@ -1089,7 +1083,7 @@ const processcoinDetail = (data) => {
 
              {/* 커뮤니티 통계 */}
              {(coinDetail?.twitter_followers || coinDetail?.reddit_subscribers) && (
-               <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+               <div className="bg-white p-6 rounded-xl border border-gray-100">
                  <h3 className="text-lg font-bold text-gray-900 mb-4">👥 커뮤니티 규모</h3>
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                    {coinDetail?.twitter_followers && (
@@ -1130,12 +1124,7 @@ const processcoinDetail = (data) => {
          {activeTab === 'risks' && (
            <div className="space-y-6">
              {/* 리스크 요약 */}
-             <div className={`p-6 rounded-xl border ${
-               investmentGrade.color === 'purple' || investmentGrade.color === 'blue' ? 'bg-green-50 border-green-200' :
-               investmentGrade.color === 'green' ? 'bg-yellow-50 border-yellow-200' :
-               investmentGrade.color === 'yellow' ? 'bg-orange-50 border-orange-200' :
-               'bg-red-50 border-red-200'
-             }`}>
+             <div className="p-6 rounded-xl border bg-white border-gray-100">
                <h3 className="text-xl font-bold text-gray-900 mb-4">⚠️ 종합 리스크 평가</h3>
                <div className="grid grid-cols-3 gap-4 text-center">
                  <div>
@@ -1180,7 +1169,7 @@ const processcoinDetail = (data) => {
 
              {/* 상세 리스크 분석 */}
              <div className="space-y-4">
-               <div className="bg-red-50 p-5 rounded-xl border border-red-200">
+               <div className="bg-white p-5 rounded-xl border border-gray-100">
                  <div className="flex items-start gap-3">
                    <span className="text-red-600 text-2xl">📊</span>
                    <div>
@@ -1198,7 +1187,7 @@ const processcoinDetail = (data) => {
                  </div>
                </div>
 
-               <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-200">
+               <div className="bg-white p-5 rounded-xl border border-gray-100">
                  <div className="flex items-start gap-3">
                    <span className="text-yellow-600 text-2xl">🏪</span>
                    <div>
@@ -1217,7 +1206,7 @@ const processcoinDetail = (data) => {
                  </div>
                </div>
 
-               <div className="bg-orange-50 p-5 rounded-xl border border-orange-200">
+               <div className="bg-white p-5 rounded-xl border border-gray-100">
                  <div className="flex items-start gap-3">
                    <span className="text-orange-600 text-2xl">🔧</span>
                    <div>
@@ -1235,7 +1224,7 @@ const processcoinDetail = (data) => {
              </div>
 
              {/* 투자 가이드라인 */}
-             <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+             <div className="bg-white p-6 rounded-xl border border-gray-100">
                <h4 className="font-bold text-blue-800 mb-4">💡 {getKoreanName()} 투자 시 고려사항</h4>
                <div className="space-y-2 text-blue-700 text-sm">
                  <div className="flex items-start gap-2">
@@ -1267,38 +1256,38 @@ const processcoinDetail = (data) => {
 
      {/* 🔗 공식 링크 */}
      {(coinDetail?.homepage || coinDetail?.whitepaper || coinDetail?.twitter_screen_name) && (
-       <div className="bg-white m-4 rounded-2xl shadow-xl border border-gray-100">
+  <div className="bg-white m-4 rounded-2xl shadow-xl border border-gray-100">
          <div className="p-6">
            <h3 className="text-xl font-bold text-gray-900 mb-4">🔗 공식 정보 및 링크</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              {coinDetail.homepage && (
                <a href={coinDetail.homepage} target="_blank" rel="noopener noreferrer" 
-                  className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors border border-blue-200">
-                 <span className="text-blue-600 text-2xl">🌐</span>
+                  className="flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                 <span className="text-sky-600 text-2xl">🌐</span>
                  <div>
-                   <div className="font-bold text-blue-800">공식 웹사이트</div>
-                   <div className="text-blue-600 text-sm break-all">{coinDetail.homepage}</div>
+                   <div className="font-bold text-gray-800">공식 웹사이트</div>
+                   <div className="text-sky-600 text-sm break-all">{coinDetail.homepage}</div>
                  </div>
                </a>
              )}
              
              {coinDetail.whitepaper && (
                <a href={coinDetail.whitepaper} target="_blank" rel="noopener noreferrer" 
-                  className="flex items-center gap-3 p-4 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition-colors border border-yellow-200">
-                 <span className="text-yellow-600 text-2xl">📄</span>
+                  className="flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                 <span className="text-gray-400 text-2xl">📄</span>
                  <div>
-                   <div className="font-bold text-yellow-800">백서 (Whitepaper)</div>
-                   <div className="text-yellow-600 text-sm">기술 문서 및 로드맵</div>
+                   <div className="font-bold text-gray-800">백서 (Whitepaper)</div>
+                   <div className="text-gray-500 text-sm">기술 문서 및 로드맵</div>
                  </div>
                </a>
              )}
              
              {coinDetail.twitter_screen_name && (
                <a href={`https://twitter.com/${coinDetail.twitter_screen_name}`} target="_blank" rel="noopener noreferrer" 
-                  className="flex items-center gap-3 p-4 bg-sky-50 rounded-xl hover:bg-sky-100 transition-colors border border-sky-200">
+                  className="flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
                  <span className="text-sky-600 text-2xl">🐦</span>
                  <div>
-                   <div className="font-bold text-sky-800">공식 트위터</div>
+                   <div className="font-bold text-gray-800">공식 트위터</div>
                    <div className="text-sky-600 text-sm">@{coinDetail.twitter_screen_name}</div>
                  </div>
                </a>
@@ -1306,11 +1295,11 @@ const processcoinDetail = (data) => {
              
              {coinDetail.repos_url && (
                <a href={coinDetail.repos_url} target="_blank" rel="noopener noreferrer" 
-                  className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200">
-                 <span className="text-gray-600 text-2xl">💻</span>
+                  className="flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
+                 <span className="text-gray-400 text-2xl">💻</span>
                  <div>
                    <div className="font-bold text-gray-800">GitHub 저장소</div>
-                   <div className="text-gray-600 text-sm">소스 코드 및 개발 현황</div>
+                   <div className="text-gray-500 text-sm">소스 코드 및 개발 현황</div>
                  </div>
                </a>
              )}
@@ -1740,65 +1729,59 @@ useEffect(() => {
   const [highlighted, setHighlighted] = useState({});
   useEffect(() => {
     coinList.forEach(coin => {
-  const realtimeKey = coin.symbol + '_KRW';
-  const realtimeInfo = realTimeData[realtimeKey];
-
+      const realtimeKey = coin.symbol + '_KRW';
+      const realtimeInfo = realTimeData[realtimeKey];
       if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
         const price = parseInt(realtimeInfo.closePrice);
         const change = parseFloat(realtimeInfo.chgRate);
         const changeAmount = parseInt(realtimeInfo.chgAmt);
-        const prevHighlight = highlighted[coin.symbol] || {};
-
-        // 현재가 변경 체크 (이전 값과 다를 때만 업데이트)
-        if (prevHighlight.price !== price) {
-          setHighlighted(prev => ({
-            ...prev,
-            [coin.symbol]: {
-              ...prev[coin.symbol],
-              priceHL: true,
-              price,
-            }
-          }));
-
-          setTimeout(() => {
-            setHighlighted(prev => ({
+        setHighlighted(prev => {
+          const prevHighlight = prev[coin.symbol] || {};
+          let updated = false;
+          let newHighlight = { ...prevHighlight };
+          if (prevHighlight.price !== price) {
+            newHighlight.priceHL = true;
+            newHighlight.price = price;
+            updated = true;
+            setTimeout(() => {
+              setHighlighted(prev2 => ({
+                ...prev2,
+                [coin.symbol]: {
+                  ...prev2[coin.symbol],
+                  priceHL: false,
+                  price,
+                }
+              }));
+            }, 100);
+          }
+          if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
+            newHighlight.changeHL = true;
+            newHighlight.change = change;
+            newHighlight.changeAmount = changeAmount;
+            updated = true;
+            setTimeout(() => {
+              setHighlighted(prev2 => ({
+                ...prev2,
+                [coin.symbol]: {
+                  ...prev2[coin.symbol],
+                  changeHL: false,
+                  change,
+                  changeAmount,
+                }
+              }));
+            }, 500);
+          }
+          if (updated) {
+            return {
               ...prev,
-              [coin.symbol]: {
-                ...prev[coin.symbol],
-                priceHL: false,
-                price,
-              }
-            }));
-          }, 100);
-        }
-
-        // 전일대비 변경 체크 (변동률 또는 변동금액 중 하나라도 변경)
-        if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
-          setHighlighted(prev => ({
-            ...prev,
-            [coin.symbol]: {
-              ...prev[coin.symbol],
-              changeHL: true,
-              change,
-              changeAmount,
-            }
-          }));
-          setTimeout(() => {
-            setHighlighted(prev => ({
-              ...prev,
-              [coin.symbol]: {
-                ...prev[coin.symbol],
-                changeHL: false,
-                change,
-                changeAmount,
-              }
-            }));
-          }, 500);
-        }
+              [coin.symbol]: newHighlight
+            };
+          }
+          return prev;
+        });
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realTimeData]);
+  }, [coinList, realTimeData]);
 
   const updatedCoinList = useMemo(() => {
     console.log('🔄 updatedCoinList 계산 중, coinList 길이:', coinList.length);
@@ -1880,64 +1863,87 @@ useEffect(() => {
     return sorted;
   }, [searchTerm, updatedCoinList, sortKey, sortOrder]);
 
+
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
   // 주문 탭 상태
-const [orderTab, setOrderTab] = useState("매도");
+  const [orderTab, setOrderTab] = useState("매도");
 
-// 현재가(실시간 우선)
-const currentPriceKRW = useMemo(() => {
-  const rt = realTimeData[selectedCoin + "_KRW"];
-  if (rt?.closePrice) return parseInt(rt.closePrice, 10);
-  const fallback = updatedCoinList.find(c => c.symbol === selectedCoin)?.price;
-  return typeof fallback === "number" ? fallback : 0;
-}, [selectedCoin, realTimeData, updatedCoinList]);
+  // 오더북 상태
+  const [orderbook, setOrderbook] = useState({ bids: [], asks: [], timestamp: null });
+  // 종목정보 상태 (24h 고가/저가/거래량 등)
+  const [marketInfo, setMarketInfo] = useState({});
 
-const priceDir = realTimeData[selectedCoin + "_KRW"]?.priceDirection ?? "same";
+  // 현재가(실시간 우선)
+  const currentPriceKRW = useMemo(() => {
+    const rt = realTimeData[selectedCoin + "_KRW"];
+    if (rt?.closePrice) return parseInt(rt.closePrice, 10);
+    const fallback = updatedCoinList.find(c => c.symbol === selectedCoin)?.price;
+    return typeof fallback === "number" ? fallback : 0;
+  }, [selectedCoin, realTimeData, updatedCoinList]);
 
-// 주문 가격/수량/간편주문 금액
-const [orderPrice, setOrderPrice] = useState(0);
-const [orderQty, setOrderQty] = useState(0);        // 일반 탭에서 사용 (필수는 아님)
-const [quickAmount, setQuickAmount] = useState(0);  // 간편주문 총액(KRW)
+  const priceDir = realTimeData[selectedCoin + "_KRW"]?.priceDirection ?? "same";
 
-// 예시용 잔고 (나중에 API로 바꾸면 됨)
-const [availableKrw, setAvailableKrw] = useState(1_000_000);
+  // 주문 가격/수량/간편주문 금액
+  const [orderPrice, setOrderPrice] = useState(0);
+  const [orderQty, setOrderQty] = useState(0);        // 일반 탭에서 사용 (필수는 아님)
+  const [quickAmount, setQuickAmount] = useState(0);  // 간편주문 총액(KRW)
 
-// 종목/현재가 변할 때 주문가격 동기화
-useEffect(() => {
-  setOrderPrice(currentPriceKRW);
-}, [currentPriceKRW, selectedCoin]);
+  // 예시용 잔고 (나중에 API로 바꾸면 됨)
+  const [availableKrw, setAvailableKrw] = useState(1_000_000);
 
-const formatKRW = (n) => (Number.isFinite(n) ? n.toLocaleString() : "-");
+  // 종목/현재가 변할 때만 주문가격을 현재가로 동기화
+  useEffect(() => {
+    setOrderPrice(currentPriceKRW);
+  }, [currentPriceKRW, selectedCoin]);
 
+  const formatKRW = (n) => (Number.isFinite(n) ? n.toLocaleString() : "-");
 
-// 현재가로 orderPrice 자동 동기화 (실시간 우선)
-useEffect(() => {
-  const rt = realTimeData[selectedCoin + "_KRW"]?.closePrice;
-  const latest = rt ? parseInt(rt, 10)
-    : (updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 0);
-  setOrderPrice(latest);
-}, [selectedCoin, realTimeData, updatedCoinList]);
+  // 실시간 데이터/updatedCoinList가 바뀔 때마다 orderPrice를 강제로 덮어쓰지 않음
 
-// 총액 자동 계산
-const totalAmountKRW = useMemo(
-  () => Math.floor((orderPrice || 0) * (orderQty || 0)),
-  [orderPrice, orderQty]
-);
+  // 총액 자동 계산
+  const totalAmountKRW = useMemo(
+    () => Math.floor((orderPrice || 0) * (orderQty || 0)),
+    [orderPrice, orderQty]
+  );
 
-// 거래내역 서브탭 상태
-const [historyTab, setHistoryTab] = useState("미체결");
+  // 거래내역 서브탭 상태
+  const [historyTab, setHistoryTab] = useState("미체결");
 
-// (데모) 미체결/체결 리스트 — 나중에 API 결과로 교체하면 됨
-const openOrders = useMemo(() => ([
-  { id: 1, t: "12:10:11", side: "매수", qty: "0.005", price: "163,210,000" },
-  { id: 2, t: "12:03:22", side: "매도", qty: "0.002", price: "163,230,000" },
-]), []);
+  // 오더북/마켓정보 fetch (selectedCoin 변경 시)
+  useEffect(() => {
+    if (!selectedCoin) return;
+    // 오더북 fetch
+    fetch(`http://localhost:8000/api/orderbook/${selectedCoin}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && data.data) {
+          setOrderbook({
+            bids: data.data.bids || [],
+            asks: data.data.asks || [],
+            timestamp: data.data.timestamp || null
+          });
+        }
+      });
+    // 마켓정보 fetch (24h 고가/저가/거래량 등)
+    fetch(`http://localhost:8000/api/coin/${selectedCoin}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && data.data) {
+          setMarketInfo(data.data);
+        }
+      });
+  }, [selectedCoin]);
 
-const filledOrders = useMemo(() => ([
-  { id: 11, t: "12:01:02", side: "매수", qty: "0.003", price: "163,200,000" },
-  { id: 12, t: "11:58:45", side: "매도", qty: "0.001", price: "163,180,000" },
-]), []);
+  // (데모) 미체결/체결 리스트 — 나중에 API 결과로 교체하면 됨
+  const openOrders = useMemo(() => ([
+    { id: 1, t: "12:10:11", side: "매수", qty: "0.005", price: "163,210,000" },
+    { id: 2, t: "12:03:22", side: "매도", qty: "0.002", price: "163,230,000" },
+  ]), []);
+  const filledOrders = useMemo(() => ([
+    { id: 11, t: "12:01:02", side: "매수", qty: "0.003", price: "163,200,000" },
+    { id: 12, t: "11:58:45", side: "매도", qty: "0.001", price: "163,180,000" },
+  ]), []);
 
   return (
     <div className="w-full p-0 space-y-4">
@@ -1974,7 +1980,7 @@ const filledOrders = useMemo(() => ([
           </div>
           {/* 코인목록 */}
           <div className="flex flex-col w-[420px] max-w-[90vw] min-h-0" style={{ height: 600 }}>
-            <Card className="flex flex-col" style={{ height: 1100 }}>
+            <Card className="flex flex-col" style={{ height: 1200 }}>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2.5 mb-2">
                   <Search className="h-4 w-4 text-muted-foreground" />
@@ -1985,10 +1991,6 @@ const filledOrders = useMemo(() => ([
                     className="h-8 flex-1 border rounded px-2"
                     autoComplete="off"
                   />                  
-                </div>
-                {/* 마켓 탭 제거: 오직 원화 마켓만 표시 */}
-                <div className="w-full h-8 flex items-center justify-center bg-blue-50 rounded">
-                  <span className="text-xs font-bold text-blue-600">원화 마켓</span>
                 </div>
               </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
@@ -2048,7 +2050,6 @@ const filledOrders = useMemo(() => ([
                             className={`font-semibold text-xs ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
                           >
                             {coin.name}
-                            {/* 🚨 실시간 표시: BTC마켓은 _BTC, KRW마켓은 _KRW */}
                             {realTimeData[coin.symbol + '_KRW'] && (
                               <span className="ml-1 text-green-500 text-[8px]">●</span>
                             )}
@@ -2124,97 +2125,148 @@ const filledOrders = useMemo(() => ([
           </div>
           {/* 하단: 오더북/체결강도/정보패널/주문 (이미지와 동일하게 4단 배치) */}
           {view === "chart" && (
-            <div className="w-full flex flex-row" style={{ height: 600, marginTop: '10px' }}>
-              {/* 오더북 (매수/매도) */}
-              <div className="flex flex-col w-[230px] border-r border-gray-200 bg-blue-50">
-                {/* 상단 매도호가 */}
-                <div className="flex-1 flex flex-col-reverse overflow-hidden">
-                  {[
-                    { qty: '0.025', price: '163,209,000', change: '+0.06%' },
-                    { qty: '0.045', price: '163,200,000', change: '+0.05%' },
-                    { qty: '0.038', price: '163,175,000', change: '+0.03%' },
-                    { qty: '0.025', price: '163,172,000', change: '+0.03%' },
-                    { qty: '0.028', price: '163,171,000', change: '+0.03%' },
-                    { qty: '0.723', price: '163,170,000', change: '+0.03%' },
-                    { qty: '0.919', price: '163,169,000', change: '+0.03%' },
-                    { qty: '0.018', price: '163,168,000', change: '+0.03%' },
-                  ].map((row, i) => (
-                    <div key={i} className="grid grid-cols-3 text-xs h-6 items-center hover:bg-blue-100">
-                      <div className="text-blue-700 text-left pl-2 font-mono">{row.qty}</div>
-                      <div className="text-center font-bold font-mono">{row.price}</div>
-                      <div className="text-right pr-2 font-mono text-red-500">{row.change}</div>
+            <div className="w-full flex flex-row" style={{ height: 600, marginTop: '70px' }}>
+              {/* 오더북 (매수/매도) - 실시간 연동, 3열: [매도수량] [호가] [매수수량] */}
+              <div className="flex flex-col w-[350px] border-r border-gray-200 bg-white">
+                {/* 오더북 헤더 */}
+                <div className="grid grid-cols-3 text-xs font-bold text-center border-b bg-gray-50 h-8 items-center">
+                  <div className="text-blue-700">매도수량</div>
+                  <div>호가</div>
+                  <div className="text-red-700">매수수량</div>
+                </div>
+                {/* 매도호가: 현재가 기준 위로 9틱 */}
+                {(() => {
+                  const rows = [];
+                  const tick = 1; // 1틱 단위 (원화)
+                  const price = parseInt(currentPriceKRW);
+                  for (let i = 10; i >= 1; i--) {
+                    const askPrice = price + i * tick;
+                    let askQty = '0.000';
+                    if (orderbook.asks && orderbook.asks.length > 0) {
+                      const found = orderbook.asks.find(a => parseInt(a.price) === askPrice);
+                      if (found) askQty = parseFloat(found.quantity).toFixed(3);
+                    }
+                    const isSelected = orderPrice === askPrice;
+                    rows.push(
+                      <div
+                        key={i}
+                        className={
+                          `grid grid-cols-3 text-xs h-7 items-center` +
+                          (isSelected ? ' ring-2 ring-blue-500 ring-inset' : '')
+                        }
+                        style={isSelected ? { zIndex: 2, border: '2px solid #2563eb' } : {}}
+                      >
+                        <div className="text-blue-700 bg-blue-100 text-left pl-2 font-mono rounded-l">{askQty}</div>
+                        <div
+                          className="text-center font-bold font-mono text-blue-600 bg-blue-100 cursor-pointer transition-all duration-200 hover:bg-blue-200 hover:scale-105 hover:shadow-md"
+                          style={{ border: '2px solid transparent' }}
+                          onClick={() => setOrderPrice(askPrice)}
+                        >
+                          {askPrice.toLocaleString()}
+                        </div>
+                        <div className="bg-white"></div>
+                      </div>
+                    );
+                  }
+                  return rows;
+                })()}
+                {/* 현재가: 항상 매수 첫번째 호가 위치 (asks[0]) */}
+                {/* 현재가 (중앙) */}
+                {(() => {
+                  const price = parseInt(currentPriceKRW);
+                  // 수량: bids에서 우선, 없으면 asks에서
+                  let qty = '';
+                  if (orderbook.bids && orderbook.bids.length > 0) {
+                    const found = orderbook.bids.find(b => parseInt(b.price) === price);
+                    if (found) qty = parseFloat(found.quantity).toFixed(3);
+                  }
+                  if (!qty && orderbook.asks && orderbook.asks.length > 0) {
+                    const found = orderbook.asks.find(a => parseInt(a.price) === price);
+                    if (found) qty = parseFloat(found.quantity).toFixed(3);
+                  }
+                  return (
+                    <div className="grid grid-cols-3 text-xs h-7 items-center">
+                      <div className="bg-white"></div>
+                      <div
+                        className="text-center font-bold font-mono text-red-600 bg-red-100 border-2 border-pink-600 cursor-pointer transition-all duration-200 hover:bg-red-200 hover:scale-105 hover:shadow-md hover:border-4 hover:border-pink-500"
+                        style={{ border: '2px solid #ec4899' }}
+                        onClick={() => setOrderPrice(price)}
+                      >
+                        {price.toLocaleString()}
+                      </div>
+                      <div className="text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r">{qty}</div>
                     </div>
-                  ))}
-                </div>
-                {/* 체결강도 */}
-                <div className="bg-white border-y border-gray-200 py-1 px-2 text-xs text-center">
-                  {/* <div className="flex justify-between items-center">
-                    <span className="text-blue-700 font-semibold">체결강도</span>
-                    <span className="text-red-600 font-bold">+169.59%</span>
-                  </div> */}
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="font-bold text-base text-red-600">163,166,000</span>
-                    <span className="text-red-500 font-semibold">+0.03%</span>
-                  </div>
-                </div>
-                {/* 하단 매수호가 */}
-                <div className="flex-1 overflow-hidden">
-                  {[
-                    { qty: '0.019', price: '163,165,000', change: '+0.03%' },
-                    { qty: '0.101', price: '163,149,000', change: '+0.02%' },
-                    { qty: '0.000', price: '163,147,000', change: '+0.02%' },
-                    { qty: '0.009', price: '163,140,000', change: '+0.01%' },
-                    { qty: '0.001', price: '163,123,000', change: '+0.01%' },
-                  ].map((row, i) => (
-                    <div key={i} className="flex flex-row text-xs h-6 items-center hover:bg-blue-100">
-                      {/* <div className="flex-1 text-blue-700 text-right pr-2 font-mono">{row.qty}</div> */}
-                      <div className="flex-1 text-center font-semibold font-mono">{row.price}</div>
-                      <div className="flex-1 text-right pr-2 text-red-500">{row.change}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* 하단 수량 */}
-                <div className="flex justify-between items-center bg-white border-t border-gray-200 px-2 py-1 text-xs">
-                  <span className="font-semibold">3.370</span>
-                  <span className="text-gray-500">수량</span>
-                  <span className="font-semibold">2.049</span>
-                </div>
+                  );
+                })()}
+
+                {/* 매수호가: 현재가 기준 아래로 9틱 */}
+                {(() => {
+                  const rows = [];
+                  const tick = 1; // 1틱 단위 (원화)
+                  const price = parseInt(currentPriceKRW);
+                  for (let i = 1; i <= 9; i++) {
+                    const bidPrice = price - i * tick;
+                    let bidQty = '0.000';
+                    if (orderbook.bids && orderbook.bids.length > 0) {
+                      const found = orderbook.bids.find(b => parseInt(b.price) === bidPrice);
+                      if (found) bidQty = parseFloat(found.quantity).toFixed(3);
+                    }
+                    const isSelected = orderPrice === bidPrice;
+                    rows.push(
+                      <div
+                        key={i}
+                        className={
+                          `grid grid-cols-3 text-xs h-7 items-center` +
+                          (isSelected ? ' ring-2 ring-pink-500 ring-inset' : '')
+                        }
+                        style={isSelected ? { zIndex: 2, border: '2px solid #ec4899' } : {}}
+                      >
+                        <div className="bg-white"></div>
+                        <div
+                          className="text-center font-bold font-mono text-red-600 bg-red-100 cursor-pointer transition-all duration-200 hover:bg-red-200 hover:scale-105 hover:shadow-md"
+                          style={{ border: '2px solid transparent' }}
+                          onClick={() => setOrderPrice(bidPrice)}
+                        >
+                          {bidPrice > 0 ? bidPrice.toLocaleString() : ''}
+                        </div>
+                        <div className="text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r">{bidQty}</div>
+                      </div>
+                    );
+                  }
+                  return rows;
+                })()}
               </div>
-              {/* 정보 패널 */}
-              <div className="flex flex-col w-[220px] bg-white border-r border-gray-200 px-3 py-2 text-xs justify-between">
+              {/* 정보 패널 - 실시간 마켓정보 연동 */}
+              <div className="flex flex-col w-[200px] bg-white border-r border-gray-200 px-3 py-2 text-xs justify-between">
                 <div>
                   <div className="mb-2">
                     <span className="font-semibold">거래량</span>
-                    <span className="float-right">1,233</span>
+                    <span className="float-right">{marketInfo?.total_volume ? formatKRW(marketInfo.total_volume) : '-'}</span>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">거래대금</span>
-                    <span className="float-right">200,963 백만원</span>
+                    <span className="float-right">{marketInfo?.market_cap ? formatKRW(marketInfo.market_cap) : '-'}</span>
                     <div className="text-[10px] text-gray-400">(최근24시간)</div>
                   </div>
                   <div className="mb-2">
-                    <span className="font-semibold">52주 최고</span>
-                    <span className="float-right">166,800,000</span>
-                    <div className="text-[10px] text-gray-400">(2025.07.14)</div>
+                    <span className="font-semibold">24h 최고</span>
+                    <span className="float-right text-red-500">{marketInfo?.high_24h ? formatKRW(marketInfo.high_24h) : '-'}</span>
                   </div>
                   <div className="mb-2">
-                    <span className="font-semibold">52주 최저</span>
-                    <span className="float-right">72,100,000</span>
-                    <div className="text-[10px] text-gray-400">(2024.08.05)</div>
+                    <span className="font-semibold">24h 최저</span>
+                    <span className="float-right text-blue-500">{marketInfo?.low_24h ? formatKRW(marketInfo.low_24h) : '-'}</span>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">전일종가</span>
-                    <span className="float-right">163,118,000</span>
+                    <span className="float-right">{marketInfo?.prev_closing_price ? formatKRW(marketInfo.prev_closing_price) : '-'}</span>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">당일고가</span>
-                    <span className="float-right text-red-500">163,627,000</span>
-                    <div className="text-[10px] text-red-400 float-right">+0.31%</div>
+                    <span className="float-right text-red-500">{marketInfo?.high_24h ? formatKRW(marketInfo.high_24h) : '-'}</span>
                   </div>
                   <div>
                     <span className="font-semibold">당일저가</span>
-                    <span className="float-right text-blue-500">162,916,000</span>
-                    <div className="text-[10px] text-blue-400 float-right">-0.12%</div>
+                    <span className="float-right text-blue-500">{marketInfo?.low_24h ? formatKRW(marketInfo.low_24h) : '-'}</span>
                   </div>
                 </div>
               </div>
@@ -2222,7 +2274,7 @@ const filledOrders = useMemo(() => ([
               <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
                 {/* 탭 헤더 */}
                 <div className="flex border-b border-gray-200 mb-4">
-                  {["매수", "매도", "간편주문", "거래내역"].map((t) => (
+                  {["매수", "매도", "거래내역"].map((t) => (
                     <button
                       key={t}
                       className={`flex-1 py-2 text-sm ${
@@ -2285,9 +2337,15 @@ const filledOrders = useMemo(() => ([
                         className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
                       />
                       <button className="w-8 h-8 text-gray-400" type="button"
-                              onClick={() => setOrderPrice(p => Math.max(0, p - 100))}>-</button>
+                        onClick={() => setOrderPrice(p => {
+                          const n = Number(p) || 0;
+                          return Math.max(0, n - 1);
+                        })}>-</button>
                       <button className="w-8 h-8 text-gray-400" type="button"
-                              onClick={() => setOrderPrice(p => p + 100)}>+</button>
+                        onClick={() => setOrderPrice(p => {
+                          const n = Number(p) || 0;
+                          return n + 1;
+                        })}>+</button>
                     </div>
 
                     {/* 수량 */}
@@ -2325,7 +2383,7 @@ const filledOrders = useMemo(() => ([
                     {/* ✅ 매수/매도 탭별 버튼 */}
                     {orderTab === "매수" && (
                       <button
-                        className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
+                        className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
                         type="button"
                         onClick={() => console.log("매수 전송")}
                       >
@@ -2334,7 +2392,7 @@ const filledOrders = useMemo(() => ([
                     )}
                     {orderTab === "매도" && (
                       <button
-                        className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
+                        className="w-full h-11 rounded-md bg-blue-600 text-white text-sm font-semibold hover:opacity-90"
                         type="button"
                         onClick={() => console.log("매도 전송")}
                       >
@@ -2347,30 +2405,6 @@ const filledOrders = useMemo(() => ([
                     </div>
                   </>
                 ) : null}
-
-                {/* 간편주문 */}
-                {orderTab === "간편주문" && (
-                  <div className="flex flex-col gap-4">
-                    <div className="text-xs text-gray-500">
-                      원하는 비율을 선택하고 즉시 주문하세요.
-                    </div>
-                    <div className="grid grid-cols-5 gap-2">
-                      {["10%", "25%", "50%", "75%", "100%"].map(p => (
-                        <button key={p} className="border rounded py-2 text-xs hover:bg-gray-50">
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="flex-1 h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90">
-                        매수
-                      </button>
-                      <button className="flex-1 h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90">
-                        매도
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* 거래내역 */}
                   {orderTab === "거래내역" && (

@@ -12,6 +12,7 @@ from datetime import datetime
 router = APIRouter(prefix="/api", tags=["bithumb"])
 
 
+
 # 빗썸 마켓 코드 조회 (신규 추가)
 @router.get("/markets")
 async def get_markets():
@@ -26,6 +27,27 @@ async def get_markets():
                         "status": "success",
                         "data": data,
                         "total_count": len(data) if isinstance(data, list) else 0
+                    }
+                else:
+                    return {"status": "error", "message": f"API 오류: {response.status}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# 빗썸 오더북(호가) 데이터 조회
+@router.get("/orderbook/{symbol}")
+async def get_orderbook(symbol: str):
+    """특정 코인의 오더북(호가) 데이터 조회"""
+    try:
+        url = f"https://api.bithumb.com/public/orderbook/{symbol}_KRW?count=15"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return {
+                        "status": "success",
+                        "symbol": symbol,
+                        "data": data.get("data", {})
                     }
                 else:
                     return {"status": "error", "message": f"API 오류: {response.status}"}
