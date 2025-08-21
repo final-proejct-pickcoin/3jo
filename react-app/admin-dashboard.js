@@ -1426,7 +1426,37 @@ const handleSaveEdit = async () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+               {/*미리보기 모달*/}
+               <Dialog open={isAnnouncementDetailOpen} onOpenChange={setIsAnnouncementDetailOpen}>
+                <DialogContent className={`sm:max-w-[600px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`}>
+                  <DialogHeader>
+                    <div className="flex items-center justify-between">
+                      <DialogTitle className={isDarkMode ? "text-white" : ""}>
+                        {selectedAnnouncement?.title || "공지 미리보기"}
+                      </DialogTitle>
+                      {selectedAnnouncement?.important && <Badge variant="destructive">중요</Badge>}
+                    </div>
+                    <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
+                      등록일 {selectedAnnouncement?.date} ·{" "}
+                      상태 {selectedAnnouncement?.status === "active" ? "활성" : "만료"} ·{" "}
+                      조회수 {selectedAnnouncement?.views?.toLocaleString?.()}
+                    </DialogDescription>
+                  </DialogHeader>
 
+                  <div className={`mt-4 rounded-md border p-4 max-h-[60vh] overflow-y-auto ${
+                    isDarkMode ? "border-gray-700 text-gray-200" : "border-gray-200 text-gray-800"
+                  }`}>
+                    <pre className="whitespace-pre-wrap break-words">
+                      {selectedAnnouncement?.content}
+                    </pre>
+                  </div>
+
+                  <DialogFooter>
+                    <Button onClick={() => setIsAnnouncementDetailOpen(false)}>닫기</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
@@ -1552,7 +1582,7 @@ const handleSaveEdit = async () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleAnnouncementClick(announcement)}>
                                   <Eye className="h-4 w-4 mr-2" /> 미리보기
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openEditDialog(announcement)}
