@@ -5,143 +5,266 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, TrendingDown, Star, Plus, Activity, Globe, BarChart3 } from "lucide-react"
+import { TrendingUp, TrendingDown, Star, Activity, Globe, BarChart3 } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
-import TradingChart  from "@/components/trading-chart"
+// import TradingChart from "@/components/trading-chart" // 🔧 차트 제거 유지
 import axios from "axios"
-import {bookmarked,toggle_Bookmark, useBookmark} from "@/components/bookmark-provider.jsx"
+import { useBookmark } from "@/components/bookmark-provider.jsx"
 
-const trendingCoins = [
-  { symbol: "PEPE", change: 25.8, reason: "Meme coin rally" },
-  { symbol: "SHIB", change: 18.4, reason: "Community growth" },
-  { symbol: "FLOKI", change: 12.3, reason: "Partnership news" },
-]
+// ─────────────────────────────────────────────────────────────────────────────
+// 유틸
+// ─────────────────────────────────────────────────────────────────────────────
+const formatNumber = (n) =>
+  typeof n === "number" && isFinite(n) ? n.toLocaleString() : "-"
+const formatPercent = (n, d = 2) =>
+  typeof n === "number" && isFinite(n) ? `${n.toFixed(d)}%` : "-"
 
-const coinNameMap = { BTC: "비트코인", ETH: "이더리움", BNB: "비엔비", XRP: "리플", ADA: "에이다", SOL: "솔라나", DOGE: "도지코인", MATIC: "폴리곤", DOT: "폴카닷", LINK: "체인링크" }
-const getKoreanCoinLabel = (symbol, name) => coinNameMap[symbol] ? `${coinNameMap[symbol]} (${symbol})` : name ? `${name} (${symbol})` : symbol
-const getTrendingReason = (symbol, reason) => {
-  if (symbol === "PEPE") return "밈코인 강세"
-  if (symbol === "SHIB") return "커뮤니티 성장"
-  if (symbol === "FLOKI") return "파트너십 발표"
-  return reason
-}
-const formatNumber = n => typeof n === "number" ? n.toLocaleString() : n
-const getBadgeVariant = v => v === "bullish" ? "default" : v === "bearish" ? "destructive" : "secondary"
+// 🔢 시총 계산용 BTC 유통량(단순 상수, 필요하면 API로 교체)
+const BTC_CIRCULATING_SUPPLY = 19_700_000 // ≈ 19.7M
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 메인 컴포넌트
+// ─────────────────────────────────────────────────────────────────────────────
 export const MarketAnalysis = () => {
-  const { subscribe, liveData={} } = useWebSocket()//websocket에 기본값 주기
-  const [selectedTimeframe, setSelectedTimeframe] = useState("24h")
+  // 웹소켓(실시간 시세)
+  const { subscribe, liveData = {} } = useWebSocket()
+
+  // 상단 통화 토글
   const [currency, setCurrency] = useState("KRW")
 
+  // 뉴스
   const [marketNews, setMarketNews] = useState([])
-  //유저 아이디 값을 가져오기 위한 상태 변수선언
-  const [user_id, setUserId] = useState(null);
 
+  // 유저/자산 리스트
+  const [user_id, setUserId] = useState(null)
+  const [items, setItems] = useState([])
+
+  // 북마크 훅
+  const { toggle_Bookmark } = useBookmark()
+
+  // JWT에서 사용자 email 꺼내서 user_id 조회
   useEffect(() => {
-      //===========================================================================================
-  console.log("북마크 추가 요청", user_id);
-  console.log("토큰확인", JSON.parse(atob(sessionStorage.getItem("auth_token").split('.')[1])));
-    
-  //토큰값을 빼서 user_mail변수에 넣어서 출력
-  const tokenValue = sessionStorage.getItem("auth_token");
-  if (tokenValue) {
-    const payload = JSON.parse(atob(tokenValue.split('.')[1]));
-    const user_mail = payload.email || payload.sub || null;
-  //이메일 값 확인
-    console.log("이메일:", user_mail);
-  //이메일값 정상 들어왔을때 id값을 가져오는 API 호출
+    const tokenValue = sessionStorage.getItem("auth_token")
+    if (!tokenValue) return
+    try {
+      const payload = JSON.parse(atob(tokenValue.split(".")[1]))
+      const user_mail = payload.email || payload.sub || null
       if (user_mail) {
-      fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
-        .then(res => res.json())
-        .then(data => {
-        //   user_id=data.user_id;
-        if(data && data.user_id != null) {
-        setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
-        }
-        })
-        .catch(err => console.error(err));
+        fetch(
+          `http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(
+            user_mail
+          )}`
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.user_id != null) setUserId(Number(data.user_id))
+          })
+          .catch(console.error)
+      }
+    } catch (e) {
+      console.error("JWT 파싱 오류:", e)
     }
-  }
-
   }, [])
 
-    //변경된 user_id값 최종 확인
+  // 뉴스(FastAPI)
   useEffect(() => {
-    console.log("user_id 변경됨:", user_id);
-  }, [user_id]);
-
-  //===========================================================================================
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/news") // FastAPI 서버 주소
-      .then(res => res.json())
-      .then(data => setMarketNews(data))
-      .catch(err => console.error(err))
+    fetch("http://127.0.0.1:8000/news")
+      .then((res) => res.json())
+      .then((data) => setMarketNews(data))
+      .catch((err) => console.error(err))
   }, [])
 
-
-  const [items, setItems] = useState([]);
-
-
-  // 마켓 리스트 가져오기
+  // 자산 + 북마크 가져오기(백엔드)
   useEffect(() => {
-    //const user_id = 12; // 임시. JWT 붙이면 서버에서 꺼내게 변경
-    if (!user_id) return;
+    if (!user_id) return
     axios
-      .get(`http://localhost:8080/api/Market_assets/assets_and_bookmarks`, { params: { user_id } })
-      .then(res => {
-        console.log(' API data:', res.data, Array.isArray(res.data) ? res.data[0] : null);
-        setItems(res.data)}
-            )
-      .catch(console.error);
-  }, [user_id]);
+      .get(`http://localhost:8080/api/Market_assets/assets_and_bookmarks`, {
+        params: { user_id },
+      })
+      .then((res) => setItems(res.data))
+      .catch(console.error)
+  }, [user_id])
 
-  
-
-// 웹소켓 구독은 서버 리스트 기준
-  // useEffect(() => {
-  //   if (items.length) subscribe(items.map(c => c.symbol));
-  // }, [subscribe, items]);
-
-const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks";
-
-const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
-  //const user_id = 12; // 임시
-  const is_bookmarked = Number(is_bookmarkedRaw) === 1; // 0/1 정규화
-  try {
-    if (is_bookmarked) {
-      // 해제
-      await axios.delete(BOOKMARK_API, { params: { user_id, asset_id } });
-      setItems(prev =>
-        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 0 } : i)
-      );
-    } else {
-      // 추가
-      await axios.post(BOOKMARK_API, null, { params: { user_id, asset_id } });
-      setItems(prev =>
-        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 1 } : i)
-      );
-    }
-  } catch (e) {
-    console.error("[bookmark err]", e?.response?.status, e?.response?.data || e);
-  }
-};
-
-  const exchangeRate = 1391
-  const totalMarketCapUSD = 16800
-  const totalMarketCapKRW = totalMarketCapUSD * 1e8 * exchangeRate
-  const totalMarketCapKRWDisplay = `${Math.round(totalMarketCapKRW / 1e12)}조 원`
-  const volumeUSD = 892
-  const volumeKRW = volumeUSD * 1e8 * exchangeRate
-  const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
+  // 실시간 구독
   useEffect(() => {
-  if (items.length) {
-    console.log('items sample:', items?.[0]);
-    subscribe(items.map(c => c.symbol))
-  }
-}, [subscribe, items])
+    if (items.length) subscribe(items.map((c) => c.symbol))
+  }, [subscribe, items])
 
-  const {bookmarked,toggle_Bookmark}=useBookmark();
+  // ───────────────────────────────────────────────────────────────────────────
+  // 상단 4개 카드용 빗썸 실시간 지표
+  //   1) 24시간 거래대금 합계(KRW)
+  //   2) BTC 점유율(거래대금 기준)
+  //   3) BTC 현재가(KRW)
+  //   4) 투자 심리 지수(주문서 bid/(bid+ask))
+  // ───────────────────────────────────────────────────────────────────────────
+  const [bhStats, setBhStats] = useState({
+    totalVolumeKRW: null,
+    btcDominance: null,
+    btcPriceKRW: null,
+    sentiment: null,
+  })
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 중앙 4개 카드(시장 구조/흐름)
+  //   A) BTC 24h 변동성(%)
+  //   B) 상승 종목 비율(%)
+  //   C) 상위 5종목 거래대금 집중도(%)
+  //   D) BTC 최우선호가 스프레드(%)
+  // ───────────────────────────────────────────────────────────────────────────
+  const [extra, setExtra] = useState({
+    btcVolatilityPct: null,
+    advancersRatioPct: null,
+    top5ConcentrationPct: null,
+    btcTopOfBookSpreadPct: null,
+  })
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 하단 4개 카드
+  //   5) 시가총액 추정치(KRW)
+  //   6) 24h 거래횟수(샘플 기반)
+  //   7) 변동성 지표(=BTC 24h 변동성 재표시)
+  //   8) 시장 유동성(24h 거래량 ÷ 주문서 잔량)
+  // ───────────────────────────────────────────────────────────────────────────
+  const [more, setMore] = useState({
+    marketCapKRW: null,
+    tradeCount24h: null,
+    volatility24hPct: null,
+    liquidityIndex: null,
+  })
+
+  // 빗썸 API에서 모든 지표 계산
+  useEffect(() => {
+    const fetchBithumb = async () => {
+      try {
+        // 1) 전체 KRW 마켓 티커
+        const { data: allRes } = await axios.get(
+          "https://api.bithumb.com/public/ticker/ALL_KRW"
+        )
+        const all = allRes?.data || {}
+
+        let totalVolume = 0
+        let btcVolume = 0
+        let advancers = 0
+        const volList = []
+        const symbols = []
+
+        Object.entries(all).forEach(([symbol, v]) => {
+          if (symbol === "date") return
+          const accVal = Number(v?.acc_trade_value_24H || 0) // 24h 거래대금(KRW)
+          totalVolume += accVal
+          volList.push(accVal)
+          symbols.push(symbol)
+
+          if (symbol === "BTC") btcVolume = accVal
+
+          // 상승 종목 비율: 24h 변동률 양수
+          const r = parseFloat(
+            v?.fluctate_rate_24H ??
+              ((Number(v?.closing_price || 0) -
+                Number(v?.prev_closing_price || 0)) /
+                Number(v?.prev_closing_price || 1)) *
+                100
+          )
+          if (isFinite(r) && r > 0) advancers += 1
+        })
+
+        const btc = all?.BTC || {}
+        const btcPriceKRW = Number(btc?.closing_price || 0)
+
+        // 2) 주문서 기반 심리지수 + 스프레드 + 유동성
+        const { data: obRes } = await axios.get(
+          "https://api.bithumb.com/public/orderbook/BTC_KRW?count=50"
+        )
+        const bids = obRes?.data?.bids || []
+        const asks = obRes?.data?.asks || []
+        const bidQty = bids.reduce((s, b) => s + Number(b.quantity || 0), 0)
+        const askQty = asks.reduce((s, a) => s + Number(a.quantity || 0), 0)
+        const sentiment =
+          bidQty + askQty > 0
+            ? Math.round((bidQty / (bidQty + askQty)) * 100)
+            : null
+
+        const bestBid = bids.length ? Number(bids[0].price) : null
+        const bestAsk = asks.length ? Number(asks[0].price) : null
+        const mid =
+          bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : null
+        const spreadPct =
+          mid && bestBid != null && bestAsk != null
+            ? ((bestAsk - bestBid) / mid) * 100
+            : null
+
+        // 3) BTC 24h 변동성(%): (고가-저가)/중간값
+        const hi = Number(btc?.max_price || 0)
+        const lo = Number(btc?.min_price || 0)
+        const volPct =
+          hi > 0 && lo > 0 ? ((hi - lo) / ((hi + lo) / 2)) * 100 : null
+
+        // 4) 상승 종목 비율(%)
+        const advRatio = symbols.length ? (advancers / symbols.length) * 100 : null
+
+        // 5) 상위 5종목 거래대금 집중도(%)
+        volList.sort((a, b) => b - a)
+        const top5 = volList.slice(0, 5).reduce((s, v) => s + v, 0)
+        const top5Pct = totalVolume > 0 ? (top5 / totalVolume) * 100 : null
+
+        // 6) 시가총액 추정치 (KRW)
+        const mcap =
+          btcPriceKRW > 0 ? btcPriceKRW * BTC_CIRCULATING_SUPPLY : null
+
+        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량)
+        const unitsTraded24h = Number(btc?.units_traded_24H || 0) // BTC 수량
+        const liquidityIdx =
+          bidQty + askQty > 0 ? unitsTraded24h / (bidQty + askQty) : null
+
+        // 8) 24시간 거래횟수(샘플) — recent_transactions API는 최대 1000건만 제공
+        let tradeCount24h = null
+        try {
+          const { data: txRes } = await axios.get(
+            "https://api.bithumb.com/public/recent_transactions/BTC_KRW?count=1000"
+          )
+          const tx = Array.isArray(txRes?.data) ? txRes.data : []
+          const now = Date.now()
+          const cutoff = now - 24 * 60 * 60 * 1000
+          tradeCount24h = tx.filter((t) => {
+            const ts = new Date(
+              (t?.transaction_date || "").replace(" ", "T") + "+09:00"
+            ).getTime()
+            return isFinite(ts) && ts >= cutoff
+          }).length
+        } catch (e) {
+          // 불가 시 null 유지 → 카드에서 "-" 표기
+        }
+
+        // 상태 반영
+        setBhStats({
+          totalVolumeKRW: totalVolume,
+          btcDominance: totalVolume > 0 ? (btcVolume / totalVolume) * 100 : null,
+          btcPriceKRW,
+          sentiment,
+        })
+
+        setExtra({
+          btcVolatilityPct: volPct,
+          advancersRatioPct: advRatio,
+          top5ConcentrationPct: top5Pct,
+          btcTopOfBookSpreadPct: spreadPct,
+        })
+
+        setMore({
+          marketCapKRW: mcap,
+          tradeCount24h,
+          volatility24hPct: volPct,
+          liquidityIndex: liquidityIdx,
+        })
+      } catch (e) {
+        console.error("[Bithumb fetch error]", e)
+      }
+    }
+
+    fetchBithumb()
+    const id = setInterval(fetchBithumb, 30000) // 30초마다 갱신
+    return () => clearInterval(id)
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -150,160 +273,192 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
         <div className="inline-flex items-center gap-2 bg-muted/50 rounded px-3 py-1">
           <span className="text-xs font-medium">통화:</span>
           <button
-            className={`px-2 py-1 rounded text-xs font-semibold ${currency === "KRW" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
+            className={`px-2 py-1 rounded text-xs font-semibold ${
+              currency === "KRW" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+            }`}
             onClick={() => setCurrency("KRW")}
-          >KRW</button>
+          >
+            KRW
+          </button>
           <button
-            className={`px-2 py-1 rounded text-xs font-semibold ${currency === "USD" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
+            className={`px-2 py-1 rounded text-xs font-semibold ${
+              currency === "USD" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+            }`}
             onClick={() => setCurrency("USD")}
-          >USD</button>
+          >
+            USD
+          </button>
         </div>
       </div>
-      {/* Market Overview Stats */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">전체 시가총액 ({currency})</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {currency === "KRW" ? totalMarketCapKRWDisplay : "1조 6,800억 달러"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500">+2.4%</span> (전일 대비)<br />
-              {currency === "KRW" ? (
-                <span className="text-muted-foreground">(1조 6,800억 달러 × 1,391원/USD 기준)</span>
-              ) : null}
-            </p>
-          </CardContent>
-        </Card>
 
+      {/* ───────────────────────────────────────────────────────────────────────
+          상단 네모칸 4개 카드 (빗썸 API 기반)
+      ─────────────────────────────────────────────────────────────────────── */}
+      <div className="grid md:grid-cols-4 gap-4">
+        {/* 1) 24시간 거래대금 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">24시간 거래량 ({currency})</CardTitle>
+            <CardTitle className="text-sm font-medium">24시간 거래대금</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currency === "KRW" ? volumeKRWDisplay : "892억 달러"}
+              {bhStats.totalVolumeKRW != null ? `${Math.round(bhStats.totalVolumeKRW / 1e12)}조 원` : "-"}
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-red-500">-5.1%</span> (전일 대비)<br />
-              {currency === "KRW" ? (
-                <span className="text-muted-foreground">(892억 달러 × 1,391원/USD 기준)</span>
-              ) : null}
-            </p>
+            <p className="text-xs text-muted-foreground">모든 KRW 마켓 합계 (24h)</p>
           </CardContent>
         </Card>
 
+        {/* 2) BTC 점유율 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">비트코인 점유율</CardTitle>
+            <CardTitle className="text-sm font-medium">BTC 점유율</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">51.2%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500">+0.3%</span> (전일 대비)
-            </p>
+            <div className="text-2xl font-bold">
+              {bhStats.btcDominance != null ? `${bhStats.btcDominance.toFixed(1)}%` : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">24h 거래대금 대비 비중</p>
           </CardContent>
         </Card>
 
+        {/* 3) BTC 현재가 */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">BTC 현재가</CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {bhStats.btcPriceKRW != null ? bhStats.btcPriceKRW.toLocaleString() + " 원" : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">빗썸 KRW 마켓</p>
+          </CardContent>
+        </Card>
+
+        {/* 4) 투자 심리 지수 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">투자 심리 지수</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">52</div>
-            <p className="text-xs text-muted-foreground">심리: 중립</p>
+            <div className="text-2xl font-bold text-orange-500">
+              {bhStats.sentiment != null ? bhStats.sentiment : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">매수수량 / (매수+매도) × 100</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Market Chart Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-3">
-          <TradingChart symbol="BTC/USDT" height={600} />
-        </div>
-        
-        {/* Market Insights */}
+      {/* ───────────────────────────────────────────────────────────────────────
+          중앙 4개 카드 (실시간 계산값)
+      ─────────────────────────────────────────────────────────────────────── */}
+      <div className="grid md:grid-cols-4 gap-4">
+        {/* A) BTC 24h 변동성 */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between text-base">
-              시장 인사이트
-              <Badge variant="secondary">
-                <Activity className="h-3 w-3 mr-1" />
-                실시간
-              </Badge>
-            </CardTitle>
-            <CardDescription>주요 시장 지표</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">BTC 24h 변동성</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">가격 목표</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">저항선</span>
-                  <span className="font-semibold text-red-600">$45,200</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">지지선</span>
-                  <span className="font-semibold text-green-600">$41,800</span>
-                </div>
-              </div>
-            </div>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatPercent(extra.btcVolatilityPct)}</div>
+            <p className="text-xs text-muted-foreground">(고가−저가)/중간값 × 100</p>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">기술 지표</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">RSI (14)</span>
-                  <span className="font-semibold">58.2</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">MACD</span>
-                  <span className="font-semibold text-green-600">상승세</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">이동평균선 (50)</span>
-                  <span className="font-semibold">$42,150</span>
-                </div>
-              </div>
-            </div>
+        {/* B) 상승 종목 비율 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">상승 종목 비율</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatPercent(extra.advancersRatioPct, 1)}</div>
+            <p className="text-xs text-muted-foreground">ALL_KRW 중 24h 상승 코인 비중</p>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">거래량 분석</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">24시간 거래량</span>
-                  <span className="font-semibold">28.5B</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">평균 거래량</span>
-                  <span className="font-semibold">24.2B</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">거래량 추이</span>
-                  <span className="font-semibold text-green-600">↗ 활발</span>
-                </div>
-              </div>
-            </div>
+        {/* C) 상위 5종목 집중도 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">상위 5종목 집중도</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatPercent(extra.top5ConcentrationPct, 1)}</div>
+            <p className="text-xs text-muted-foreground">Top5 24h 거래대금 / 전체</p>
+          </CardContent>
+        </Card>
 
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs text-muted-foreground mb-1">시장 심리</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-background rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '68%' }}></div>
-                </div>
-                <span className="text-xs font-semibold text-green-600">68% 매수 우위</span>
-              </div>
-            </div>
+        {/* D) BTC 호가 스프레드 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">BTC 호가 스프레드</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatPercent(extra.btcTopOfBookSpreadPct, 3)}</div>
+            <p className="text-xs text-muted-foreground">(최우선매도−최우선매수)/중간값 × 100</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* ───────────────────────────────────────────────────────────────────────
+          하단 4개 카드 (시총/거래횟수/변동성/유동성)
+      ─────────────────────────────────────────────────────────────────────── */}
+      <div className="grid md:grid-cols-4 gap-4">
+        {/* 5) 시가총액 추정치 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">시가총액 추정치</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {more.marketCapKRW != null ? `${Math.round(more.marketCapKRW / 1e12)}조 원` : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              BTC가격 × 유통량(≈ {formatNumber(BTC_CIRCULATING_SUPPLY)}개)
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* 6) 24h 거래횟수 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">24h 거래횟수</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(more.tradeCount24h)}</div>
+            <p className="text-xs text-muted-foreground">recent_transactions 샘플 기반</p>
+          </CardContent>
+        </Card>
+
+        {/* 7) 변동성 지표(재표시) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">변동성 지표</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatPercent(more.volatility24hPct)}</div>
+            <p className="text-xs text-muted-foreground">BTC 24h 변동성 재표시</p>
+          </CardContent>
+        </Card>
+
+        {/* 8) 시장 유동성 지표 */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">시장 유동성</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {typeof more.liquidityIndex === "number" ? `${more.liquidityIndex.toFixed(2)}x` : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">24h 거래량(수량) ÷ 주문서 총잔량</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          탭(마켓/트렌드/뉴스/분석) — 기존 유지
+      ─────────────────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="markets" className="space-y-4">
         <TabsList>
           <TabsTrigger value="markets">마켓</TabsTrigger>
@@ -312,6 +467,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           <TabsTrigger value="analysis">분석</TabsTrigger>
         </TabsList>
 
+        {/* 마켓 */}
         <TabsContent value="markets">
           <Card>
             <CardHeader>
@@ -320,57 +476,67 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-
-              
-                {/* 서버값 출력 */}
                 {items.slice(0, 10).map((coin, idx) => {
-                  const livePrice  = liveData[coin.symbol]?.price ?? coin.price;
-                  const liveChange = liveData[coin.symbol]?.change24h ?? coin.change_rate ?? 0; 
-                  const rank = idx + 1;
+                  const livePrice = liveData[coin.symbol]?.price ?? coin.price
+                  const liveChange =
+                    liveData[coin.symbol]?.change24h ?? coin.change_rate ?? 0
+                  const rank = idx + 1
 
                   return (
-                      <div key={coin.asset_id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center space-x-4">
-                          <span className="text-sm text-muted-foreground w-6">#{rank}</span>
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="font-bold text-sm">{coin.symbol}</span>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">{`${coin.asset_name} (${coin.symbol})`}</h3> {/* snake_case */}
-                            <p className="text-sm text-muted-foreground">{coin.market}</p>
-                          </div>
+                    <div
+                      key={coin.asset_id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <span className="text-sm text-muted-foreground w-6">#{rank}</span>
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <span className="font-bold text-sm">{coin.symbol}</span>
                         </div>
+                        <div>
+                          <h3 className="font-semibold">{`${coin.asset_name} (${coin.symbol})`}</h3>
+                          <p className="text-sm text-muted-foreground">{coin.market}</p>
+                        </div>
+                      </div>
 
-                        <div className="flex items-center space-x-6">
+                      <div className="flex items-center space-x-6">
                         <div className="text-right">
                           <p className="font-semibold">
                             {typeof livePrice === "number" ? livePrice.toLocaleString() : "-"}
                           </p>
                           <Badge variant={liveChange > 0 ? "default" : "destructive"}>
-                            {liveChange > 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-                            {liveChange > 0 ? "+" : ""}{Number(liveChange).toFixed(1)}%
+                            {liveChange > 0 ? (
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 mr-1" />
+                            )}
+                            {liveChange > 0 ? "+" : ""}
+                            {Number(liveChange).toFixed(1)}%
                           </Badge>
                         </div>
 
                         <div className="flex gap-2">
-                          {/* ✅ 북마크 토글: assetId 기준 */}
+                          {/* ✅ 북마크 토글: asset_id 기준 */}
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => toggleBookmark(coin.asset_id, coin.is_bookmarked)}
+                            onClick={() => toggle_Bookmark(coin.asset_id, coin.is_bookmarked)}
                           >
-                            <Star className="h-3 w-3" fill={Number(coin.is_bookmarked) ? "yellow" : "none"} />
+                            <Star
+                              className="h-3 w-3"
+                              fill={Number(coin.is_bookmarked) ? "yellow" : "none"}
+                            />
                           </Button>
                         </div>
                       </div>
                     </div>
-                  );
+                  )
                 })}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* 트렌드 */}
         <TabsContent value="trending">
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
@@ -380,13 +546,17 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {trendingCoins.map((coin, idx) => (
+                  {[
+                    { symbol: "PEPE", change: 25.8, reason: "밈코인 강세" },
+                    { symbol: "SHIB", change: 18.4, reason: "커뮤니티 성장" },
+                    { symbol: "FLOKI", change: 12.3, reason: "파트너십 발표" },
+                  ].map((coin, i) => (
                     <div key={coin.symbol} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <span className="text-lg">#{idx + 1}</span>
+                        <span className="text-lg">#{i + 1}</span>
                         <div>
                           <p className="font-semibold">{coin.symbol}</p>
-                          <p className="text-sm text-muted-foreground">{getTrendingReason(coin.symbol, coin.reason)}</p>
+                          <p className="text-sm text-muted-foreground">{coin.reason}</p>
                         </div>
                       </div>
                       <Badge className="bg-green-100 text-green-700">
@@ -414,10 +584,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
                   ].map((sector) => (
                     <div key={sector.name} className="flex items-center justify-between">
                       <span className="font-medium">{sector.name}</span>
-                      <span className={`font-semibold ${sector.color}`}>
-                        {/* {sector.change > 0 ? "+" : ""} */}
-                        {sector.change}%
-                      </span>
+                      <span className={`font-semibold ${sector.color}`}>{sector.change}%</span>
                     </div>
                   ))}
                 </div>
@@ -426,39 +593,38 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </div>
         </TabsContent>
 
-
         {/* 뉴스 */}
         <TabsContent value="news">
           <Card>
-          <CardHeader>
-      <CardTitle>📰 시장 뉴스</CardTitle>
-      <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>
-    </CardHeader>
+            <CardHeader>
+              <CardTitle>📰 시장 뉴스</CardTitle>
+              <CardDescription>가장 주목받는 암호화폐 이슈와 동향</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {marketNews.map((item, idx) => (
+                  <div key={idx} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold">{item.title}</h3>
+                      <Badge variant="secondary">{item.source}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{item.published_at}</p>
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-500 hover:underline"
+                    >
+                      자세히 보기
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-    <CardContent>
-      <div className="space-y-4">
-        {marketNews.map((item, idx) => (
-          <div key={idx} className="p-4 border rounded-lg">
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="font-semibold">{item.title}</h3>
-              <Badge variant="secondary">{item.source}</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">{item.published_at}</p>
-            <a
-              href={item.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-500 hover:underline">
-              자세히 보기
-            </a>
-          </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-</TabsContent>
-
-
+        {/* 분석(더미 UI 유지) */}
         <TabsContent value="analysis">
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
@@ -470,7 +636,9 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
                 <div className="space-y-4 text-sm">
                   <div className="flex justify-between items-center">
                     <span>RSI (14일)</span>
-                    <span className="font-semibold">58.2 <span className="text-xs text-muted-foreground">(중립)</span></span>
+                    <span className="font-semibold">
+                      58.2 <span className="text-xs text-muted-foreground">(중립)</span>
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>MACD</span>
