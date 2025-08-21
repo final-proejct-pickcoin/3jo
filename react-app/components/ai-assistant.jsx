@@ -1,12 +1,168 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect  } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Brain, Mic, MicOff, Send, TrendingUp, Lightbulb, BarChart3, MessageCircle } from "lucide-react"
+
+const MOCK_NOTICES = [
+  { id: 3, title: "시스템 점검 안내 ", content: "안정적인 서비스 제공을 위해 새벽 2시~3시 점검이 진행됩니다. 점검 중에는 로그인/거래가 일시 중단될 수 있습니다." },
+  { id: 2, title: "신규 코인 상장: ABC", content: "거래소에 ABC 코인이 상장되었습니다. 원화/USDT 마켓 모두 지원합니다." },
+  { id: 1, title: "고객센터 운영시간 변경", content: "평일 09:00~18:00, 주말/공휴일 휴무로 변경되었습니다." },
+];
+
+/* 공지 (읽기 전용) */
+function NoticeBoard() {
+  const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || ""
+  const API_BASE = RAW_BASE.replace(/\/$/, "")
+  const USE_MOCK = !API_BASE
+
+  const [expanded, setExpanded] = useState(false)
+  const [latest, setLatest] = useState(null)
+  const [list, setList] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [listLoadedOnce, setListLoadedOnce] = useState(false)
+
+   const getDate = (obj) => obj?.createdAt || obj?.created_at || obj?.created || null
+
+  // 최신 1건
+  useEffect(() => {
+    if (USE_MOCK) {
+      setLatest(MOCK_NOTICES[0] || null)
+      setLoading(false)
+      return
+    }
+    const ctrl = new AbortController()
+    ;(async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`${API_BASE}/notices/latest`, { signal: ctrl.signal })
+        if (res.ok) {
+          const data = await res.json()
+          setLatest(data)
+        } else {
+          setLatest(MOCK_NOTICES[0] || null)
+        }
+      } catch {
+        setLatest(MOCK_NOTICES[0] || null)
+        setError("공지 불러오기 실패")
+      } finally {
+        setLoading(false)
+      }
+
+    })()
+    return () => ctrl.abort()
+  }, [API_BASE, USE_MOCK])
+
+  // 목록(펼쳤을 때 한 번만)
+  const loadList = async () => {
+    if (listLoadedOnce) return
+    setListLoadedOnce(true);
+
+    //백엔드 미연결 목목록 세팅
+    if (USE_MOCK) {
+      setList(MOCK_NOTICES);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/notices?limit=20`)
+      if (res.ok) {
+        const data = await res.json()
+        // 백엔드가 {content:[], items:[]} 같은 포맷일 수도 있으니 보강
+        const items = Array.isArray(data) ? data : (data?.items ?? data?.content ?? [])
+        setList(items)
+      } else {
+        setList(MOCK_NOTICES)
+      }
+    } catch {
+      setList(MOCK_NOTICES)
+    }
+  }
+
+  // 스켈레톤
+  if (loading && !latest) {
+    return (
+      <Card className="mb-4 border bg-white">
+        <CardContent className="p-3">
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 w-24 rounded bg-muted" />
+            <div className="h-4 w-2/3 rounded bg-muted" />
+            <div className="h-3 w-5/6 rounded bg-muted" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!latest) return null
+
+ // ★ 최신 공지 날짜(getDate 사용)
+  const latestDate = (() => {
+    const d = getDate(latest)
+    return d ? new Date(d).toLocaleString() : ""
+  })()
+
+  return (
+    <>
+      {/* 최신 공지 배너 (흰색 배경) */}
+      <Card className="mb-4 border bg-white">
+        <CardContent className="p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold">공지사항</p>
+              <p className="text-sm break-words">{latest.title}</p>
+              {latest.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">{latest.content}</p>}
+              {latestDate && <p className="text-[11px] text-muted-foreground mt-1">{latestDate}</p>}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                setExpanded((v) => !v)
+                if (!expanded) await loadList()
+              }}
+            >
+              {expanded ? "접기" : "전체 보기"}
+            </Button>
+          </div>
+          {error && <p className="text-[11px] text-red-500 mt-2">{error}</p>}
+        </CardContent>
+      </Card>
+
+      {/* 전체 공지 목록 */}
+      {expanded && (
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">공지사항 전체</CardTitle>
+            <CardDescription>읽기 전용 목록</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(list ?? MOCK_NOTICES).map((n) => {
+              const raw = getDate(n)                                      // ★ getDate로 날짜 읽기
+              const d = raw ? new Date(raw).toLocaleString() : ""
+              return (
+                <div key={n.id ?? n.noticeId ?? n.notice_id ?? Math.random()} className="p-3 rounded-lg border">
+                  <p className="font-medium break-words">{n.title}</p>
+                  {!!n.content && (
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">{n.content}</p>
+                  )}
+                  {!!d && <p className="text-[11px] text-muted-foreground mt-1">{d}</p>}
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+    </>
+  )
+}
+
 
 const aiRecommendations = [
   {
@@ -138,6 +294,7 @@ export function AIAssistant() {
     <div className="grid lg:grid-cols-3 gap-6">
       {/* AI Chat Interface */}
       <div className="lg:col-span-2">
+         <NoticeBoard />
         <Card className="h-[600px] flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

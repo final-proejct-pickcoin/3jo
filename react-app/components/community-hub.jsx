@@ -638,10 +638,7 @@ useEffect(() => {
 
 
 
-                      <Button variant="ghost" size="sm">
-                        <Share className="h-4 w-4 mr-1" />
-                        공유
-                      </Button>
+                      
                     </div>
 
                       {/* ---------- 댓글 영역 ---------- */}

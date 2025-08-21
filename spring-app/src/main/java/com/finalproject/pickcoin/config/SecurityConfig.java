@@ -29,6 +29,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/users/register", "/users/verify", "/community/findAll", "/user/log-test"
                                 , "/community/insert", "/api/assets", "/api/Market_assets/bookmarks", "/users/logout"
                                 , "/users/login", "/css/**", "/js/**", "/error", "/test", "/users/social-login", "**"
@@ -43,7 +44,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://"+base_url+":3000", "http://"+base_url+":8000")); // 프론트 주소
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true); // 인증정보 포함 허용 (쿠키 등)
 
