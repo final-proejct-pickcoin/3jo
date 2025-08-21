@@ -15,4 +15,5 @@ public interface CommunityService {
     void increaseLikeCount(int postid);
     List<KeywordCount> getPopularKeword() throws IOException;
     void indexPostToElasticsearch(Community community) throws IOException;
+    void createCommunityPostsIndex() throws IOException;
 }
