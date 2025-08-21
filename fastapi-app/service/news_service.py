@@ -5,9 +5,11 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
 
+from repository.news_repository import save_news
+
 BASE_URL = "https://bloomingbit.io"
 
-def bloomingbit_news(limit=5):
+def bloomingbit_news(limit=20):
     options = Options()
     options.add_argument("--headless")  # 서버 배포 headless
     options.add_argument("--no-sandbox")
@@ -15,7 +17,7 @@ def bloomingbit_news(limit=5):
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     driver.get(BASE_URL)
-    sleep(5)  # 메인 페이지 로딩 대기
+    sleep(3)  # 메인 페이지 로딩 대기
 
     # HTML 파싱
     html = driver.page_source
@@ -51,3 +53,12 @@ def bloomingbit_news(limit=5):
         })
 
     return items
+
+
+def crawl_and_save(limit: int = 20) -> int:
+    
+    items = bloomingbit_news(limit=limit)
+    n = save_news(items)
+    print(f"[crawl_and_save] 저장 시도 건수: {n}")
+    return n
+

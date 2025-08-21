@@ -29,6 +29,12 @@ from api.chat import router as ws_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
+# // [news schedule] 크롤링 주기 설정
+from apscheduler.schedulers.background import BackgroundScheduler
+from service.news_service import crawl_and_save
+from datetime import datetime
+from repository.news_repository import delete_news_older_than, trim_news_by_count
+
 # --- 음성 AI 관련 모듈 추가  Google Cloud 관련 모듈 추가 ---
 import google.generativeai as genai
 from api.voice_router import router as voice_ai_router
@@ -104,8 +110,68 @@ app.include_router(inq_router)
 # 채팅 웹소켓 라우터
 app.include_router(ws_router)
 
+
 # 빗썸 API 라우터
 app.include_router(bithumb_router)
+
+
+# 1) 스케줄러 인스턴스 (서울 타임존)
+scheduler = BackgroundScheduler(timezone="Asia/Seoul")
+
+def job_news_refresh():
+    """
+    1시간마다 실행될 실제 작업 함수.
+    service.news_service.crawl_and_save()는
+    내부에서 크롤링하고 레포지토리 save_news()로 업서트까지 수행.
+    """
+    try:
+        print(f"[scheduler] news refresh start {datetime.now()}")
+        saved = crawl_and_save(limit=20)   # 반환값 없으면 무시해도 OK
+        print(f"[scheduler] news refresh saved {saved if saved is not None else 'N/A'} rows")
+
+        # 보존기간 정책: 2일보다 오래된 뉴스 삭제 + 최대 300개 유지
+        deleted_by_days = delete_news_older_than(days=2)
+        print(f"[scheduler] cleanup(days) deleted {deleted_by_days} rows")
+
+        deleted_by_cap = trim_news_by_count(max_rows=300)
+        print(f"[scheduler] cleanup(cap) deleted {deleted_by_cap} rows")
+
+    except Exception as e:
+        import traceback
+        print("[scheduler] ERROR in job_news_refresh")
+        traceback.print_exc()
+
+# 2) 앱 시작 시 스케줄러 시작 + 잡 등록
+@app.on_event("startup")
+def start_scheduler():
+    try:
+        if not scheduler.running:
+            scheduler.start()
+        # 매 1시간 주기 실행
+        scheduler.add_job(
+            job_news_refresh,
+            trigger="interval",
+            hours=1,
+            id="news_refresh_hourly",
+            replace_existing=True,
+        )
+        # (옵션) 서버 기동 직후 1회 즉시 실행 — 초기 데이터 채우기 용
+        scheduler.add_job(job_news_refresh, run_date=datetime.now(), id="news_refresh_boot", replace_existing=True)
+        print("[scheduler] started (hourly news refresh)")
+    except Exception:
+        import traceback
+        print("[scheduler] failed to start")
+        traceback.print_exc()
+
+# 3) 앱 종료 시 스케줄러 정리
+@app.on_event("shutdown")
+def stop_scheduler():
+    try:
+        scheduler.shutdown(wait=False)
+        print("[scheduler] stopped")
+    except Exception:
+        pass
+
 
 @app.websocket("/ws/realtime")
 async def websocket_endpoint(websocket: WebSocket):
@@ -246,3 +312,20 @@ async def test_voice_price(symbol: str):
         "has_data": result is not None,
         "closing_price": result.get('closing_price') if result else None
     }
+
+# --- 스케줄러 헬스체크 (추가) ---
+@app.get("/api/debug/scheduler")
+def scheduler_status():
+    try:
+        jobs = scheduler.get_jobs()
+        return {
+            "running": scheduler.running,
+            "jobs": [
+                {
+                    "id": j.id,
+                    "next_run_time": str(j.next_run_time)
+                } for j in jobs
+            ]
+        }
+    except Exception as e:
+        return {"error": str(e)}
