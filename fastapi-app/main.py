@@ -41,6 +41,9 @@ from api.voice_router import router as voice_ai_router
 from google.cloud import speech # 인증 확인을 위해 speech 클라이언트 임포트
 # ---------------------------------
 
+from db.mysql import ping
+from fastapi import APIRouter
+
 
 load_dotenv()
 
@@ -74,6 +77,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+# --- DB Healthcheck (임시) ---
+health = APIRouter()
+
+@health.get("/health/db")
+def health_db():
+    """DB 연결 상태 확인용"""
+    return {"db_ok": ping()}
+
 # CORS 설정
 origins = [
     "http://localhost:3000",
@@ -91,6 +102,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# DB Health 라우터 등록
+app.include_router(health)
 
 # 뉴스 크롤링 라우터
 app.include_router(news_router)
@@ -121,22 +135,27 @@ scheduler = BackgroundScheduler(timezone="Asia/Seoul")
 def job_news_refresh():
     """
     1시간마다 실행될 실제 작업 함수.
-    service.news_service.crawl_and_save()는
-    내부에서 크롤링하고 레포지토리 save_news()로 업서트까지 수행.
+    내부에서 크롤링하고 save_news()로 업서트까지 수행.
     """
     try:
         print(f"[scheduler] news refresh start {datetime.now()}")
-        saved = crawl_and_save(limit=20)   # 반환값 없으면 무시해도 OK
-        print(f"[scheduler] news refresh saved {saved if saved is not None else 'N/A'} rows")
+        from service.news_service import crawl_and_save
+        from repository.news_repository import delete_news_older_than, trim_news_by_count
 
-        # 보존기간 정책: 2일보다 오래된 뉴스 삭제 + 최대 300개 유지
-        deleted_by_days = delete_news_older_than(days=2)
-        print(f"[scheduler] cleanup(days) deleted {deleted_by_days} rows")
+        saved = crawl_and_save(limit=20) or 0
+        print(f"[scheduler] news refresh saved {saved} rows")
 
-        deleted_by_cap = trim_news_by_count(max_rows=300)
-        print(f"[scheduler] cleanup(cap) deleted {deleted_by_cap} rows")
+        # ✅ 저장이 1건 이상일 때만 정리 수행 (테이블이 잠깐 비는 현상 방지)
+        if saved > 0:
+            deleted_by_days = delete_news_older_than(days=2)
+            print(f"[scheduler] cleanup(days) deleted {deleted_by_days} rows")
 
-    except Exception as e:
+            deleted_by_cap = trim_news_by_count(max_rows=300)
+            print(f"[scheduler] cleanup(cap) deleted {deleted_by_cap} rows")
+        else:
+            print("[scheduler] skip cleanup (no new rows)")
+
+    except Exception:
         import traceback
         print("[scheduler] ERROR in job_news_refresh")
         traceback.print_exc()
