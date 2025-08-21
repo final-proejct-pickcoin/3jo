@@ -1,5 +1,6 @@
 package com.finalproject.pickcoin.controller;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -13,8 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.finalproject.pickcoin.domain.Community;
+import com.finalproject.pickcoin.domain.KeywordCount;
 import com.finalproject.pickcoin.service.CommunityLikeService;
 import com.finalproject.pickcoin.service.CommunityService;
+
 
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
@@ -28,6 +31,7 @@ public class CommunityController {
     private CommunityLikeService communityLikeService;
 
     Logger logger = LoggerFactory.getLogger(CommunityController.class);
+
 
     // 전체조회
     @GetMapping("/findAll")
@@ -43,7 +47,7 @@ public class CommunityController {
 
     // 등록
     @PostMapping("/insert")
-    public Community insert(@RequestBody Community community) {
+    public Community insert(@RequestBody Community community) throws IOException {
 
         try{
             MDC.put("event_type", "community");
@@ -52,7 +56,9 @@ public class CommunityController {
             MDC.remove("event_type");
         }
 
-
+        // elastic 인덱스에 추가
+        communityService.indexPostToElasticsearch(community);
+        
         communityService.insert(community);
         return community;
     }
@@ -126,4 +132,18 @@ public class CommunityController {
         List<Integer> likedPostIds = communityLikeService.getLikePostIdByUser(userId);
         return ResponseEntity.ok(likedPostIds);
     }
+
+    // 인기 키워드 조회
+    @GetMapping("/popular-keword")
+    public ResponseEntity<List<KeywordCount>> getPopularKeyword() {
+        try{
+            List<KeywordCount> popularKeyword = communityService.getPopularKeword();
+            System.out.println("인기키워드:"+popularKeyword.toString());
+            return ResponseEntity.ok(popularKeyword);
+        }catch (IOException e){
+            logger.info(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
 }

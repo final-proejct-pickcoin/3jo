@@ -373,7 +373,30 @@ export default function DashboardOverview({ isDarkMode }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <iframe src="http://localhost:5601/app/r/s/sSiLN" height="600" width="800"></iframe>
+        {/* 키바나 대시보드 테스트 */}
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
+              <Users className="h-5 w-5 mr-2 text-green-500" />
+              기간별 사용자 수 추이
+            </CardTitle>
+            {/* 기존의 집계 기준 선택은 iframe 임베드 시 외부에서 제어 불가하므로 비워두거나 제거 가능 */}
+          </CardHeader>
+          <CardContent>
+            <div style={{ width: '100%', height: 320 }}>
+              <iframe
+                title="Kibana User Trend Dashboard"
+                src="http://localhost:5601/app/dashboards#/create?embed=true&_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-1w,to:now))&_a=(description:'',filters:!(),fullScreenMode:!f,options:(hidePanelTitles:!f,syncColors:!f,useMargins:!t),panels:!((embeddableConfig:(attributes:(references:!((id:'9d7f4f80-7d99-11f0-ba8d-4538ea732305',name:indexpattern-datasource-current-indexpattern,type:index-pattern),(id:'9d7f4f80-7d99-11f0-ba8d-4538ea732305',name:indexpattern-datasource-layer-adc36379-efff-482c-a905-0c8397874ca7,type:index-pattern)),state:(datasourceStates:(indexpattern:(layers:(adc36379-efff-482c-a905-0c8397874ca7:(columnOrder:!('50b3f3a5-0dee-49b5-903a-f07dffce1469','519937ac-ee99-4229-8685-a5605712caa3'),columns:('50b3f3a5-0dee-49b5-903a-f07dffce1469':(dataType:date,isBucketed:!t,label:'@timestamp',operationType:date_histogram,params:(interval:auto),scale:interval,sourceField:'@timestamp'),'519937ac-ee99-4229-8685-a5605712caa3':(dataType:number,isBucketed:!f,label:'Unique%20count%20of%20email.keyword',operationType:unique_count,scale:ratio,sourceField:email.keyword)),incompleteColumns:())))),filters:!(),query:(language:kuery,query:''),visualization:(axisTitlesVisibilitySettings:(x:!t,yLeft:!t,yRight:!t),fittingFunction:None,gridlinesVisibilitySettings:(x:!t,yLeft:!t,yRight:!t),labelsOrientation:(x:0,yLeft:0,yRight:0),layers:!((accessors:!('519937ac-ee99-4229-8685-a5605712caa3'),layerId:adc36379-efff-482c-a905-0c8397874ca7,layerType:data,position:top,seriesType:line,showGridlines:!f,xAccessor:'50b3f3a5-0dee-49b5-903a-f07dffce1469')),legend:(isVisible:!t,position:right),preferredSeriesType:line,tickLabelsVisibilitySettings:(x:!t,yLeft:!t,yRight:!t),valueLabels:hide,yLeftExtent:(mode:full),yRightExtent:(mode:full))),title:'',type:lens,visualizationType:lnsXY)),gridData:(h:15,i:'1c7442ea-3bbe-4db7-ad04-b9e64b5056fc',w:24,x:0,y:0),panelIndex:'1c7442ea-3bbe-4db7-ad04-b9e64b5056fc',type:lens,version:'7.17.10')),query:(language:kuery,query:''),tags:!(),timeRestore:!f,title:'',viewMode:edit)&hide-filter-bar=true"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ borderRadius: '8px' }}
+                allowFullScreen
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
         {/* 총 사용자 추이 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader className="flex justify-between items-center">

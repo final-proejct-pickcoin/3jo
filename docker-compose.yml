@@ -19,6 +19,8 @@ services:
     depends_on:
       - redis
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+    - elastic-net
 
   redis:
     image: redis:latest
@@ -28,6 +30,8 @@ services:
     restart: always
     volumes:
       - ./redis_data:/data
+    networks:
+    - elastic-net
 
   spring-app:
     build:
@@ -59,6 +63,9 @@ services:
     depends_on:
       - redis
     command: ./gradlew bootRun
+    networks:
+    - elastic-net
+
   react-app:
 
     build: ./react-app
@@ -77,39 +84,53 @@ services:
       - fastapi-app
       - spring-app
     command: ["pnpm", "dev"]
+    networks:
+    - elastic-net
+    
 
   elasticsearch:
-    build:
-      context: .
-      dockerfile: Dockerfile.txt
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
     ports:
       - 9200:9200
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      # - xpack.security.enrollment.enabled=false
       - xpack.security.http.ssl.enabled=false
-      - xpack.security.enrollment.enabled=false
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - elastic-net
       
   logstash:
-    image: docker.elastic.co/logstash/logstash:8.17.4
+    image: docker.elastic.co/logstash/logstash:7.17.10
     ports:
       - 5044:5044
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     volumes:
-    - ./logstash:/usr/share/logstash/pipeline
+      - ./logstash:/usr/share/logstash/pipeline
     depends_on:
-    - elasticsearch
+      - elasticsearch
+    networks:
+      - elastic-net
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.17.4
+    image: docker.elastic.co/kibana/kibana:7.17.10
     ports:
       - 5601:5601
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+      # - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
     depends_on:
       - elasticsearch
+    networks:
+      - elastic-net
   
 volumes:
   elasticsearch_data:
+
+networks:
+  elastic-net:
+    driver: bridge
