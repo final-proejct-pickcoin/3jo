@@ -55,11 +55,12 @@ function TradingChart({
 
   // Memoized palette
   const palette = useMemo(() => {
+    // 한국식: 상승(빨강), 하락(파랑)
     const light = {
-      bg: "#ffffff", text: "#2D3748", grid: "rgba(0,0,0,0.05)", up: "#FF6B8A", down: "#4F9CF9", volUp: "rgba(79,156,249,.3)", volDown: "rgba(255,107,138,.3)", axis: "#E2E8F0", accent: "#4F9CF9",
+      bg: "#ffffff", text: "#2D3748", grid: "rgba(0,0,0,0.05)", up: "#FF6B8A", down: "#4F9CF9", volUp: "rgba(255, 0, 64, 0.22)", volDown: "rgba(0, 64, 255, 0.42)", axis: "#E2E8F0", accent: "#4F9CF9",
     };
     const dark = {
-      bg: "#0D1421", text: "#E2E8F0", grid: "rgba(255,255,255,0.04)", up: "#6BB6FF", down: "#FF8FA3", volUp: "rgba(107,182,255,.3)", volDown: "rgba(255,143,163,.3)", axis: "#2D3748", accent: "#63B3ED",
+      bg: "#0D1421", text: "#E2E8F0", grid: "rgba(255,255,255,0.04)", up: "#FF8FA3", down: "#6BB6FF", volUp: "rgba(255, 0, 64, 0.28)", volDown: "rgba(0, 64, 255, 0.58)", axis: "#2D3748", accent: "#63B3ED",
     };
     return theme === "dark" ? dark : light;
   }, [theme]);
@@ -87,7 +88,17 @@ function TradingChart({
           const changeAmount = Number(data.data.fluctate_24H);
           const changeRate = Number(data.data.fluctate_rate_24H);
           const isUp = data.data.fluctate_24H[0] !== "-";
-          if (!ignore) setBithumbInfo({ changeAmount, changeRate, isUp });
+          // Only update state if values actually changed to avoid infinite loop
+          setBithumbInfo(prev => {
+            if (
+              prev.changeAmount === changeAmount &&
+              prev.changeRate === changeRate &&
+              prev.isUp === isUp
+            ) {
+              return prev;
+            }
+            return { changeAmount, changeRate, isUp };
+          });
         }
       } catch {}
     }
@@ -133,20 +144,11 @@ function TradingChart({
       return utc + (9 * 60 * 60 * 1000);
     };
     if (bithumbCandles.length > 0 && !isLoadingCandles) {
-      // 마지막 봉 이후 현재 시각에 해당하는 빈 캔들 추가
-      const out = [...bithumbCandles];
-      const last = out[out.length - 1];
-      const now = getSeoulNow();
-      const lastCandleEnd = (last.time * 1000) + ms;
-      if (now > lastCandleEnd) {
-        // 현재 시각이 마지막 봉 구간보다 뒤라면, 현재 시각에 해당하는 빈 캔들 추가
-        const nextTime = Math.floor(now / 1000);
-        out.push({ time: nextTime, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 });
-      }
-      return out;
+      // 오직 실제 bithumbCandles 데이터만 반환 (가짜 캔들 추가 X)
+      return bithumbCandles;
     }
     // 고정 시드 더미 데이터 (Math.random() X)
-    // console.log('⚠️ 빗썸 데이터 없음, 고정 더미 데이터 사용');
+    console.log('⚠️ 빗썸 데이터 없음, 고정 더미 데이터 사용');
     const seed = symbol + timeframe;
     let seedValue = 0;
     for (let i = 0; i < seed.length; i++) seedValue += seed.charCodeAt(i);
@@ -441,11 +443,12 @@ function TradingChart({
           borderColor: palette.axis, 
           timeVisible: true, 
           secondsVisible: ["1m", "5m"].includes(timeframe),
-          rightOffset: 20, // 마지막 캔들을 항상 오른쪽에서 20번째 위치에 고정
+          rightOffset: 2, // 마지막 캔들 오른쪽에 2칸 여백
           barSpacing: 7,   // 캔들 크기 더 작게
           minBarSpacing: 6,
           fixLeftEdge: false,
           fixRightEdge: false,
+          autoScale: false,
         },
         crosshair: {
           mode: 1,
@@ -466,7 +469,8 @@ function TradingChart({
         seriesData = transformToHeikinAshi(candles);
       }
 
-      // ✅ 틱 차트: 차트 타입에 따라 봉/라인/에어리어 모두 지원
+  // ✅ 틱 차트: 차트 타입에 따라 봉/라인/에어리어 모두 지원
+  // 데이터 세팅 후 항상 오른쪽 끝에 고정
       if (timeframe === 'tick') {
         if (["candlestick", "heikin-ashi"].includes(chartType)) {
           priceSeriesRef.current = chart.addCandlestickSeries({
@@ -790,7 +794,34 @@ function TradingChart({
     candles, palette
   ]);
 
-  // (실시간 틱 관련 useEffect 완전 제거)
+
+  // 실시간 가격으로 마지막 캔들만 update (차트 전체 setData 금지)
+  useEffect(() => {
+    if (!ready || !priceSeriesRef.current || bithumbCandles.length === 0) return;
+    // 1초마다 현재가로 마지막 캔들 update
+    const interval = setInterval(() => {
+      const lastCandle = bithumbCandles[bithumbCandles.length - 1];
+      if (!lastCandle) return;
+      // 현재가 반영 (currentPrice가 있으면 사용)
+      const price = currentPrice ?? lastCandle.close;
+      // 캔들 타입별로 update
+      if (["candlestick", "heikin-ashi"].includes(chartType)) {
+        priceSeriesRef.current.update({
+          time: lastCandle.time,
+          open: lastCandle.open,
+          high: lastCandle.high, // 실시간에선 high/low 고정
+          low: lastCandle.low,
+          close: price
+        });
+      } else {
+        priceSeriesRef.current.update({
+          time: lastCandle.time,
+          value: price
+        });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [ready, bithumbCandles, chartType, currentPrice]);
 
   // 드로잉 모드 토글 함수
   const toggleDrawingMode = (mode) => {

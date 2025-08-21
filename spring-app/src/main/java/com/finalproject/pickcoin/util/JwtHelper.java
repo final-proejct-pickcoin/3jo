@@ -31,8 +31,18 @@ public class JwtHelper {
             .setSubject(subject)
             .addClaims(claims)
             .setIssuedAt(Date.from(now))
-            .setExpiration(Date.from(now.plus(EXPIRATION_MINUTES, ChronoUnit.MINUTES)))
+            .setExpiration(Date.from(now.plus(EXPIRATION_MINUTES, ChronoUnit.MINUTES))) // 짧은 만료(30분)
             .signWith(key, SignatureAlgorithm.HS256)
             .compact();
+    }
+
+    public String createRefreshToken(String subject, long days) {
+    Instant now = Instant.now();
+    return Jwts.builder()
+        .setSubject(subject)
+        .setIssuedAt(Date.from(now))
+        .setExpiration(Date.from(now.plus(days, ChronoUnit.DAYS)))
+        .signWith(key, SignatureAlgorithm.HS256)
+        .compact();
     }
 }

@@ -12,8 +12,8 @@ public interface ReportRepository {
     void insert(Report report);
 
     int exists(@Param("reporter_id") int reporterId,
-               @Param("reported_type") EntityType reportedType,
-               @Param("reported_id") int reportedId);
+                @Param("reported_type") EntityType reportedType,
+                @Param("reported_id") int reportedId);
 
     List<Report> findAll(@Param("status") ReportStatus status);
 

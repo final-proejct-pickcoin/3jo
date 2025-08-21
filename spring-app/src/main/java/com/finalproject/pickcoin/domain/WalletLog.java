@@ -23,12 +23,12 @@ public class WalletLog {
     @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Integer log_id; // 로그 ID
     private Integer wallet_id; // 관리자 ID
-    private Integer tx_id;    
+    private Integer tx_id;
     @Enumerated(EnumType.STRING)
     private PointType change_type; // 엔티티 타입 (예: "User", "Post", "Comment") enum 해야함
-    private Integer entity_id; // 엔티티 ID    
+    private Integer entity_id; // 엔티티 ID
     private Double balance;
     @Column(name="created_at", updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)    
+    @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt; // 로그 생성 시간
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   PieChart,
   Pie,
@@ -35,6 +35,7 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react";
+import { StatsContext } from "./context/stats-context";
 
 // Enhanced color palette
 const COLORS = {
@@ -216,6 +217,8 @@ export default function AdvancedDashboard() {
     responseTime: 15,
   });
 
+  const { latestTotal } = useContext(StatsContext);
+  
   // Simulate real-time updates
   useEffect(() => {
     const interval = setInterval(() => {

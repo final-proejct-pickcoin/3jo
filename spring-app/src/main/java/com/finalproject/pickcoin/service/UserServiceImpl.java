@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import com.finalproject.pickcoin.domain.Users;
 import com.finalproject.pickcoin.repository.UsersRepository;
@@ -30,7 +32,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public void save(Users user) {
         usersRepository.save(user);
     }
@@ -53,4 +55,24 @@ public class UserServiceImpl implements UserService {
         }
     }
     
+    @Override
+    public Optional<Users> findByPhone(String phone) {
+        return usersRepository.findByPhone(phone);
+    }
+
+    @Override
+    public Optional<Users> findByProviderAndProviderId(String provider, String providerId) {
+        
+        return usersRepository.findByProviderAndProviderId(provider, providerId);
+    }
+
+    @Override
+    public Optional<Users> findByGoogleId(String googleId) {
+        return usersRepository.findByGoogleId(googleId);
+    }
+
+    @Override
+    public Optional<Users> findByKakaoId(String kakaoId) {
+        return usersRepository.findByKakaoId(kakaoId);
+    }
 }

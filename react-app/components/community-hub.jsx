@@ -11,53 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Heart, MessageCircle, Share, Plus, TrendingUp, Users, Award, Flag } from "lucide-react"
 
 // 더미 초기값 - user_id 추가
-const communityPosts = [
-  {
-    id: 1,
-    user_id: 22, // 콘솔에서 보인 현재 사용자 ID로 변경
-    post_id: 1, // 추가
-    author: "CryptoTrader_Pro",
-    avatar: "/placeholder.svg?height=40&width=40&text=CT",
-    time: "2시간 전",
-    content:
-      "방금 비트코인 차트 분석해봤는데, 4만5천 달러 돌파 흐름이 보입니다. 거래량도 계속 늘고 있고, RSI도 강한 매수 신호네요. 여러분은 어떻게 보시나요?",
-    likes: 24,
-    like_count: 24, // 추가
-    comments: 8,
-    tags: ["비트코인", "차트분석"],
-    isLiked: false,
-  },
-  {
-    id: 2,
-    user_id: 2, // 추가
-    post_id: 2, // 추가
-    author: "DeFi_Explorer",
-    avatar: "/placeholder.svg?height=40&width=40&text=DE",
-    time: "4시간 전",
-    content:
-      "새로운 디파이 프로토콜 나왔는데, 스테이블코인 예치하면 연 15% 수익 준대요. 스마트 컨트랙트도 직접 확인해봤는데 꽤 믿을 만하네요. 혹시 해보신 분 계신가요?",
-    likes: 18,
-    like_count: 18, // 추가
-    comments: 12,
-    tags: ["디파이", "예치수익"],
-    isLiked: true,
-  },
-  {
-    id: 3,
-    user_id: 22, // 현재 사용자 ID로 변경
-    post_id: 3, // 추가
-    author: "AltcoinHunter",
-    avatar: "/placeholder.svg?height=40&width=40&text=AH",
-    time: "6시간 전",
-    content:
-      "포트폴리오 업데이트! 이번 달 SOL, MATIC 미리 담아서 23% 수익 중입니다. 역시 기다림과 위험관리가 제일 중요한 것 같아요. 감당할 수 있는 만큼만 투자하세요!",
-    likes: 45,
-    like_count: 45, // 추가
-    comments: 15,
-    tags: ["포트폴리오", "위험관리"],
-    isLiked: false,
-  },
-]
+const communityPosts = []
 
 const topTraders = [
   { name: "CryptoKing", profit: "+156%", followers: 2340, badge: "🏆" },
@@ -94,6 +48,7 @@ export const CommunityHub = () => {
   const [likedPostIds, setLikedPostIds] = useState([])
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
+  const [popularKeywords, setPopularKeywords] = useState([]);
   // const availableTags = ["BTC", "ETH", "DeFi", "NFT", "Technical Analysis", "News", "Portfolio", "Trading Tips"]
 
 // 신고 기능
@@ -115,6 +70,20 @@ const [childrenMap, setChildrenMap] = useState({})
 const [childTextMap, setChildTextMap] = useState({})                 // parent_id => 입력값
 const [editingReplyId, setEditingReplyId] = useState(null)           // 수정 중인 reply_id
 const [editReplyText, setEditReplyText] = useState("")               // 수정 텍스트
+
+// 인기 키워드 조회
+const getPopularKeyword = async () => {
+  
+  try{
+    await axios.get("http://localhost:8080/community/popular-keword")
+    .then((res)=>{
+      setPopularKeywords((res).data);
+      console.log(res.data)        
+    })
+  }catch(err){
+    console.log("인기 키워드 조회 실패:", err)
+  }
+}
 
 const checkReported = async (postId) => {
   try {
@@ -166,19 +135,25 @@ const handleSubmitReport = async () => {
   }
 }
 
-  // 세션에서 사용자 정보 로드
-  useEffect(() => {
-    const raw = sessionStorage.getItem("user_data")
-    console.log("유저이펙트에서 유저데이타:", raw)
-    if (raw) {
-      const u = JSON.parse(raw)
-      // const uid = safeToNumber(u.user_id ?? u.user_id ?? u.USER_ID)
-      const uid = u.user_id
-      setCurrentUser({ user_id: uid, name: u.nickname ?? u.name ?? "" })
-    } else {
-      setCurrentUser({ user_id: 22, name: "현재사용자" })
-    }
-  }, [])
+// 세션에서 사용자 정보 로드
+useEffect(() => {
+  const raw = sessionStorage.getItem("user_data")
+  console.log("유저이펙트에서 유저데이타:", raw)
+  if (raw) {
+    const u = JSON.parse(raw)
+    // const uid = safeToNumber(u.user_id ?? u.user_id ?? u.USER_ID)
+    const uid = u.user_id
+    setCurrentUser({ user_id: uid, name: u.nickname ?? u.name ?? "" })
+    getPopularKeyword();
+  } else {
+    setCurrentUser({ user_id: 22, name: "현재사용자" })
+  }
+
+}, [])
+
+  const topKeywords = [...popularKeywords]
+        .sort((a, b) => b.count - a.count) // count 기준 내림차순 정렬
+        .slice(0, 5); // 상위 5개만 추출
 
   // 내가 좋아요 누른 게시글 목록 불러오기
   const fetchLikedPosts = async (userId) => {
@@ -226,6 +201,7 @@ const handleSubmitReport = async () => {
     } catch (err) {
       console.error("게시글 불러오기 실패:", err)
     }
+
   }
 
   // 좋아요 목록 먼저 불러오고, 그 다음 게시글 불러오기
@@ -283,6 +259,7 @@ useEffect(() => {
       setNewPost("")
       setSelectedTags([])
       fetchPosts()
+      getPopularKeyword();
     } catch (error) {
       console.error("글 등록 실패:", error?.response?.data || error?.message)
       const newPostObj = {
@@ -811,21 +788,15 @@ useEffect(() => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              인기 토픽
+              인기 키워드
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { tag: "#비트코인ETF", posts: 234 },
-                { tag: "#디파이수익", posts: 189 },
-                { tag: "#알트코인시즌", posts: 156 },
-                { tag: "#기술적분석", posts: 143 },
-                { tag: "#크립토뉴스", posts: 98 },
-              ].map((topic) => (
-                <div key={topic.tag} className="flex items-center justify-between">
-                  <span className="font-medium text-primary cursor-pointer hover:underline">{topic.tag}</span>
-                  <span className="text-sm text-muted-foreground">{topic.posts}건</span>
+              {topKeywords.map((topic) => (
+                <div key={topic.keyword} className="flex items-center justify-between">
+                  <span className="font-medium text-primary cursor-pointer hover:underline"># {topic.keyword}</span>
+                  <span className="text-sm text-muted-foreground">{topic.count}건</span>
                 </div>
               ))}
             </div>

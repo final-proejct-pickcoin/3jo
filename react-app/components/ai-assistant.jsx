@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect  } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Brain, Mic, MicOff, Send, TrendingUp, Lightbulb, BarChart3, MessageCircle } from "lucide-react"
+import axios from "axios"
 
 const MOCK_NOTICES = [
   { id: 3, title: "시스템 점검 안내 ", content: "안정적인 서비스 제공을 위해 새벽 2시~3시 점검이 진행됩니다. 점검 중에는 로그인/거래가 일시 중단될 수 있습니다." },
@@ -218,40 +219,50 @@ const marketInsights = [
 export function AIAssistant() {
   const [messages, setMessages] = useState([
     {
-      type: "ai",
-      content:
-        "고객센터입니다. 원하시는 서비스가 있으신가요?",
+      room_id: "ai",
+      sender:
+        "admin",
+      message:"고객센터입니다. 원하시는 서비스가 있으신가요?",
       timestamp: new Date(),
     },
   ])
+  const ws = useRef(null);
+  const scrollRef = useRef(null);
   const [inputMessage, setInputMessage] = useState("")
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const userDataString = sessionStorage.getItem("user_data");
+  const userData = JSON.parse(userDataString)
+  const user_id = userData.user_id
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
-
-    const userMessage = {
-      type: "user",
-      content: inputMessage,
-      timestamp: new Date(),
+    
+    // console.log(userData)
+    const userMessage = {      
+      room_id: user_id,
+      sender: userData.nickname,
+      message: inputMessage,
+      timestamp: new Date().toISOString(),
     }
 
-    setMessages([...messages, userMessage])
     setInputMessage("")
     setIsLoading(true)
 
+    await axios.post("http://localhost:8080/chat/send", userMessage)
+    ws.current.send(JSON.stringify(userMessage))
+    
     // Simulate AI response
     setTimeout(() => {
       const aiResponse = generateAIResponse(inputMessage)
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "ai",
-          content: aiResponse,
-          timestamp: new Date(),
-        },
-      ])
+      // setMessages((prev) => [
+      //   ...prev,
+      //   {
+      //     type: "ai",
+      //     content: aiResponse,
+      //     timestamp: new Date(),
+      //   },
+      // ])
       setIsLoading(false)
     }, 1500)
   }
@@ -274,6 +285,12 @@ export function AIAssistant() {
     return "암호화폐 시장에 대해 궁금하신 점이 있으시군요. 최신 데이터를 바탕으로, 리스크 관리와 자산 분산에 집중하시는 것을 추천드립니다. 특정 코인이나 매매 전략에 대해 더 자세한 분석이 필요하신가요?"
   }
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   const startVoiceCommand = () => {
     setIsVoiceActive(true)
     // Simulate voice recognition
@@ -289,6 +306,54 @@ export function AIAssistant() {
       setIsVoiceActive(false)
     }, 2000)
   }
+
+  useEffect(() => {
+    // console.log("유저 아이디", user_id)
+    axios.get(`http://localhost:8080/chat/history/${user_id}`)
+      .then(res => {
+        // console.log(res.data)
+        const messageObjects = res.data.map(msg => {
+          const parsed = JSON.parse(msg);
+          // timestamp 문자열을 Date 객체로 변환
+          parsed.timestamp = new Date(parsed.timestamp.replace(' ', 'T') + 'Z');
+          return parsed;
+        });
+        setMessages(messageObjects)
+      }).catch(err=>{
+        console.error(err)
+      })
+    
+    if (!user_id) return;
+
+    // WebSocket 연결
+    ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${user_id}`);
+
+    ws.current.onopen = () => {
+      console.log("웹소켓 연결됨");
+    };
+
+    ws.current.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      // console.log("[받은 메시지]", msg);
+
+      // 메시지 상태 업데이트
+      setMessages((prev) => {
+      if (prev.some(m => m.timestamp === msg.timestamp && m.message === msg.message)) {
+        return prev; // 중복 메시지면 무시
+      }
+      return [...prev, msg];
+  });
+    };
+
+    ws.current.onclose = () => {
+      console.log("웹소켓 종료");
+    };
+
+    return () => {
+      if (ws.current) ws.current.close();
+    };
+
+  }, [user_id])
 
   return (
     <div className="grid lg:grid-cols-3 gap-6">
@@ -306,16 +371,16 @@ export function AIAssistant() {
 
           <CardContent className="flex-1 flex flex-col overflow-hidden">
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4 overflow-x-hidden">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 overflow-x-hidden">
               {messages.map((message, index) => (
-                <div key={index} className={`flex w-full ${message.type === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={index} className={`flex w-full ${message.sender === "admin" ? "justify-start" : "justify-end"}`}>
                   <div
                     className={`max-w-[80%] min-w-0 p-3 rounded-lg break-words overflow-wrap-anywhere ${
                     message.type === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                   }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1 break-words">{message.timestamp.toLocaleTimeString()}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">{message.message}</p>
+                    <p className="text-xs opacity-70 mt-1 break-words">{new Date(message.timestamp).toLocaleString("ko-KR")}</p>
                   </div>
                 </div>
               ))}
@@ -366,6 +431,7 @@ export function AIAssistant() {
                 <p className="text-sm">🎤 Listening for voice command...</p>
               </div>
             )}
+            
           </CardContent>
         </Card>
       </div>

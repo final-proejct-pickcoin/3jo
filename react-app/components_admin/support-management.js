@@ -69,7 +69,7 @@ export default function SupportManagement({ isDarkMode }) {
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =      
       (ticket.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (ticket.email.toLowerCase() || "").includes(searchTerm.toLowerCase());
+      (ticket.email?.toLowerCase() || "").includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -135,7 +135,7 @@ export default function SupportManagement({ isDarkMode }) {
       id: selectedTicket.messages.length + 1,
       sender: "admin",
       message: replyMessage,
-      timestamp: new Date().toLocaleString("ko-KR"),
+      timestamp: new Date().toISOString(),
     };
 
     // 화면 먼저 업데이트
@@ -154,6 +154,8 @@ export default function SupportManagement({ isDarkMode }) {
 
     // 웹소켓으로 전송
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      console.log("보내는 메시지:", replyMessage, "WebSocket readyState:", ws.current.readyState);
+
       ws.current.send(JSON.stringify({
         room_id: selectedTicket.user_id,
         sender: "admin",
@@ -214,6 +216,7 @@ export default function SupportManagement({ isDarkMode }) {
     if(!roomId) return;
 
     ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${roomId}`)
+    // console.log(roomId)
     ws.current.onopen = () => {
       console.log("웹소켓 연결됨");
     }
@@ -221,6 +224,23 @@ export default function SupportManagement({ isDarkMode }) {
     ws.current.onmessage = (evt) => {
       const msg = JSON.parse(evt.data);
       console.log(`받은메세지: ${msg}`) // 여기서 ticket / selectedTicet 업데이트 가능
+        // 1) tickets 상태 업데이트
+      setTickets((prevTickets) =>
+        prevTickets.map((ticket) =>
+          ticket.user_id === selectedTicket?.user_id
+            ? { ...ticket, messages: [...(ticket.messages || []), msg] }
+            : ticket
+        )
+      );
+
+      // 2) selectedTicket 상태도 업데이트 (채팅창 열려 있는 경우 즉시 반영)
+      setSelectedTicket((prev) =>
+        prev
+          ? { ...prev, messages: [...(prev.messages || []), msg] }
+          : prev
+      );
+      
+      
     }
     // messages 바뀔 때마다 스크롤 아래로.
     requestAnimationFrame(() => {
@@ -234,7 +254,7 @@ export default function SupportManagement({ isDarkMode }) {
     return () => {
       if (ws.current) ws.current.close();
     }
-
+    // , selectedTicket?.messages
   },[selectedTicket?.user_id, selectedTicket?.messages])
 
   return (
@@ -539,7 +559,7 @@ export default function SupportManagement({ isDarkMode }) {
                         <span className="text-sm font-medium">
                           {message.sender === "admin" ? "관리자" : selectedTicket.name}
                         </span>
-                        <span className="text-xs ml-2 opacity-70">{message.timestamp}</span>
+                        <span className="text-xs ml-2 opacity-70">{new Date(message.timestamp).toLocaleString("ko-KR")}</span>
                       </div>
                       <p className="text-sm">{message.message}</p>
                     </div>                    

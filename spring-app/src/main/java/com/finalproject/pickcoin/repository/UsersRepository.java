@@ -16,7 +16,13 @@ public interface UsersRepository extends CrudRepository<Users, Integer> {
 
     Optional<Users> findByEmail(String email);
     Optional<Users> findByVerificationToken(String token);
+    Optional<Users> findByPhone(String phone);
+    Optional<Users> findByProviderAndProviderId(String provider, String providerId);
 
+    Optional<Users> findByGoogleId(String googleId);
+    Optional<Users> findByKakaoId(String kakaoId);
+
+    // 인증 만료시 데이터베이스에서 삭제
     @Query(value = "SELECT * FROM users WHERE is_verified = false AND expires_at < :now", nativeQuery = true)
     List<Users> findExpiredUnverifiedUsers(@Param("now") LocalDateTime now);
-} 
+}

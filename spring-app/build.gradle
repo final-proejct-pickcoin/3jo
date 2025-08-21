@@ -73,6 +73,13 @@ dependencies {
 	// logstash
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 
+	// 웹소켓
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+	// Elasticsearch
+	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+	implementation 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.11'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	
 }

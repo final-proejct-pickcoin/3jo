@@ -576,38 +576,6 @@ const handleSaveEdit = async () => {
   useEffect(() => {
     const token = localStorage.getItem("access_token");
 
-    // if(!token){
-    //   setIsLoggedIn(false);
-    //   return
-    // }
-
-    // if(isTokenExpired(token)){
-    //   console.log("토큰 만료")
-    //   localStorage.clear();
-    //   setIsLoggedIn(false)
-    //   return
-    // }
-
-    // const email = localStorage.getItem("sub");
-    // const name = localStorage.getItem("name");
-    // const role = localStorage.getItem("role");
-
-    // setProfileData({
-    //   ...profileData,
-    //   role: role,
-    //   name: name,
-    //   email: email
-    // });
-
-    // // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
-    // axios.get("http://localhost:8000/admin/getuser")
-    // .then((result)=>{
-    //   setUsers(result.data)
-    // })
-    // .catch((err)=> console.log(err))
-
-    // setIsLoggedIn(true);
-
     if (!token || isTokenExpired(token)) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("sub");
@@ -1746,4 +1714,3 @@ const handleSaveEdit = async () => {
     </div>
   );
 }
-

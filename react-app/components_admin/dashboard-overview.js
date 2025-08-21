@@ -38,6 +38,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { createContext } from "vm";
 
 const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -60,7 +61,6 @@ const coinData = [
 const pendingWithdrawals = [
   { id: 1, user: "user123", amount: "1.2345 BTC", time: "5분 전", status: "대기" },
   { id: 2, user: "user456", amount: "15.67 ETH", time: "12분 전", status: "대기" },
-  { id: 3, user: "user789", amount: "5000 USDT", time: "18분 전", status: "대기" },
 ];
 const kycPending = [
   { id: 1, user: "newuser1", level: "Level 2", submitted: "2시간 전" },
@@ -82,20 +82,15 @@ export default function DashboardOverview({ isDarkMode }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tradingEnabled, setTradingEnabled] = useState(true);
 
-  // 실시간 데이터 시뮬레이션
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStats((prev) => ({
-        ...prev,
-        onlineUsers: prev.onlineUsers + Math.floor(Math.random() * 20 - 10),
-        systemLoad: Math.max(
-          0,
-          Math.min(100, prev.systemLoad + Math.floor(Math.random() * 6 - 3))
-        ),
-      }));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const [interval, setInterval] = useState("month"); // 기본: 일별
+  const [userTrend, setUserTrend] = useState([]);  // { date, count } 데이터 배열
+  const [latestTotal, setLatestTotal] = useState(0);
+  const INTERVAL_OPTIONS = [
+    { label: "시간별", value: "hour" },
+    { label: "일별", value: "day" },
+    { label: "주간별", value: "week" },
+    { label: "월간별", value: "month" },
+  ];
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -122,6 +117,19 @@ export default function DashboardOverview({ isDarkMode }) {
     console.log(`KYC ${id} review`);
     // 실제로는 KYC 상세 페이지로 이동
   };
+
+  useEffect(() => {
+    const fetchInterval = interval || "month";
+    fetch(`http://localhost:8000/api/stats/users?interval=${fetchInterval}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setUserTrend(data);
+        if (data && data.length > 0) {
+          setLatestTotal(data[data.length - 1].count); // 마지막 항목의 count
+        }
+      });
+
+  },[interval])
 
   return (
     <div className="space-y-6">
@@ -177,7 +185,7 @@ export default function DashboardOverview({ isDarkMode }) {
                   총 사용자
                 </p>
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  {stats.totalUsers.toLocaleString()}
+                  {latestTotal}
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
@@ -365,6 +373,87 @@ export default function DashboardOverview({ isDarkMode }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 키바나 대시보드 테스트 */}
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
+              <Users className="h-5 w-5 mr-2 text-green-500" />
+              기간별 사용자 수 추이
+            </CardTitle>
+            {/* 기존의 집계 기준 선택은 iframe 임베드 시 외부에서 제어 불가하므로 비워두거나 제거 가능 */}
+          </CardHeader>
+          <CardContent>
+            <div style={{ width: '100%', height: 320 }}>
+              <iframe
+                title="Kibana User Trend Dashboard"
+                src="http://localhost:5601/app/dashboards#/create?embed=true&_g=(filters:!(),refreshInterval:(pause:!t,value:60000),time:(from:now-1w,to:now))&_a=(description:'',filters:!(),fullScreenMode:!f,options:(hidePanelTitles:!f,syncColors:!f,useMargins:!t),panels:!((embeddableConfig:(attributes:(references:!((id:'9d7f4f80-7d99-11f0-ba8d-4538ea732305',name:indexpattern-datasource-current-indexpattern,type:index-pattern),(id:'9d7f4f80-7d99-11f0-ba8d-4538ea732305',name:indexpattern-datasource-layer-adc36379-efff-482c-a905-0c8397874ca7,type:index-pattern)),state:(datasourceStates:(indexpattern:(layers:(adc36379-efff-482c-a905-0c8397874ca7:(columnOrder:!('50b3f3a5-0dee-49b5-903a-f07dffce1469','519937ac-ee99-4229-8685-a5605712caa3'),columns:('50b3f3a5-0dee-49b5-903a-f07dffce1469':(dataType:date,isBucketed:!t,label:'@timestamp',operationType:date_histogram,params:(interval:auto),scale:interval,sourceField:'@timestamp'),'519937ac-ee99-4229-8685-a5605712caa3':(dataType:number,isBucketed:!f,label:'Unique%20count%20of%20email.keyword',operationType:unique_count,scale:ratio,sourceField:email.keyword)),incompleteColumns:())))),filters:!(),query:(language:kuery,query:''),visualization:(axisTitlesVisibilitySettings:(x:!t,yLeft:!t,yRight:!t),fittingFunction:None,gridlinesVisibilitySettings:(x:!t,yLeft:!t,yRight:!t),labelsOrientation:(x:0,yLeft:0,yRight:0),layers:!((accessors:!('519937ac-ee99-4229-8685-a5605712caa3'),layerId:adc36379-efff-482c-a905-0c8397874ca7,layerType:data,position:top,seriesType:line,showGridlines:!f,xAccessor:'50b3f3a5-0dee-49b5-903a-f07dffce1469')),legend:(isVisible:!t,position:right),preferredSeriesType:line,tickLabelsVisibilitySettings:(x:!t,yLeft:!t,yRight:!t),valueLabels:hide,yLeftExtent:(mode:full),yRightExtent:(mode:full))),title:'',type:lens,visualizationType:lnsXY)),gridData:(h:15,i:'1c7442ea-3bbe-4db7-ad04-b9e64b5056fc',w:24,x:0,y:0),panelIndex:'1c7442ea-3bbe-4db7-ad04-b9e64b5056fc',type:lens,version:'7.17.10')),query:(language:kuery,query:''),tags:!(),timeRestore:!f,title:'',viewMode:edit)&hide-filter-bar=true"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ borderRadius: '8px' }}
+                allowFullScreen
+              />
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* 총 사용자 추이 */}
+        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
+              <Users className="h-5 w-5 mr-2 text-green-500" />
+              기간별 사용자 수 추이
+            </CardTitle>
+            {/* 집계 기준 선택 */}
+            <select
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+              className={isDarkMode ? "bg-gray-700 text-white border-gray-500 rounded p-1" : "bg-gray-50 text-gray-900 rounded p-1"}
+            >
+              {INTERVAL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </CardHeader>
+          <CardContent>
+            {/* KPI 카드 */}
+            <div className={`mb-4 text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+              최근 {interval === "day" ? "일" : interval === "week" ? "주간" : interval ==="hour" ? "시간" : "월"} 기준 총 사용자수:&nbsp;
+              <span className="text-green-600">{latestTotal}</span>
+            </div>
+            {/* 선그래프 */}
+            {userTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={userTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) => {
+                      if (interval === "hour") {
+                        // 시간만: '2025-08-18T16:00:00.000+09:00' → '16시'
+                        const hour = value.slice(11, 13);
+                        return `${hour}시`;
+                      } else if (interval === "day") {
+                        // 월-일: '2025-08-18...' → '08-18'
+                        return value.slice(5, 10); // MM-DD
+                      } else if (interval === "month") {
+                        // 월: '2025-08...' → '08월'
+                        return value.slice(5, 7) + "월";
+                      } else {
+                        return value;
+                      }
+                    }}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#38b2ac" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={`${isDarkMode ? "text-gray-400" : "text-gray-600"} text-center py-20`}>데이터가 없습니다.</div>
+            )}
+          </CardContent>
+        </Card>
         {/* 승인 대기 출금 요청 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader>
@@ -412,51 +501,6 @@ export default function DashboardOverview({ isDarkMode }) {
                     거부
                   </Button>
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* KYC 인증 대기 */}
-        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-          <CardHeader>
-            <CardTitle
-              className={`text-lg font-semibold flex items-center ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              <Shield className="h-5 w-5 mr-2 text-blue-500" />
-              KYC 인증 대기
-            </CardTitle>
-            <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              검토가 필요한 KYC 신청 ({stats.kycPending}건)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {kycPending.map((kyc) => (
-              <div
-                key={kyc.id}
-                className={`flex items-center justify-between p-3 ${
-                  isDarkMode ? "bg-gray-700" : "bg-gray-50"
-                } rounded-lg`}
-              >
-                <div>
-                  <p className={`font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                    {kyc.user}
-                  </p>
-                  <p className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    {kyc.level} &bull; {kyc.submitted}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleKycReview(kyc.id)}
-                  className={isDarkMode ? "border-gray-600 text-gray-200 hover:bg-gray-700" : ""}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  검토
-                </Button>
               </div>
             ))}
           </CardContent>
