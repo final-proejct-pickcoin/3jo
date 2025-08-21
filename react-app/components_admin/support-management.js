@@ -64,6 +64,8 @@ export default function SupportManagement({ isDarkMode }) {
   const ws = useRef(null);
   const messagesEndRef = useRef(null);
 
+  
+
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =      
       (ticket.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
@@ -91,7 +93,7 @@ export default function SupportManagement({ isDarkMode }) {
 
     }catch(err){
       console.error("채팅 기록 불러오기 실패:", err);
-      setSelectedTicket({...ticket, message:[]});
+      setSelectedTicket({...ticket, messages:[]});
       setIsTicketDialogOpen(true)
     }
 

@@ -26,6 +26,21 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 // import { headers } from "next/headers";
 
+//API
+const API_BASE = "http://localhost:8000";
+// 공지 전용 Spring API
+const BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");
+const ANN_API_BASE = `${BASE}/admin/announcements`;
+
+const toInt = (v) => {
+  if (v === null || v === undefined) return null;
+  const n = parseInt(String(v), 10);
+  return Number.isNaN(n) ? null : n;
+};
+
+const makeClientId = () =>
+  `tmp-${(globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))}`;
+
 export default function Component() {
   // const jwt_decode = require("jwt-decode");
   const [isLoggedIn, setIsLoggedIn] = useState(null);
@@ -40,6 +55,9 @@ export default function Component() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [logLevelFilter, setLogLevelFilter] = useState("all");
   const [selectedLogs, setSelectedLogs] = useState([]);
+  // 공지 편집용 상태 추가
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   // 프로필 관련 상태들 추가
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -135,35 +153,7 @@ export default function Component() {
     }
   ]);
 
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 1,
-      title: "시스템 점검 안내",
-      content: "2024년 1월 20일 새벽 2시부터 4시까지 시스템 점검이 있습니다.",
-      date: "2024-01-15",
-      important: true,
-      status: "active",
-      views: 1234
-    },
-    {
-      id: 2,
-      title: "새로운 코인 상장",
-      content: "ETH/USDT 거래쌍이 새롭게 추가되었습니다.",
-      date: "2024-01-14",
-      important: false,
-      status: "active",
-      views: 856
-    },
-    {
-      id: 3,
-      title: "수수료 정책 변경",
-      content: "거래 수수료가 0.1%에서 0.08%로 인하됩니다.",
-      date: "2024-01-12",
-      important: true,
-      status: "expired",
-      views: 2341
-    }
-  ]);
+  const [announcements, setAnnouncements] = useState([]);
 
   // Filter functions
   const filteredUsers = users.filter((user) => {
@@ -183,32 +173,277 @@ export default function Component() {
   });
 
   // Action handlers
-  const handleUserStatusToggle = (userId) => {
+const handleUserStatusToggle = async (userId) => {
+  const targetUser = users.find((u) => u.user_id === userId);
+  if (!targetUser) return;
 
-    const targetUser = users.find((u) => u.user_id === userId);
-    if (!targetUser) return;
+  const nextVerified = targetUser.is_verified === 1 ? 0 : 1;
 
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.user_id === userId
-          ? { ...user, is_verified: user.is_verified === 1 ? 0 : 1 }
-          : user
+  // 1) 낙관적 업데이트(여기서 nextVerified를 그대로 사용)
+  setUsers((prev) =>
+    prev.map((u) =>
+      u.user_id === userId ? { ...u, is_verified: nextVerified } : u
+    )
+  );
+
+  try {
+    const token = localStorage.getItem("access_token");
+    await axios.get("http://localhost:8000/admin/user-status", {
+      params: { user_id: userId, is_verified: nextVerified },
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+  } catch (err) {
+    // 2) 실패 시 롤백
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId ? { ...u, is_verified: targetUser.is_verified } : u
       )
     );
-    axios.get("http://localhost:8000/admin/user-status", {
-        params: {
-          user_id: userId,
-          is_verified: targetUser.is_verified,
-        }
-      }).catch((err) => {
-        console.error("상태 업데이트 실패:", err)
-      })
+    console.error("상태 업데이트 실패:", err);
+  }
+};
 
-  };
+// === 공지 목록 불러오기 ===
+const fetchAnnouncements = async () => {
+  try {
+    const token = localStorage.getItem("access_token");
 
-  const handleDeleteAnnouncement = (id) => {
-    setAnnouncements(announcements.filter((ann) => ann.id !== id));
-  };
+    const { data } = await axios.get(ANN_API_BASE, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+
+    const mapped = (Array.isArray(data) ? data : []).map((it) => {
+      const created = it.createdAt || it.created_at || it.date || it.created || null;
+
+      const active =
+        typeof it.active === "boolean"
+          ? it.active
+          : it.status === "active" ||
+            it.status === "ACTIVE" ||
+            it.is_active === 1 ||
+            it.isActive === true;
+
+      const serverId =
+        toInt(it.id) ??
+        toInt(it.noticeId) ??
+        toInt(it.announcementId) ??
+        toInt(it.notice_id);
+
+      return {
+        // 렌더링용 id (항상 존재)
+        id: serverId ?? makeClientId(),
+        // 서버 호출용 id (없으면 null)
+        serverId,
+        title: it.title ?? "(제목 없음)",
+        content: it.content ?? "",
+        date: created
+          ? new Date(created).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
+        important: Boolean(it.important ?? it.isImportant ?? false),
+        status: active ? "active" : "expired",
+        views: it.views ?? it.viewCount ?? 0,
+      };
+    });
+
+    setAnnouncements(mapped);
+  } catch (err) {
+    console.error("공지 목록 불러오기 실패:", err);
+  }
+};
+
+// === 공지 생성 ===
+const createAnnouncement = async (payload) => {
+  try {
+    const token = localStorage.getItem("access_token");
+
+    const { data } = await axios.post(
+      ANN_API_BASE,
+      {
+        title: payload.title,
+        content: payload.content,
+        important: payload.important ?? false,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    );
+
+    const created = data?.createdAt || data?.created_at || data?.date || new Date();
+
+    const serverId =
+      toInt(data?.id) ??
+      toInt(data?.noticeId) ??
+      toInt(data?.announcementId) ??
+      toInt(data?.notice_id);
+
+    const newItem = {
+      id: serverId ?? makeClientId(),
+      serverId,
+      title: data?.title ?? payload.title,
+      content: data?.content ?? payload.content,
+      date: new Date(created).toISOString().slice(0, 10),
+      important: Boolean(data?.important ?? payload.important),
+      status:
+        typeof data?.active === "boolean"
+          ? data.active
+            ? "active"
+            : "expired"
+          : data?.status === "expired"
+          ? "expired"
+          : (data?.is_active === 0 ? "expired" : "active"),
+      views: data?.views ?? 0,
+    };
+
+    setAnnouncements((prev) => [newItem, ...prev]);
+    setNewAnnouncement({ title: "", content: "", important: false });
+    setIsAnnouncementDialogOpen(false);
+  } catch (err) {
+    console.error("공지 생성 실패:", err);
+  }
+};
+
+// === 공지 상태/삭제 API (여기에 붙여넣기) ===
+const patchAnnouncementStatus = async (serverId, active) => {
+  const sid = toInt(serverId);                 // ← 숫자로 캐스팅
+  if (sid === null) throw new Error("상태 변경 불가: serverId 없음");
+
+  const token = localStorage.getItem("access_token");
+
+  console.log("[PATCH] /admin/announcements/%s/status?active=%s", sid, active);
+  await axios.patch(`${ANN_API_BASE}/${sid}/status`, {}, {
+    params: { active },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+});
+};
+
+const deleteAnnouncement = async (serverId) => {
+  const sid = toInt(serverId);                 // ← 숫자로 캐스팅
+  if (sid === null) throw new Error("삭제 불가: serverId 없음");
+
+  const token = localStorage.getItem("access_token");
+  console.log("[DELETE] /admin/announcements/%s", sid); // 디버그
+
+  await axios.delete(`${ANN_API_BASE}/${sid}`, {
+   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+ });
+};
+
+
+// === 버튼 클릭 시 ===
+const handleCreateAnnouncement = () => {
+  if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
+  createAnnouncement(newAnnouncement);
+};
+
+  const handleDeleteAnnouncement = async (serverId) => {
+   const backup = announcements;
+   const sid = toInt(serverId);
+   // serverId가 없는 임시 항목 보호
+   if (sid === null) {
+     alert("서버에 저장되지 않은 임시 항목이라 삭제할 수 없습니다.");
+     return;
+   }
+   const cur = announcements.find(a => toInt(a.serverId) === sid);
+   setAnnouncements(prev => prev.filter(a => toInt(a.serverId) !== sid)); // 낙관적 삭제
+
+  try {
+     await deleteAnnouncement(sid); // 이미 숫자로 캐스팅된 sid 사용
+    console.log("[DEL] done:", cur?.serverId);
+  } catch (e) {
+    console.error("공지 삭제 실패:", e?.response?.status, e?.response?.data || e?.message);
+    setAnnouncements(backup);     // 실패 시 롤백
+    alert(`삭제 실패: ${e?.response?.status || ""} ${e?.response?.data || e?.message}`);
+  }
+};
+
+// 다이얼로그 열기
+const openEditDialog = (ann) => {
+  setEditingAnnouncement({
+    id: ann.id,
+    serverId: toInt(ann.serverId),
+    title: ann.title ?? "",
+    content: ann.content ?? "",
+    important: !!ann.important,
+  });
+  setIsEditDialogOpen(true);
+};
+
+// 공지 수정 API
+const updateAnnouncement = async (serverId, payload) => {
+  const token = localStorage.getItem("access_token");
+  const { data } = await axios.put(`${ANN_API_BASE}/${serverId}`, payload, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  return data;
+};
+
+// 저장 핸들러
+const handleSaveEdit = async () => {
+  if (!editingAnnouncement) return;
+  const sid = toInt(editingAnnouncement.serverId);
+  if (sid === null) {
+    alert("서버에 저장되지 않은 임시 항목은 수정할 수 없습니다.");
+    return;
+  }
+
+  const { id, title, content, important } = editingAnnouncement;
+  const backup = announcements;
+
+  // 낙관적 업데이트
+  setAnnouncements(prev =>
+    prev.map(a => String(a.id) === String(id) ? { ...a, title, content, important } : a)
+  );
+
+  try {
+    const data = await updateAnnouncement(sid, { title, content, important });
+
+    const created =
+      data?.createdAt || data?.created_at || data?.date || null;
+    const active =
+      typeof data?.active === "boolean"
+        ? data.active
+        : data?.status === "active" || data?.is_active === 1 || data?.isActive === true;
+
+    const newServerId =
+      toInt(data?.id) ??
+      toInt(data?.noticeId) ??
+      toInt(data?.announcementId) ??
+      toInt(data?.notice_id) ?? sid;
+
+    setAnnouncements(prev =>
+      prev.map(a =>
+        String(a.id) === String(id)
+          ? {
+              ...a,
+              serverId: newServerId,
+              title: data?.title ?? title,
+              content: data?.content ?? content,
+              important: Boolean(data?.important ?? important),
+              date: created ? new Date(created).toISOString().slice(0, 10) : a.date,
+              status: active ? "active" : (data?.status === "expired" ? "expired" : a.status),
+              views: toInt(data?.views) ?? a.views ?? 0,
+            }
+          : a
+      )
+    );
+
+    setIsEditDialogOpen(false);
+    setEditingAnnouncement(null);
+  } catch (e) {
+    console.error("공지 수정 실패:", e?.response?.status, e?.response?.data || e?.message);
+    setAnnouncements(backup);
+    alert(`수정 실패: ${e?.response?.status || ""} ${e?.response?.data || e?.message}`);
+  }
+};
+
+
+
 
   const router = useRouter();
 
@@ -288,52 +523,43 @@ export default function Component() {
     console.log("Archiving logs:", selectedLogs);
     setSelectedLogs([]);
   };
-  const handleCreateAnnouncement = () => {
-    if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
-    const announcement = {
-      id: announcements.length + 1,
-      title: newAnnouncement.title,
-      content: newAnnouncement.content,
-      date: new Date().toISOString().split("T")[0],
-      important: newAnnouncement.important,
-      status: "active",
-      views: 0
-    };
-    setAnnouncements([announcement, ...announcements]);
-    setNewAnnouncement({
-      title: "",
-      content: "",
-      important: false
-    });
-    setIsAnnouncementDialogOpen(false);
-  };
+ 
   const handleAnnouncementClick = (announcement) => {
     setSelectedAnnouncement(announcement);
     setIsAnnouncementDetailOpen(true);
     // 조회수 증가
-    setAnnouncements(
-      announcements.map((ann) =>
-        ann.id === announcement.id
-          ? {
-              ...ann,
-              views: ann.views + 1
-            }
-          : ann
-      )
-    );
-  };
-  const handleAnnouncementStatusToggle = (id) => {
-    setAnnouncements(
-      announcements.map((ann) =>
-        ann.id === id
-          ? {
-              ...ann,
-              status: ann.status === "active" ? "expired" : "active"
-            }
-          : ann
-      )
-    );
-  };
+    setAnnouncements((prev) =>
+   prev.map((ann) =>
+     ann.id === announcement.id ? { ...ann, views: ann.views + 1 } : ann
+   )
+ );
+};
+
+  const handleAnnouncementStatusToggle = async (id) => {
+   const cur = announcements.find(a => String(a.id) === String(id));
+    if (!cur) return;
+    const nextActive = cur.status !== "active";
+
+    setAnnouncements(prev =>
+      prev.map(a =>
+        String(a.id) === String(id)
+          ? { ...a, status: nextActive ? "active" : "expired" }
+               : a
+              )
+             );
+    try {
+     // [추가] 서버 PATCH 호출 (흐릿함 사라짐)
+     await patchAnnouncementStatus(cur.serverId, nextActive);
+   } catch (e) {
+     // [추가] 실패 시 원래 상태로 롤백
+     setAnnouncements(prev =>
+       prev.map(a =>
+         String(a.id) === String(id) ? { ...a, status: cur.status } : a
+       )
+     );
+     console.error("상태 변경 실패:", e);
+   }
+ };          
 
   const isTokenExpired = (token) => {
     if(!token) return true
@@ -364,13 +590,7 @@ export default function Component() {
       const name = localStorage.getItem("name");
       const role = localStorage.getItem("role");
 
-      setProfileData({
-        ...profileData,
-        role: role,
-        name: name,
-        email: email
-      });
-
+      setProfileData((prev) => ({ ...prev, role, name, email }));
       // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
       axios.get("http://localhost:8000/admin/getuser")
         .then((result)=>{
@@ -379,6 +599,7 @@ export default function Component() {
         .catch((err)=> console.log(err))
 
       setIsLoggedIn(true);
+      fetchAnnouncements();
     }
   }, []);
 
@@ -777,8 +998,9 @@ export default function Component() {
                                 variant={user.is_verified === 1 ? "destructive" : "default"}
                                 size="sm"
                                 onClick={() => handleUserStatusToggle(user.user_id)}
-                                className="w-20" // 고정 너비 추가
+                                className="w-20" 
                               >
+                                {/* 고정 너비 추가 */}
                                 {user.is_verified === 1 ? (
                                   <>
                                     <Ban className="h-4 w-4 mr-1" />
@@ -1120,6 +1342,59 @@ export default function Component() {
             </TabsContent>
 
             <TabsContent value="announcements" className="space-y-6">
+
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className={`sm:max-w-[525px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`}>
+                  <DialogHeader>
+                    <DialogTitle className={isDarkMode ? "text-white" : ""}>공지 수정</DialogTitle>
+                    <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
+                      선택한 공지사항을 수정합니다.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {editingAnnouncement && (
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label className={isDarkMode ? "text-gray-300" : ""}>제목</Label>
+                        <Input
+                          value={editingAnnouncement.title}
+                          onChange={(e) =>
+                            setEditingAnnouncement(prev => ({ ...prev, title: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label className={isDarkMode ? "text-gray-300" : ""}>내용</Label>
+                        <Textarea
+                          rows={4}
+                          value={editingAnnouncement.content}
+                          onChange={(e) =>
+                            setEditingAnnouncement(prev => ({ ...prev, content: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="edit-important"
+                          checked={!!editingAnnouncement.important}
+                          onCheckedChange={(checked) =>
+                            setEditingAnnouncement(prev => ({ ...prev, important: checked }))
+                          }
+                        />
+                        <Label htmlFor="edit-important" className={isDarkMode ? "text-gray-300" : ""}>
+                          중요 공지사항
+                        </Label>
+                      </div>
+                    </div>
+                  )}
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>취소</Button>
+                    <Button onClick={handleSaveEdit}>저장</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
@@ -1142,6 +1417,7 @@ export default function Component() {
                         사용자에게 전달할 공지사항을 작성하세요.
                       </DialogDescription>
                     </DialogHeader>
+                    
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
                         <Label htmlFor="title" className={isDarkMode ? "text-gray-300" : ""}>
@@ -1177,6 +1453,7 @@ export default function Component() {
                         </Label>
                       </div>
                     </div>
+
                     <DialogFooter>
                       <Button type="submit" onClick={handleCreateAnnouncement}>
                         공지사항 생성
@@ -1246,11 +1523,12 @@ export default function Component() {
                                 <DropdownMenuItem>
                                   <Eye className="h-4 w-4 mr-2" /> 미리보기
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEditDialog(announcement)}
+                                  >
                                   <Edit className="h-4 w-4 mr-2" /> 수정
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleDeleteAnnouncement(announcement.id)}
+                                  onClick={() => handleDeleteAnnouncement(announcement.serverId)}
                                   className="text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" /> 삭제
