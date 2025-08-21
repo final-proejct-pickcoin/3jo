@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -90,18 +90,27 @@ export const MarketAnalysis = () => {
     if (items.length) subscribe(items.map((c) => c.symbol))
   }, [subscribe, items])
 
+  // ✅ symbol → 한국어명 매핑 (상승률 1위 한국어 표기용) // 🔁 변경(추가)
+  const nameMap = useMemo(() => {
+    const map = {}
+    items.forEach((it) => {
+      if (it?.symbol) map[it.symbol] = it.asset_name || it.symbol
+    })
+    return map
+  }, [items])
+
   // ───────────────────────────────────────────────────────────────────────────
   // 상단 4개 카드용 빗썸 실시간 지표
-  //   1) 24시간 거래대금 합계(KRW)
+  //   1) 시장 모멘텀(AD 스프레드) = (상승비중 − 하락비중) × 100
   //   2) BTC 점유율(거래대금 기준)
   //   3) BTC 현재가(KRW)
-  //   4) 투자 심리 지수(주문서 bid/(bid+ask))
+  //   4) 상승률 1위(24h) — 한국어명 표기 // 🔁 변경
   // ───────────────────────────────────────────────────────────────────────────
   const [bhStats, setBhStats] = useState({
     totalVolumeKRW: null,
     btcDominance: null,
     btcPriceKRW: null,
-    sentiment: null,
+    sentiment: null, // 주문서 매수 비중(%)로 재활용
   })
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -109,27 +118,37 @@ export const MarketAnalysis = () => {
   //   A) BTC 24h 변동성(%)
   //   B) 상승 종목 비율(%)
   //   C) 상위 5종목 거래대금 집중도(%)
-  //   D) BTC 최우선호가 스프레드(%)
+  //   D) (교체) BTC 자금 유입 지수(%)  // 🔁 변경
+  // +  (추가) 시장 모멘텀(%)
   // ───────────────────────────────────────────────────────────────────────────
   const [extra, setExtra] = useState({
     btcVolatilityPct: null,
     advancersRatioPct: null,
     top5ConcentrationPct: null,
-    btcTopOfBookSpreadPct: null,
+    // btcTopOfBookSpreadPct: null, // ⛔ 제거: 스프레드 카드 삭제
+    orderImbalancePct: null, // 🔁 변경(추가): (매수−매도)/(합)
+    momentumPct: null,
+  })
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 리더보드(상승률 1위만 유지)  // 🔁 변경: 체결강도 1위 제거
+  // ───────────────────────────────────────────────────────────────────────────
+  const [leaders, setLeaders] = useState({
+    topGainer: null, // { symbol, rate }
+    // topIntensity: null, // ⛔ 제거
   })
 
   // ───────────────────────────────────────────────────────────────────────────
   // 하단 4개 카드
   //   5) 시가총액 추정치(KRW)
-  //   6) 24h 거래횟수(샘플 기반)
+  //   6) (교체) 주문서 매수 비중(%)    // 🔁 변경
   //   7) 변동성 지표(=BTC 24h 변동성 재표시)
-  //   8) 시장 유동성(24h 거래량 ÷ 주문서 잔량)
+  //   8) (표기 변경) 시장 유동성 → “약 N배” // 🔁 변경
   // ───────────────────────────────────────────────────────────────────────────
   const [more, setMore] = useState({
     marketCapKRW: null,
-    tradeCount24h: null,
     volatility24hPct: null,
-    liquidityIndex: null,
+    liquidityIndex: null, // 24h 거래량(수량) ÷ 주문서 총잔량
   })
 
   // 빗썸 API에서 모든 지표 계산
@@ -145,8 +164,12 @@ export const MarketAnalysis = () => {
         let totalVolume = 0
         let btcVolume = 0
         let advancers = 0
+        let decliners = 0
         const volList = []
         const symbols = []
+
+        // 상승률 1위 추적용
+        let bestGainer = { symbol: null, rate: null }
 
         Object.entries(all).forEach(([symbol, v]) => {
           if (symbol === "date") return
@@ -157,7 +180,7 @@ export const MarketAnalysis = () => {
 
           if (symbol === "BTC") btcVolume = accVal
 
-          // 상승 종목 비율: 24h 변동률 양수
+          // 24h 변동률
           const r = parseFloat(
             v?.fluctate_rate_24H ??
               ((Number(v?.closing_price || 0) -
@@ -165,13 +188,21 @@ export const MarketAnalysis = () => {
                 Number(v?.prev_closing_price || 1)) *
                 100
           )
-          if (isFinite(r) && r > 0) advancers += 1
+
+          if (isFinite(r)) {
+            if (r > 0) advancers += 1
+            else if (r < 0) decliners += 1
+
+            if (bestGainer.rate == null || r > bestGainer.rate) {
+              bestGainer = { symbol, rate: r }
+            }
+          }
         })
 
         const btc = all?.BTC || {}
         const btcPriceKRW = Number(btc?.closing_price || 0)
 
-        // 2) 주문서 기반 심리지수 + 스프레드 + 유동성
+        // 2) 주문서 기반 지표 (BTC)
         const { data: obRes } = await axios.get(
           "https://api.bithumb.com/public/orderbook/BTC_KRW?count=50"
         )
@@ -179,19 +210,18 @@ export const MarketAnalysis = () => {
         const asks = obRes?.data?.asks || []
         const bidQty = bids.reduce((s, b) => s + Number(b.quantity || 0), 0)
         const askQty = asks.reduce((s, a) => s + Number(a.quantity || 0), 0)
+
+        // 투자 심리(주문서 매수 비중 %)
         const sentiment =
           bidQty + askQty > 0
             ? Math.round((bidQty / (bidQty + askQty)) * 100)
             : null
 
-        const bestBid = bids.length ? Number(bids[0].price) : null
-        const bestAsk = asks.length ? Number(asks[0].price) : null
-        const mid =
-          bestBid != null && bestAsk != null ? (bestBid + bestAsk) / 2 : null
-        const spreadPct =
-          mid && bestBid != null && bestAsk != null
-            ? ((bestAsk - bestBid) / mid) * 100
-            : null
+        // (교체) 자금 유입 지수(%) = (매수−매도)/(합)×100  // 🔁 변경
+        const orderImbalancePct =
+          bidQty + askQty > 0 ? ((bidQty - askQty) / (bidQty + askQty)) * 100 : null
+
+        // (스프레드 계산은 삭제) // ⛔ 제거
 
         // 3) BTC 24h 변동성(%): (고가-저가)/중간값
         const hi = Number(btc?.max_price || 0)
@@ -211,29 +241,17 @@ export const MarketAnalysis = () => {
         const mcap =
           btcPriceKRW > 0 ? btcPriceKRW * BTC_CIRCULATING_SUPPLY : null
 
-        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량)
+        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량) — 표기만 ‘배’로 바꿈 // 🔁 변경
         const unitsTraded24h = Number(btc?.units_traded_24H || 0) // BTC 수량
         const liquidityIdx =
           bidQty + askQty > 0 ? unitsTraded24h / (bidQty + askQty) : null
 
-        // 8) 24시간 거래횟수(샘플) — recent_transactions API는 최대 1000건만 제공
-        let tradeCount24h = null
-        try {
-          const { data: txRes } = await axios.get(
-            "https://api.bithumb.com/public/recent_transactions/BTC_KRW?count=1000"
-          )
-          const tx = Array.isArray(txRes?.data) ? txRes.data : []
-          const now = Date.now()
-          const cutoff = now - 24 * 60 * 60 * 1000
-          tradeCount24h = tx.filter((t) => {
-            const ts = new Date(
-              (t?.transaction_date || "").replace(" ", "T") + "+09:00"
-            ).getTime()
-            return isFinite(ts) && ts >= cutoff
-          }).length
-        } catch (e) {
-          // 불가 시 null 유지 → 카드에서 "-" 표기
-        }
+        // 8) 시장 모멘텀(AD 스프레드)
+        const totalCount = advancers + decliners
+        const momentumPct =
+          totalCount > 0
+            ? ((advancers / totalCount) - (decliners / totalCount)) * 100
+            : null
 
         // 상태 반영
         setBhStats({
@@ -247,12 +265,19 @@ export const MarketAnalysis = () => {
           btcVolatilityPct: volPct,
           advancersRatioPct: advRatio,
           top5ConcentrationPct: top5Pct,
-          btcTopOfBookSpreadPct: spreadPct,
+          orderImbalancePct, // 🔁 변경
+          momentumPct,
+        })
+
+        setLeaders({
+          topGainer:
+            bestGainer.symbol && isFinite(bestGainer.rate)
+              ? bestGainer
+              : null,
         })
 
         setMore({
           marketCapKRW: mcap,
-          tradeCount24h,
           volatility24hPct: volPct,
           liquidityIndex: liquidityIdx,
         })
@@ -295,17 +320,17 @@ export const MarketAnalysis = () => {
           상단 네모칸 4개 카드 (빗썸 API 기반)
       ─────────────────────────────────────────────────────────────────────── */}
       <div className="grid md:grid-cols-4 gap-4">
-        {/* 1) 24시간 거래대금 */}
+        {/* 1) 시장 모멘텀(AD 스프레드) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">24시간 거래대금</CardTitle>
+            <CardTitle className="text-sm font-medium">시장 모멘텀</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {bhStats.totalVolumeKRW != null ? `${Math.round(bhStats.totalVolumeKRW / 1e12)}조 원` : "-"}
+              {formatPercent(extra.momentumPct, 1)}
             </div>
-            <p className="text-xs text-muted-foreground">모든 KRW 마켓 합계 (24h)</p>
+            <p className="text-xs text-muted-foreground">상승비중 − 하락비중 (24h)</p>
           </CardContent>
         </Card>
 
@@ -337,17 +362,19 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* 4) 투자 심리 지수 */}
+        {/* 4) 상승률 1위 — 한국어명 표기 // 🔁 변경 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">투자 심리 지수</CardTitle>
+            <CardTitle className="text-sm font-medium">상승률 1위</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">
-              {bhStats.sentiment != null ? bhStats.sentiment : "-"}
+            <div className="text-2xl font-bold">
+              {leaders.topGainer
+                ? `${nameMap[leaders.topGainer.symbol] ?? leaders.topGainer.symbol} · ${leaders.topGainer.rate.toFixed(1)}%`
+                : "-"}
             </div>
-            <p className="text-xs text-muted-foreground">매수수량 / (매수+매도) × 100</p>
+            <p className="text-xs text-muted-foreground">24h 변동률 기준(ALL_KRW)</p>
           </CardContent>
         </Card>
       </div>
@@ -389,20 +416,22 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* D) BTC 호가 스프레드 */}
+        {/* D) (교체) BTC 자금 유입 지수(%) // 🔁 변경 */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">BTC 호가 스프레드</CardTitle>
+            <CardTitle className="text-sm font-medium">BTC 자금 유입 지수</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatPercent(extra.btcTopOfBookSpreadPct, 3)}</div>
-            <p className="text-xs text-muted-foreground">(최우선매도−최우선매수)/중간값 × 100</p>
+            <div className="text-2xl font-bold">{formatPercent(extra.orderImbalancePct, 1)}</div>
+            <p className="text-xs text-muted-foreground">
+              (매수잔량 − 매도잔량) / (합계) × 100 &nbsp;• &nbsp;+ 매수 우위 / − 매도 우위
+            </p>
           </CardContent>
         </Card>
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          하단 4개 카드 (시총/거래횟수/변동성/유동성)
+          하단 4개 카드 (시총/주문서 매수비중/변동성/유동성)
       ─────────────────────────────────────────────────────────────────────── */}
       <div className="grid md:grid-cols-4 gap-4">
         {/* 5) 시가총액 추정치 */}
@@ -420,14 +449,18 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* 6) 24h 거래횟수 */}
+        {/* 6) (교체) 주문서 매수 비중(%)  // 🔁 변경 */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">24h 거래횟수</CardTitle>
+            <CardTitle className="text-sm font-medium">주문서 매수 비중</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(more.tradeCount24h)}</div>
-            <p className="text-xs text-muted-foreground">recent_transactions 샘플 기반</p>
+            <div className="text-2xl font-bold">
+              {typeof bhStats.sentiment === "number" ? `${bhStats.sentiment}%` : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              매수호가 잔량 / (매수+매도 잔량) × 100
+            </p>
           </CardContent>
         </Card>
 
@@ -442,16 +475,20 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* 8) 시장 유동성 지표 */}
+        {/* 8) (표기 변경) 시장 유동성 → 약 N배  // 🔁 변경 */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">시장 유동성</CardTitle>
+            <CardTitle className="text-sm font-medium">시장 유동성(커버리지)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {typeof more.liquidityIndex === "number" ? `${more.liquidityIndex.toFixed(2)}x` : "-"}
+              {typeof more.liquidityIndex === "number"
+                ? `약 ${Math.round(more.liquidityIndex)}배`
+                : "-"}
             </div>
-            <p className="text-xs text-muted-foreground">24h 거래량(수량) ÷ 주문서 총잔량</p>
+            <p className="text-xs text-muted-foreground">
+              24h 거래량(수량) ÷ 현재 주문서 총잔량 &nbsp;• &nbsp;숫자가 클수록 유동성 풍부
+            </p>
           </CardContent>
         </Card>
       </div>

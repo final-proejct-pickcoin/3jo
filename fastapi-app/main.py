@@ -166,11 +166,11 @@ def start_scheduler():
     try:
         if not scheduler.running:
             scheduler.start()
-        # 매 1시간 주기 실행
+        # 매 8시간 주기 실행
         scheduler.add_job(
             job_news_refresh,
             trigger="interval",
-            hours=1,
+            hours=8,
             id="news_refresh_hourly",
             replace_existing=True,
         )

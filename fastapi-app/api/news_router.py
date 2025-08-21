@@ -34,13 +34,13 @@ def get_latest_news():
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# ✅ 뉴스 갱신 트리거 (백그라운드에서 크롤링 → DB 저장)
+# 뉴스 갱신 트리거 (백그라운드에서 크롤링 → DB 저장)
 @router.post("/news/refresh")
 def refresh_news(background_tasks: BackgroundTasks):
     def job():
         print("[/news/refresh] background job started")
         try:
-            # ⬇️ 지연 임포트: 라우터 임포트 단계 블로킹/사이드이펙트 방지
+            # 지연 임포트: 라우터 임포트 단계 블로킹/사이드이펙트 방지
             from service.news_service import bloomingbit_news
             from repository.news_repository import save_news
 
