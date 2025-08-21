@@ -16,6 +16,23 @@
     <result column="updated_at" property="updatedAt"/>
   </resultMap>
 
+  <select id="findLatestActive" resultMap="NoticeMap">
+    SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
+    FROM notice
+    WHERE is_active = 1
+    ORDER BY created_at DESC, notice_id DESC
+    LIMIT 1
+  </select>
+
+  <!-- 활성 공지 목록 (최신순, limit 지정) -->
+  <select id="findActiveList" parameterType="int" resultMap="NoticeMap">
+    SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
+    FROM notice
+    WHERE is_active = 1
+    ORDER BY created_at DESC, notice_id DESC
+    LIMIT #{limit}
+  </select>
+
   <select id="findAll" resultMap="NoticeMap">
     SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
     FROM notice

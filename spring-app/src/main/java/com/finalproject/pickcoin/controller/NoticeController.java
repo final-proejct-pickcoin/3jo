@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.finalproject.pickcoin.domain.Notice;
 import com.finalproject.pickcoin.service.NoticeService;
@@ -18,6 +20,23 @@ import lombok.RequiredArgsConstructor;
 public class NoticeController {
 
     private final NoticeService noticeService;
+
+    // 사용자(읽기 전용)
+     @GetMapping("/public/latest")
+        public ResponseEntity<Notice> latestPublic() {
+            return noticeService.latestPublic()
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.status(HttpStatus.NO_CONTENT).build());
+}
+
+    // 목록 (active=true만, 최신순, limit 지원)
+    @GetMapping("/public")
+        public List<Notice> listPublic(@RequestParam(defaultValue = "20") int limit) {
+            return noticeService.listPublic(limit);
+}
+
+
+    //관리자
 
     // 전체 목록 (모두 접근 허용)
     @GetMapping

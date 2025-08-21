@@ -17,76 +17,63 @@ const MOCK_NOTICES = [
 
 /* 공지 (읽기 전용) */
 function NoticeBoard() {
-  const RAW_BASE = process.env.NEXT_PUBLIC_API_BASE || ""
-  const API_BASE = RAW_BASE.replace(/\/$/, "")
-  const USE_MOCK = !API_BASE
+  const BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");
+  const ANN_API = `${BASE}/admin/announcements`;
 
-  const [expanded, setExpanded] = useState(false)
-  const [latest, setLatest] = useState(null)
-  const [list, setList] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [listLoadedOnce, setListLoadedOnce] = useState(false)
+  const [expanded, setExpanded] = useState(false);
+  const [latest, setLatest] = useState(null);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [listLoadedOnce, setListLoadedOnce] = useState(false);
 
-   const getDate = (obj) => obj?.createdAt || obj?.created_at || obj?.created || null
+  const getDate = (o) => o?.createdAt || o?.created_at || o?.date || null;
+  const isActive = (o) =>
+    typeof o?.active === "boolean"
+      ? o.active
+      : o?.status === "active" || o?.is_active === 1 || o?.isActive === true;
 
-  // 최신 1건
+  // 공지 전부 가져와서 latest/목록 계산
   useEffect(() => {
-    if (USE_MOCK) {
-      setLatest(MOCK_NOTICES[0] || null)
-      setLoading(false)
-      return
-    }
-    const ctrl = new AbortController()
-    ;(async () => {
+    let alive = true;
+    (async () => {
       try {
-        setLoading(true)
-        setError(null)
-        const res = await fetch(`${API_BASE}/notices/latest`, { signal: ctrl.signal })
-        if (res.ok) {
-          const data = await res.json()
-          setLatest(data)
-        } else {
-          setLatest(MOCK_NOTICES[0] || null)
-        }
-      } catch {
-        setLatest(MOCK_NOTICES[0] || null)
-        setError("공지 불러오기 실패")
+        setLoading(true);
+        setError(null);
+        const res = await fetch(ANN_API, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.json();
+        const arr = Array.isArray(raw) ? raw : [];
+
+        // 활성 공지만, 중요 우선 → 최신순
+        const normalized = arr
+          .filter(isActive)
+          .sort((a, b) => {
+            const ai = (a?.important ?? a?.isImportant) ? 1 : 0;
+            const bi = (b?.important ?? b?.isImportant) ? 1 : 0;
+            if (ai !== bi) return bi - ai;
+            return String(getDate(b) || "").localeCompare(String(getDate(a) || ""));
+          });
+
+        if (!alive) return;
+        setList(normalized);
+        setLatest(normalized[0] || null);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "공지 불러오기 실패");
       } finally {
-        setLoading(false)
+        if (alive) setLoading(false);
       }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [ANN_API]);
 
-    })()
-    return () => ctrl.abort()
-  }, [API_BASE, USE_MOCK])
+  const loadList = () => {
+    if (!listLoadedOnce) setListLoadedOnce(true);
+  };
 
-  // 목록(펼쳤을 때 한 번만)
-  const loadList = async () => {
-    if (listLoadedOnce) return
-    setListLoadedOnce(true);
-
-    //백엔드 미연결 목목록 세팅
-    if (USE_MOCK) {
-      setList(MOCK_NOTICES);
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/notices?limit=20`)
-      if (res.ok) {
-        const data = await res.json()
-        // 백엔드가 {content:[], items:[]} 같은 포맷일 수도 있으니 보강
-        const items = Array.isArray(data) ? data : (data?.items ?? data?.content ?? [])
-        setList(items)
-      } else {
-        setList(MOCK_NOTICES)
-      }
-    } catch {
-      setList(MOCK_NOTICES)
-    }
-  }
-
-  // 스켈레톤
   if (loading && !latest) {
     return (
       <Card className="mb-4 border bg-white">
@@ -98,35 +85,36 @@ function NoticeBoard() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
+  if (!latest) return null;
 
-  if (!latest) return null
-
- // ★ 최신 공지 날짜(getDate 사용)
   const latestDate = (() => {
-    const d = getDate(latest)
-    return d ? new Date(d).toLocaleString() : ""
-  })()
+    const d = getDate(latest);
+    return d ? new Date(d).toLocaleString() : "";
+  })();
 
   return (
     <>
-      {/* 최신 공지 배너 (흰색 배경) */}
       <Card className="mb-4 border bg-white">
         <CardContent className="p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-semibold">공지사항</p>
               <p className="text-sm break-words">{latest.title}</p>
-              {latest.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">{latest.content}</p>}
+              {latest.content && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
+                  {latest.content}
+                </p>
+              )}
               {latestDate && <p className="text-[11px] text-muted-foreground mt-1">{latestDate}</p>}
             </div>
             <Button
               size="sm"
               variant="outline"
-              onClick={async () => {
-                setExpanded((v) => !v)
-                if (!expanded) await loadList()
+              onClick={() => {
+                setExpanded((v) => !v);
+                if (!expanded) loadList();
               }}
             >
               {expanded ? "접기" : "전체 보기"}
@@ -136,7 +124,6 @@ function NoticeBoard() {
         </CardContent>
       </Card>
 
-      {/* 전체 공지 목록 */}
       {expanded && (
         <Card className="mb-4">
           <CardHeader className="pb-2">
@@ -144,24 +131,28 @@ function NoticeBoard() {
             <CardDescription>읽기 전용 목록</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {(list ?? MOCK_NOTICES).map((n) => {
-              const raw = getDate(n)                                      // ★ getDate로 날짜 읽기
-              const d = raw ? new Date(raw).toLocaleString() : ""
+            {list.slice(0, 20).map((n) => {
+              const d = getDate(n) ? new Date(getDate(n)).toLocaleString() : "";
               return (
-                <div key={n.id ?? n.noticeId ?? n.notice_id ?? Math.random()} className="p-3 rounded-lg border">
-                  <p className="font-medium break-words">{n.title}</p>
+                <div key={n.id ?? n.noticeId ?? n.notice_id} className="p-3 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium break-words">{n.title}</p>
+                    {(n.important ?? n.isImportant) && <Badge variant="destructive">중요</Badge>}
+                  </div>
                   {!!n.content && (
-                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">{n.content}</p>
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+                      {n.content}
+                    </p>
                   )}
                   {!!d && <p className="text-[11px] text-muted-foreground mt-1">{d}</p>}
                 </div>
-              )
+              );
             })}
           </CardContent>
         </Card>
       )}
     </>
-  )
+  );
 }
 
 

@@ -28,7 +28,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .authorizeHttpRequests(auth -> auth
+            .authorizeHttpRequests(auth -> auth            
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/users/register", "/users/verify", "/community/findAll", "/user/log-test"
                                 , "/community/insert", "/api/assets", "/api/Market_assets/bookmarks", "/users/logout"
