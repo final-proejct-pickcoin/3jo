@@ -1,6 +1,7 @@
 package com.finalproject.pickcoin.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,21 @@ public class NoticeServiceImpl implements NoticeService {
 
     private final NoticeRepository noticeRepository;
 
+    //사용자
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Notice> latestPublic() {
+        return Optional.ofNullable(noticeRepository.findLatestActive());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Notice> listPublic(int limit) {
+        return noticeRepository.findActiveList(limit);
+    }
+
+
+    //관리자
     @Override
     @Transactional(readOnly = true)
     public List<Notice> list() {

@@ -13,5 +13,8 @@ public interface NoticeRepository {
     int update(Notice notice);                       
     int updateActive(@Param("id") Integer id,
                      @Param("active") boolean active); 
-    int delete(@Param("id") Integer id);             
+    int delete(@Param("id") Integer id);  
+    
+    Notice findLatestActive();
+    List<Notice> findActiveList(@Param("limit") int limit);
 }
