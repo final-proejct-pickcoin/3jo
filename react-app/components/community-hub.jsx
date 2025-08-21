@@ -71,6 +71,20 @@ const [childTextMap, setChildTextMap] = useState({})                 // parent_i
 const [editingReplyId, setEditingReplyId] = useState(null)           // 수정 중인 reply_id
 const [editReplyText, setEditReplyText] = useState("")               // 수정 텍스트
 
+// 인기 키워드 조회
+const getPopularKeyword = async () => {
+  
+  try{
+    await axios.get("http://localhost:8080/community/popular-keword")
+    .then((res)=>{
+      setPopularKeywords((res).data);
+      console.log(res.data)        
+    })
+  }catch(err){
+    console.log("인기 키워드 조회 실패:", err)
+  }
+}
+
 const checkReported = async (postId) => {
   try {
     const res = await axios.get("http://localhost:8080/report/exists", {
@@ -121,31 +135,21 @@ const handleSubmitReport = async () => {
   }
 }
 
-  // 세션에서 사용자 정보 로드
-  useEffect(() => {
-    const raw = sessionStorage.getItem("user_data")
-    console.log("유저이펙트에서 유저데이타:", raw)
-    if (raw) {
-      const u = JSON.parse(raw)
-      // const uid = safeToNumber(u.user_id ?? u.user_id ?? u.USER_ID)
-      const uid = u.user_id
-      setCurrentUser({ user_id: uid, name: u.nickname ?? u.name ?? "" })
-    } else {
-      setCurrentUser({ user_id: 22, name: "현재사용자" })
-    }
+// 세션에서 사용자 정보 로드
+useEffect(() => {
+  const raw = sessionStorage.getItem("user_data")
+  console.log("유저이펙트에서 유저데이타:", raw)
+  if (raw) {
+    const u = JSON.parse(raw)
+    // const uid = safeToNumber(u.user_id ?? u.user_id ?? u.USER_ID)
+    const uid = u.user_id
+    setCurrentUser({ user_id: uid, name: u.nickname ?? u.name ?? "" })
+    getPopularKeyword();
+  } else {
+    setCurrentUser({ user_id: 22, name: "현재사용자" })
+  }
 
-    // 인기 키워드 조회
-    try{
-      axios.get("http://localhost:8080/community/popular-keword")
-      .then((res)=>{
-        setPopularKeywords((res).data);
-        console.log(res.data)        
-      })
-    }catch(err){
-      console.log("인기 키워드 조회 실패:", err)
-    }
-    
-  }, [])
+}, [])
 
   const topKeywords = [...popularKeywords]
         .sort((a, b) => b.count - a.count) // count 기준 내림차순 정렬
@@ -255,6 +259,7 @@ useEffect(() => {
       setNewPost("")
       setSelectedTags([])
       fetchPosts()
+      getPopularKeyword();
     } catch (error) {
       console.error("글 등록 실패:", error?.response?.data || error?.message)
       const newPostObj = {

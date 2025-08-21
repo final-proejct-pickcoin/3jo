@@ -20,6 +20,8 @@ import com.finalproject.pickcoin.domain.Asset;
 import com.finalproject.pickcoin.domain.Community;
 import com.finalproject.pickcoin.domain.KeywordCount;
 
+import co.elastic.clients.elasticsearch.indices.RefreshRequest;
+
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -54,7 +56,7 @@ public class CommunityServiceImpl implements CommunityService {
             }
         }
 
-        System.out.println("코인 포함 네임:"+coin_names.toString());
+        // System.out.println("코인 포함 네임:"+coin_names.toString());
         IndexRequest request = new IndexRequest("community-posts")
         // .id(String.valueOf(post.getPost_id()))
         .source(
@@ -71,6 +73,7 @@ public class CommunityServiceImpl implements CommunityService {
 
 
         esClient.index(request, RequestOptions.DEFAULT);
+        esClient.indices().refresh(new org.elasticsearch.action.admin.indices.refresh.RefreshRequest("community-posts"), RequestOptions.DEFAULT);
     }
 
     public List<KeywordCount> getPopularKeword() throws IOException {
@@ -93,7 +96,7 @@ public class CommunityServiceImpl implements CommunityService {
             topics.add(new KeywordCount(bucket.getKeyAsString(), bucket.getDocCount()));
         }
 
-        System.out.println("서비스에서 인기코인 검색 시:"+topics.toString());
+        // System.out.println("서비스에서 인기코인 검색 시:"+topics.toString());
         return topics;
     }
 
