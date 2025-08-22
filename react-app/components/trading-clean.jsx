@@ -658,7 +658,6 @@ const processcoinDetail = (data) => {
             왼쪽에서 관심있는 코인을 클릭하면<br/>
             <span className="font-semibold text-blue-600">전문가급 분석</span>을 제공해드려요
           </p>
-          {/* 이 부분 제거 - selectedCoin, highlighted 변수가 여기서는 정의되지 않음 */}
         </div>
       </div>
     );
@@ -1766,9 +1765,10 @@ useEffect(() => {
   const [highlighted, setHighlighted] = useState({});
   const highlightedRef = React.useRef(highlighted);
   React.useEffect(() => { highlightedRef.current = highlighted; }, [highlighted]);
+  // 코인별 하이라이트 타이머 관리
+  const highlightTimeouts = React.useRef({});
 
   useEffect(() => {
-    const timeouts = [];
     coinList.forEach(coin => {
       const realtimeKey = coin.symbol + '_KRW';
       const realtimeInfo = realTimeData[realtimeKey];
@@ -1776,60 +1776,69 @@ useEffect(() => {
         const price = parseInt(realtimeInfo.closePrice);
         const change = parseFloat(realtimeInfo.chgRate);
         const changeAmount = parseInt(realtimeInfo.chgAmt);
-        setHighlighted(prev => {
-          const prevHighlight = prev[coin.symbol] || {};
-          let updated = false;
-          let newHighlight = { ...prevHighlight };
-          if (prevHighlight.price !== price) {
-            newHighlight.priceHL = true;
-            newHighlight.price = price;
-            updated = true;
+        // priceHL: 값이 바뀌면 무조건 true로 만들고, 타이머도 무조건 새로 건다
+        if (highlightedRef.current[coin.symbol]?.price !== price) {
+          setHighlighted(prev => ({
+            ...prev,
+            [coin.symbol]: {
+              ...prev[coin.symbol],
+              priceHL: true,
+              price,
+            }
+          }));
+          if (highlightTimeouts.current[coin.symbol]?.price) {
+            clearTimeout(highlightTimeouts.current[coin.symbol].price);
           }
-          if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
-            newHighlight.changeHL = true;
-            newHighlight.change = change;
-            newHighlight.changeAmount = changeAmount;
-            updated = true;
+          highlightTimeouts.current[coin.symbol] = highlightTimeouts.current[coin.symbol] || {};
+          highlightTimeouts.current[coin.symbol].price = setTimeout(() => {
+            setHighlighted(prev2 => ({
+              ...prev2,
+              [coin.symbol]: {
+                ...prev2[coin.symbol],
+                priceHL: false,
+                price,
+              }
+            }));
+            highlightTimeouts.current[coin.symbol].price = null;
+          }, 1000);
+        }
+        // changeHL: 값이 바뀌면 무조건 true로 만들고, 타이머도 무조건 새로 건다
+        if (highlightedRef.current[coin.symbol]?.change !== change || highlightedRef.current[coin.symbol]?.changeAmount !== changeAmount) {
+          setHighlighted(prev => ({
+            ...prev,
+            [coin.symbol]: {
+              ...prev[coin.symbol],
+              changeHL: true,
+              change,
+              changeAmount,
+            }
+          }));
+          if (highlightTimeouts.current[coin.symbol]?.change) {
+            clearTimeout(highlightTimeouts.current[coin.symbol].change);
           }
-          if (updated) {
-            return {
-              ...prev,
-              [coin.symbol]: newHighlight
-            };
-          }
-          return prev;
-        });
-        // Move setTimeouts outside setHighlighted
-        if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
-          if (highlightedRef.current[coin.symbol]?.price !== price) {
-            timeouts.push(setTimeout(() => {
-              setHighlighted(prev2 => ({
-                ...prev2,
-                [coin.symbol]: {
-                  ...prev2[coin.symbol],
-                  priceHL: false,
-                  price,
-                }
-              }));
-            }, 100));
-          }
-          if (highlightedRef.current[coin.symbol]?.change !== change || highlightedRef.current[coin.symbol]?.changeAmount !== changeAmount) {
-            timeouts.push(setTimeout(() => {
-              setHighlighted(prev2 => ({
-                ...prev2,
-                [coin.symbol]: {
-                  ...prev2[coin.symbol],
-                  changeHL: false,
-                  change,
-                  changeAmount,
-                }
-              }));
-            }, 500));
-          }
+          highlightTimeouts.current[coin.symbol] = highlightTimeouts.current[coin.symbol] || {};
+          highlightTimeouts.current[coin.symbol].change = setTimeout(() => {
+            setHighlighted(prev2 => ({
+              ...prev2,
+              [coin.symbol]: {
+                ...prev2[coin.symbol],
+                changeHL: false,
+                change,
+                changeAmount,
+              }
+            }));
+            highlightTimeouts.current[coin.symbol].change = null;
+          }, 1000);
         }
       }
     });
-    return () => { timeouts.forEach(t => clearTimeout(t)); };
+    // 언마운트 시 모든 타이머 클리어
+    return () => {
+      Object.values(highlightTimeouts.current).forEach(obj => {
+        if (obj.price) clearTimeout(obj.price);
+        if (obj.change) clearTimeout(obj.change);
+      });
+    };
   }, [coinList, realTimeData]);
 
   const updatedCoinList = useMemo(() => {
@@ -2203,6 +2212,7 @@ useEffect(() => {
                       if (found) askQty = parseFloat(found.quantity).toFixed(3);
                     }
                     const isSelected = orderPrice === askPrice && parseFloat(askQty) > 0 && askPrice > 0;
+                    const isCurrentPrice = askPrice === currentPriceKRW;
                     rows.push(
                       <div
                         key={"ask-" + i}
@@ -2213,7 +2223,13 @@ useEffect(() => {
                         <div className="text-blue-700 bg-blue-100 text-left pl-2 font-mono rounded-l">{askQty}</div>
                         <div
                           className="text-center font-bold font-mono text-blue-600 bg-blue-100 cursor-pointer transition-all duration-200 hover:bg-blue-200 hover:scale-105 hover:shadow-md"
-                          style={isSelected ? { border: '2px solid #2563eb', zIndex: 2 } : { border: '2px solid transparent' }}
+                          style={
+                            isCurrentPrice
+                              ? { border: 'none', outline: '3px solid gold', outlineOffset: '2px', zIndex: 3 }
+                              : isSelected
+                                ? { border: '2px solid #2563eb', zIndex: 2 }
+                                : { border: '2px solid transparent' }
+                          }
                           onClick={() => setOrderPrice(askPrice)}
                         >
                           {askPrice > 0 ? askPrice.toLocaleString() : ''}
@@ -2233,14 +2249,14 @@ useEffect(() => {
                     // 현재가 row 강조(매수 첫줄)
                     const isCurrent = i === 0;
                     const isSelected = orderPrice === bidPrice && parseFloat(bidQty) > 0 && bidPrice > 0;
+                    const isCurrentPrice = bidPrice === currentPriceKRW;
                     rows.push(
                       <div
                         key={"bid-" + i}
                         className={
-                          `grid grid-cols-3 text-xs h-7 items-center` +
-                          (isCurrent ? ' border-2 border-black' : '')
+                          `grid grid-cols-3 text-xs h-7 items-center`
                         }
-                        style={isCurrent ? { zIndex: 3, border: '2px solid #000' } : {}}
+                        // style removed: no black border for current price row
                       >
                         <div className={isCurrent ? "bg-red-100" : "bg-red-100"}></div>
                         <div
@@ -2248,7 +2264,13 @@ useEffect(() => {
                             `text-center font-bold font-mono cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:scale-105 hover:shadow-md` +
                             (isCurrent ? ' text-red-600 bg-red-100' : ' text-red-600 bg-red-100')
                           }
-                          style={isSelected ? { border: '2px solid #ec4899', zIndex: 2 } : { border: '2px solid transparent' }}
+                          style={
+                            isCurrentPrice
+                              ? { border: 'none', outline: '3px solid gold', outlineOffset: '2px', zIndex: 3 }
+                              : isSelected
+                                ? { border: '2px solid #ec4899', zIndex: 2 }
+                                : { border: '2px solid transparent' }
+                          }
                           onClick={() => setOrderPrice(bidPrice)}
                         >
                           {bidPrice > 0 ? bidPrice.toLocaleString() : ''}
@@ -2265,20 +2287,20 @@ useEffect(() => {
                 <div>
                   <div className="mb-2">
                     <span className="font-semibold">거래량</span>
-                    <span className="float-right">{marketInfo?.total_volume ? formatKRW(marketInfo.total_volume) : '-'}</span>
+                    <span className="float-right">{marketInfo?.units_traded ? marketInfo.units_traded.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-'}</span>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">거래대금</span>
-                    <span className="float-right">{marketInfo?.market_cap ? formatKRW(marketInfo.market_cap) : '-'}</span>
+                    <span className="float-right">{marketInfo?.volume ? Number(marketInfo.volume).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-'}</span>
                     <div className="text-[10px] text-gray-400">(최근24시간)</div>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">24h 최고</span>
-                    <span className="float-right text-red-500">{marketInfo?.high_24h ? formatKRW(marketInfo.high_24h) : '-'}</span>
+                    <span className="float-right text-red-500">{marketInfo?.max_price ? formatKRW(marketInfo.max_price) : '-'}</span>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">24h 최저</span>
-                    <span className="float-right text-blue-500">{marketInfo?.low_24h ? formatKRW(marketInfo.low_24h) : '-'}</span>
+                    <span className="float-right text-blue-500">{marketInfo?.min_price ? formatKRW(marketInfo.min_price) : '-'}</span>
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">전일종가</span>
@@ -2286,11 +2308,11 @@ useEffect(() => {
                   </div>
                   <div className="mb-2">
                     <span className="font-semibold">당일고가</span>
-                    <span className="float-right text-red-500">{marketInfo?.high_24h ? formatKRW(marketInfo.high_24h) : '-'}</span>
+                    <span className="float-right text-red-500">{marketInfo?.max_price ? formatKRW(marketInfo.max_price) : '-'}</span>
                   </div>
                   <div>
                     <span className="font-semibold">당일저가</span>
-                    <span className="float-right text-blue-500">{marketInfo?.low_24h ? formatKRW(marketInfo.low_24h) : '-'}</span>
+                    <span className="float-right text-blue-500">{marketInfo?.min_price ? formatKRW(marketInfo.min_price) : '-'}</span>
                   </div>
                 </div>
               </div>
@@ -2298,19 +2320,25 @@ useEffect(() => {
               <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
                 {/* 탭 헤더 */}
                 <div className="flex border-b border-gray-200 mb-4">
-                  {["매수", "매도", "거래내역"].map((t) => (
-                    <button
-                      key={t}
-                      className={`flex-1 py-2 text-sm ${
-                        orderTab === t
-                          ? "border-b-2 border-blue-500 text-blue-600 font-semibold"
-                          : "text-gray-500"
-                      }`}
-                      onClick={() => setOrderTab(t)}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  {["매수", "매도", "거래내역"].map((t) => {
+                    let activeClass = "";
+                    if (orderTab === t) {
+                      if (t === "매수") activeClass = "border-b-2 border-red-500 text-red-600 font-semibold";
+                      else if (t === "매도") activeClass = "border-b-2 border-blue-500 text-blue-600 font-semibold";
+                      else if (t === "거래내역") activeClass = "border-b-2 border-black text-black font-semibold";
+                    } else {
+                      activeClass = "text-gray-500";
+                    }
+                    return (
+                      <button
+                        key={t}
+                        className={`flex-1 py-2 text-sm ${activeClass}`}
+                        onClick={() => setOrderTab(t)}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* 매수/매도 탭 공통 */}
@@ -2328,7 +2356,6 @@ useEffect(() => {
                       <label className="flex items-center gap-1 text-xs text-gray-400">
                         <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
                       </label>
-                      <span className="ml-auto text-xs text-gray-400">0<br />~ 0 KRW</span>
                     </div>
 
                     

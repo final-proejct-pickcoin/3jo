@@ -93,7 +93,7 @@ def get_bithumb_tick_size(symbol: str, price: float) -> float:
     elif price >= 1_000:
         return 1
     elif price >= 100:
-        return 0.1
+        return 1
     elif price >= 10:
         return 0.01
     else:
