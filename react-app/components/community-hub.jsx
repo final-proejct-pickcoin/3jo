@@ -235,12 +235,12 @@ const handleSubmitReport = async () => {
   }
 }, [currentUser.user_id])
 
-// likedPostIds 변경 후 게시글 불러오기
-useEffect(() => {
-  if (currentUser.user_id != null && likedPostIds.length >= 0) {
-    fetchPosts()
-  }
-}, [likedPostIds])
+  // likedPostIds 변경 후 게시글 불러오기
+  useEffect(() => {
+    if (currentUser.user_id != null && likedPostIds.length >= 0) {
+      fetchPosts()
+    }
+  }, [likedPostIds])
 
   const isOwner = (post) => {
     const me = safeToNumber(currentUser.user_id)
@@ -258,11 +258,11 @@ useEffect(() => {
       setPosts((prev) =>
         prev.map((p) => p.post_id === postId ? { ...p, like_count, isLiked: liked } : p)
       )
-      if (liked) {
-        setLikedPostIds(prev => [...prev, postId])
-      } else {
-        setLikedPostIds(prev => prev.filter(id => id !== postId))
-      }
+      // if (liked) {
+      //   setLikedPostIds(prev => [...prev, postId])
+      // } else {
+      //   setLikedPostIds(prev => prev.filter(id => id !== postId))
+      // }
     } catch (err) {
       console.error("좋아요 토글 실패:", err)
     }

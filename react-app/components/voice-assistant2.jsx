@@ -730,7 +730,7 @@ export const VoiceAssistant2 = () => {
       <Card className="w-96 shadow-xl flex flex-col">
         <CardContent className="p-4 flex-grow">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-lg">AI 비서 🤖</h3>
+            <h3 className="font-semibold text-lg">음성 AI 어시스턴스</h3>
             <div className="flex items-center gap-2">
               {/* ✅ [추가] 연결 상태 표시 */}
               <Badge variant={statusBadge.variant} className={`text-xs ${statusBadge.color}`}>
