@@ -231,8 +231,10 @@ export default function SupportManagement({ isDarkMode }) {
           ...ticket,
           messages: ticket.messages || [],  // 기존에 message가 없으면 빈 배열 할당
         }));
+        console.log("프론트 문의:", res)
         setTickets(updatedTickets)
         setTotal(res.data.total);
+        
       }).catch((error) => {
       console.error("데이터 불러오기 실패:", error);
     });

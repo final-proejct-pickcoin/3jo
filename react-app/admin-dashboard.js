@@ -597,7 +597,7 @@ const handleLogout = () => {
       }
     })
       .then((result)=>{
-        console.log(result.data.users)
+        console.log("프론트 유저정보", result.data.users)
         setUsers(result.data.users)
         setTotal(result.data.total);
       })
