@@ -616,6 +616,7 @@ const getCoinIconColor = (symbol) => {
 const CoinInfoPanel = ({ coin, realTimeData }) => {
   const [coinDetail, setCoinDetail] = useState(null);
   const [upbitData, setUpbitData] = useState(null);
+  const [geckoData, setGeckoData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
