@@ -65,6 +65,29 @@ export default function Component() {
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [isAnnouncementDetailOpen, setIsAnnouncementDetailOpen] = useState(false);
+  const [token, setToken] = useState('')
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(total / itemsPerPage);
+  // 한 번에 보여줄 페이지 번호 수 설정
+  const maxPageButtons = 5;
+  const getPageNumbers = () => {
+    let start = Math.max(currentPage - Math.floor(maxPageButtons / 2), 1);
+    let end = start + maxPageButtons - 1;
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(end - maxPageButtons + 1, 1);
+    }
+    let pages = [];
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: "",
     content: "",
@@ -112,8 +135,7 @@ export default function Component() {
   ]);
 
   // Mock data with more realistic information
-  const [users, setUsers] = useState([]);
-
+  const [users, setUsers] = useState([]);  
   const [logs, setLogs] = useState([
     {
       id: 1,
@@ -187,7 +209,6 @@ const handleUserStatusToggle = async (userId) => {
   );
 
   try {
-    const token = localStorage.getItem("access_token");
     await axios.get("http://localhost:8000/admin/user-status", {
       params: { user_id: userId, is_verified: nextVerified },
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -205,8 +226,7 @@ const handleUserStatusToggle = async (userId) => {
 
 // === 공지 목록 불러오기 ===
 const fetchAnnouncements = async () => {
-  try {
-    const token = localStorage.getItem("access_token");
+  try {    
 
     const { data } = await axios.get(ANN_API_BASE, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -254,7 +274,6 @@ const fetchAnnouncements = async () => {
 // === 공지 생성 ===
 const createAnnouncement = async (payload) => {
   try {
-    const token = localStorage.getItem("access_token");
 
     const { data } = await axios.post(
       ANN_API_BASE,
@@ -310,8 +329,6 @@ const patchAnnouncementStatus = async (serverId, active) => {
   const sid = toInt(serverId);                 // ← 숫자로 캐스팅
   if (sid === null) throw new Error("상태 변경 불가: serverId 없음");
 
-  const token = localStorage.getItem("access_token");
-
   console.log("[PATCH] /admin/announcements/%s/status?active=%s", sid, active);
   await axios.patch(`${ANN_API_BASE}/${sid}/status`, {}, {
     params: { active },
@@ -323,7 +340,6 @@ const deleteAnnouncement = async (serverId) => {
   const sid = toInt(serverId);                 // ← 숫자로 캐스팅
   if (sid === null) throw new Error("삭제 불가: serverId 없음");
 
-  const token = localStorage.getItem("access_token");
   console.log("[DELETE] /admin/announcements/%s", sid); // 디버그
 
   await axios.delete(`${ANN_API_BASE}/${sid}`, {
@@ -373,7 +389,7 @@ const openEditDialog = (ann) => {
 
 // 공지 수정 API
 const updateAnnouncement = async (serverId, payload) => {
-  const token = localStorage.getItem("access_token");
+  
   const { data } = await axios.put(`${ANN_API_BASE}/${serverId}`, payload, {
     headers: {
       "Content-Type": "application/json",
@@ -442,39 +458,36 @@ const handleSaveEdit = async () => {
   }
 };
 
+const router = useRouter();
 
+const handleLogout = () => {
+  const email = localStorage.getItem("sub");
+  // 로그아웃 처리
+  axios
+    .post(
+      "http://localhost:8000/admin/logout",
+      new URLSearchParams({ email }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      }
+    )
+    .then(() => {
+      // 토큰 삭제
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("role");
+      localStorage.removeItem("sub");
 
+      // 상태 초기화
+      setIsLoggedIn(false);
 
-  const router = useRouter();
-
-  const handleLogout = () => {
-    const email = localStorage.getItem("sub");
-    // 로그아웃 처리
-    axios
-      .post(
-        "http://localhost:8000/admin/logout",
-        new URLSearchParams({ email }),
-        {
-          headers: { "Content-Type": "application/x-www-form-urlencoded" }
-        }
-      )
-      .then(() => {
-        // 토큰 삭제
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_name");
-        localStorage.removeItem("role");
-        localStorage.removeItem("sub");
-
-        // 상태 초기화
-        setIsLoggedIn(false);
-
-        // 로그인 페이지로 리다이렉트
-        router.push("/admin");
-      })
-      .catch((error) => {
-        console.error("로그아웃 실패:", error);
-      });
-  };
+      // 로그인 페이지로 리다이렉트
+      router.push("/admin");
+    })
+    .catch((error) => {
+      console.error("로그아웃 실패:", error);
+    });
+};
   const handleExportLogs = () => {
     const selectedLogData = logs.filter((log) => selectedLogs.includes(log.id));
     const csvContent =
@@ -573,8 +586,27 @@ const handleSaveEdit = async () => {
     }
   }
 
+  const getUserPerPage = async (requestPage, itemsPerPage) => {
+
+    setCurrentPage(requestPage)
+
+    await axios.get("http://localhost:8000/admin/getuser", {
+      params:{
+        page: requestPage,
+        limit: itemsPerPage
+      }
+    })
+      .then((result)=>{
+        console.log(result.data.users)
+        setUsers(result.data.users)
+        setTotal(result.data.total);
+      })
+      .catch((err)=> console.log(err))
+  }
+
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem("access_token")
+    setToken(token);
 
     if (!token || isTokenExpired(token)) {
       localStorage.removeItem("access_token");
@@ -592,16 +624,13 @@ const handleSaveEdit = async () => {
 
       setProfileData((prev) => ({ ...prev, role, name, email }));
       // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
-      axios.get("http://localhost:8000/admin/getuser")
-        .then((result)=>{
-          setUsers(result.data)
-        })
-        .catch((err)=> console.log(err))
+      
+      getUserPerPage(currentPage, itemsPerPage);
 
-      setIsLoggedIn(true);
+      setIsLoggedIn(true);      
       fetchAnnouncements();
     }
-  }, []);
+  }, [token]);
 
   if (isLoggedIn === null) {
     return <div style={{ background: "#fff", width: "100%", height: "100vh" }} />; // 로딩 중
@@ -1019,6 +1048,40 @@ const handleSaveEdit = async () => {
                       ))}
                     </TableBody>
                   </Table>
+                  {/* 페이지네이션 UI 입력 */}
+                  <div style={{ marginTop: "16px", display: "flex", gap: "8px", justifyContent: "center" }}>
+                    <button onClick={() => getUserPerPage(1)} disabled={currentPage === 1}>
+                      맨 처음
+                    </button>
+                    <button onClick={() => getUserPerPage(currentPage - 1)} disabled={currentPage === 1}>
+                      이전
+                    </button>
+
+                    {getPageNumbers().map(pageNum => (
+                      <button
+                        key={pageNum}
+                        onClick={() => getUserPerPage(pageNum)}
+                        style={{
+                          fontWeight: pageNum === currentPage ? 'bold' : 'normal',
+                          textDecoration: pageNum === currentPage ? 'underline' : 'none',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: pageNum === currentPage ? '2px solid #2563eb' : '1px solid #ccc',
+                          backgroundColor: pageNum === currentPage ? '#bfdbfe' : 'transparent',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+
+                    <button onClick={() => getUserPerPage(currentPage + 1)} disabled={currentPage === total}>
+                      다음
+                    </button>
+                    <button onClick={() => getUserPerPage(total)} disabled={currentPage === total}>
+                      맨 끝
+                    </button>
+                  </div>     
                 </CardContent>
               </Card>
 
