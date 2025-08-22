@@ -179,14 +179,6 @@ const UpbitProjectIntro = ({ coin, coinDetail, getKoreanName }) => {
   );
 };
 
-/*
-// 자동 심볼-ID 매핑 캐시
-let symbolToIdCache = {};
-let cacheExpiry = 0;
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
-
-
-// 코인 상세 정보를 가져오는 함수 (빗썸 API)
 const fetchCoinDetail = async (symbol) => {
   try {
     const response = await fetch(`http://localhost:8000/api/coin/${symbol}`);
@@ -198,22 +190,55 @@ const fetchCoinDetail = async (symbol) => {
   }
 };
 
+// CoinGecko에서 심볼-ID 매핑 자동 생성
+const getSymbolToIdMapping = async () => {
+  const now = Date.now();
+  
+  if (symbolToIdCache && Object.keys(symbolToIdCache).length > 0 && now < cacheExpiry) {
+    return symbolToIdCache;
+  }
 
-
-// 코인 아이콘 색상
-const getCoinIconColor = (symbol) => {
-  const colors = {
-  'BTC': 'bg-gray-400',
-  'ETH': 'bg-gray-400',
-  'XRP': 'bg-gray-400',
-  'ADA': 'bg-gray-400',
-  'SOL': 'bg-gray-400',
-  'DOGE': 'bg-gray-400'
-  };
-  return colors[symbol] || 'bg-gray-500';
+  try {
+    console.log('🔄 CoinGecko 코인 목록 자동 매핑 중...');
+    
+    const response = await fetch('https://api.coingecko.com/api/v3/coins/list');
+    
+    if (!response.ok) {
+      throw new Error(`CoinGecko API 오류: ${response.status}`);
+    }
+    
+    const coinsList = await response.json();
+    
+    const mapping = {};
+    coinsList.forEach(coin => {
+      if (coin.symbol && coin.id) {
+        const symbol = coin.symbol.toUpperCase();
+        if (!mapping[symbol]) {
+          mapping[symbol] = coin.id;
+        }
+      }
+    });
+    
+    symbolToIdCache = mapping;
+    cacheExpiry = now + CACHE_DURATION;
+    
+    console.log(`✅ ${Object.keys(mapping).length}개 코인 자동 매핑 완료`);
+    
+    return mapping;
+    
+  } catch (error) {
+    console.error('❌ CoinGecko 매핑 생성 실패:', error);
+    
+    return {
+      'BTC': 'bitcoin',
+      'ETH': 'ethereum', 
+      'XRP': 'ripple',
+      'ADA': 'cardano',
+      'SOL': 'solana'
+    };
+  }
 };
 
-// CoinInfoPanel 컴포넌트
 // 🎯 다중 API 통합 함수들
 const fetchUpbitKoreanData = async (symbol) => {
   try {
@@ -235,6 +260,138 @@ const fetchUpbitKoreanData = async (symbol) => {
     return null;
   }
 };
+
+// 향상된 CoinGecko 데이터 함수
+const fetchEnhancedCoinData = async (symbol) => {
+  try {
+    const symbolToId = await getSymbolToIdMapping();
+    const coinId = symbolToId[symbol.toUpperCase()];
+    
+    if (!coinId) {
+      console.warn(`${symbol}에 대한 CoinGecko ID를 찾을 수 없습니다`);
+      return null;
+    }
+
+    // 더 상세한 데이터를 위해 모든 옵션 활성화
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${coinId}?localization=true&tickers=true&market_data=true&community_data=true&developer_data=true&sparkline=true`
+    );
+    
+    if (!response.ok) throw new Error(`CoinGecko API 오류: ${response.status}`);
+    
+    const data = await response.json();
+    
+    return {
+      id: data.id,
+      name: data.name,
+      symbol: data.symbol.toUpperCase(),
+      
+      // 다국어 설명 (한국어 우선)
+      description: data.description?.ko || data.description?.en || '설명이 없습니다.',
+      
+      // 기본 정보
+      genesis_date: data.genesis_date,
+      market_cap_rank: data.market_cap_rank,
+      coingecko_rank: data.coingecko_rank,
+      coingecko_score: data.coingecko_score,
+      developer_score: data.developer_score,
+      community_score: data.community_score,
+      liquidity_score: data.liquidity_score,
+      public_interest_score: data.public_interest_score,
+      
+      // 상세 시장 데이터
+      current_price: data.market_data?.current_price?.krw || 0,
+      market_cap: data.market_data?.market_cap?.krw || 0,
+      market_cap_change_24h: data.market_data?.market_cap_change_percentage_24h || 0,
+      total_supply: data.market_data?.total_supply || 0,
+      circulating_supply: data.market_data?.circulating_supply || 0,
+      max_supply: data.market_data?.max_supply,
+      
+      // 가격 정보
+      price_change_24h: data.market_data?.price_change_percentage_24h || 0,
+      price_change_7d: data.market_data?.price_change_percentage_7d || 0,
+      price_change_30d: data.market_data?.price_change_percentage_30d || 0,
+      price_change_1y: data.market_data?.price_change_percentage_1y || 0,
+      
+      high_24h: data.market_data?.high_24h?.krw || 0,
+      low_24h: data.market_data?.low_24h?.krw || 0,
+      ath: data.market_data?.ath?.krw || 0,
+      ath_date: data.market_data?.ath_date?.krw || '',
+      atl: data.market_data?.atl?.krw || 0,
+      atl_date: data.market_data?.atl_date?.krw || '',
+      
+      // 거래량 및 유동성
+      total_volume: data.market_data?.total_volume?.krw || 0,
+      market_cap_fdv_ratio: data.market_data?.market_cap_fdv_ratio || 0,
+      
+      // 기술 정보
+      hashing_algorithm: data.hashing_algorithm,
+      categories: data.categories || [],
+      
+      // 링크
+      homepage: data.links?.homepage?.[0] || '',
+      whitepaper: data.links?.whitepaper || '',
+      blockchain_site: data.links?.blockchain_site?.[0] || '',
+      official_forum_url: data.links?.official_forum_url?.[0] || '',
+      chat_url: data.links?.chat_url?.[0] || '',
+      announcement_url: data.links?.announcement_url?.[0] || '',
+      twitter_screen_name: data.links?.twitter_screen_name || '',
+      facebook_username: data.links?.facebook_username || '',
+      telegram_channel_identifier: data.links?.telegram_channel_identifier || '',
+      subreddit_url: data.links?.subreddit_url || '',
+      repos_url: data.links?.repos_url?.github?.[0] || '',
+      
+      // 커뮤니티 데이터
+      facebook_likes: data.community_data?.facebook_likes || 0,
+      twitter_followers: data.community_data?.twitter_followers || 0,
+      reddit_subscribers: data.community_data?.reddit_subscribers || 0,
+      telegram_channel_user_count: data.community_data?.telegram_channel_user_count || 0,
+      
+      // 개발자 데이터
+      forks: data.developer_data?.forks || 0,
+      stars: data.developer_data?.stars || 0,
+      subscribers: data.developer_data?.subscribers || 0,
+      total_issues: data.developer_data?.total_issues || 0,
+      closed_issues: data.developer_data?.closed_issues || 0,
+      
+      // 스파클라인 (차트 데이터)
+      sparkline: data.market_data?.sparkline_7d?.price || []
+    };
+  } catch (error) {
+    console.error(`${symbol} 향상된 데이터 조회 실패:`, error);
+    return null;
+  }
+};
+
+let symbolToIdCache = {};
+let cacheExpiry = 0;
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
+
+/*
+// 자동 심볼-ID 매핑 캐시
+
+
+
+// 코인 상세 정보를 가져오는 함수 (빗썸 API)
+
+
+
+
+// 코인 아이콘 색상
+const getCoinIconColor = (symbol) => {
+  const colors = {
+  'BTC': 'bg-gray-400',
+  'ETH': 'bg-gray-400',
+  'XRP': 'bg-gray-400',
+  'ADA': 'bg-gray-400',
+  'SOL': 'bg-gray-400',
+  'DOGE': 'bg-gray-400'
+  };
+  return colors[symbol] || 'bg-gray-500';
+};
+
+// CoinInfoPanel 컴포넌트
+
 
 const fetchCoinMarketCapData = async (symbol) => {
   try {
