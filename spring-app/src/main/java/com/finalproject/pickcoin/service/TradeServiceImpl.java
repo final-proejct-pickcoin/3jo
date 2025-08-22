@@ -163,5 +163,17 @@ public class TradeServiceImpl implements TradeService {
     public java.util.List<Map<String,Object>> trades(Long userId) {
         return repo.find_trades(userId);
     }
+
+    /** 자산별 미체결 거래 내역 */
+    @Override
+    public java.util.List<Map<String,Object>> asset_unconcluded_orders(Long user_id, Long asset_id) {
+        return repo.asset_unconcluded_orders(user_id, asset_id);
+    }
+    
+    /** 자산별 체결 거래 내역 */
+    @Override
+    public java.util.List<Map<String,Object>> asset_concluded_orders(Long user_id, Long asset_id) {
+        return repo.asset_concluded_orders(user_id, asset_id);
+    }
         
 }

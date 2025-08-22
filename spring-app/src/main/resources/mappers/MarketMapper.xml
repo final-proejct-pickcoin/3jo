@@ -42,5 +42,10 @@
         WHERE user_id = #{user_id} AND asset_id = #{asset_id};
 
     </delete>
+
+    <select id="get_assets_id" resultType="integer">
+        select asset_id from asset
+        where symbol = #{asset_symbol}
+    </select>
     
 </mapper>

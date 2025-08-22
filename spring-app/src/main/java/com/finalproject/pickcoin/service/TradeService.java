@@ -21,5 +21,8 @@ public interface TradeService {
     List<Map<String,Object>> trades(Long userId);
     // 심볼로 asset_id 조회
     //Long assetIdBySymbol(String symbol);
-    
+    // 자산별 미체결 거래 내역
+    List<Map<String,Object>> asset_unconcluded_orders(Long user_id, Long asset_id);
+    // 자산별 체결 거래 내역
+    List<Map<String,Object>> asset_concluded_orders(Long user_id, Long asset_id);
 }

@@ -12,9 +12,9 @@ import { BarChart3, TrendingUp, TrendingDown, Search, Star, Settings, AlignCente
 import { toast } from "sonner"
 import TradingChart from "@/components/trading-chart"
 import { CurrencyToggle } from "@/components/currency-toggle"
+import axios from "axios"
 
 
-//거래 관련
 const TRADE_API = "http://localhost:8080/api/trade";
 
 // 자동 심볼-ID 매핑 캐시
@@ -330,7 +330,7 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
         setLoading(false);
       });
     }
-  }, [coin.symbol]);
+  }, [coin?.symbol]);
 
   // 한국어 이름 우선순위: 업비트 > 기본 매핑 > 영어명
   const getKoreanName = () => {
@@ -481,6 +481,19 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
   }
 
   const investmentGrade = getInvestmentGrade();
+
+
+  const market_buy =async (user_id,asset_id,amount,price) => {
+    try {
+    if(user_id !== null){
+      await axios.post(TRADE_API + '/market-buy', {params : {user_id, asset_id, amount, price}});
+    }
+    } catch (error) {
+      console.error('매수 실패:', error);
+      toast.error('거래에 실패했습니다. 나중에 다시 시도해주세요.');
+    }
+
+  }
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto" style={{ height: '1100px' }}>
@@ -1220,31 +1233,8 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
 
 export const TradingInterface = () => {
   //사용자 id 추출
-  //const [user_id, setUserId] = useState(null);
   const [user_id, setUserId] = useState(null);
 
-//======== 사용자 ID 가져오기========
-// useEffect(() => {
-// //토큰값을 빼 user_mail변수에 저장
-// const tokenValue = sessionStorage.getItem("auth_token");
-// if (tokenValue) {
-//   const payload = JSON.parse(atob(tokenValue.split('.')[1]));
-//   const user_mail = payload.email || payload.sub || null;
-// //이메일 값 확인
-//   console.log("이메일:", user_mail);
-// //이메일값 정상적으로 들어왔을때 id값 반환 응답 백엔드 url 호출()
-//     if (user_mail) {
-//     fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
-//       .then(res => res.json())
-//       .then(data => {
-//       if(data && data.user_id != null) {
-//       setUserId(Number(data.user_id));//user_id의 값을 data.user_id로 업데이트
-//       }
-//       })
-//       .catch(err => console.error(err));
-//   }
-// }
-// }, []);
 
 // ======== 사용자 ID 가져오기 (가볍게) ========
 useEffect(() => {
@@ -1299,8 +1289,34 @@ useEffect(() => {
   };
 }, []);
 
+//    변경된 user_id값 최종 확인
+  useEffect(() => {
+    console.log("user_id 변경됨:", user_id);
+  }, [user_id]);
+
+
+//=======코인 id(asset_id) 가져오기
+const [asset_id, setAsset_id] = useState(null);    // 현재 선택 코인의 자산 ID
+
+// 클릭한 코인 심볼 통해 id 가져오고 [123] 형태 파싱 → 숫자 or null
+async function fetchAssetId(assetSymbol) {
+  const url = `http://localhost:8080/api/Market_assets/asset-id?asset_symbol=${encodeURIComponent(assetSymbol)}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) return null;
+
+  try {
+    const arr = await res.json();            // 기대값: [123]
+    if (Array.isArray(arr) && arr.length) {
+      const n = Number(arr[0]);
+      return Number.isFinite(n) ? n : null;
+    }
+  } catch {}
+  return null;
+}
+
+
+
 //=======매도 매수 관련
-  const [assetId, setAssetId] = useState("");  // 숫자 ID (예: BTC의 asset_id)
   const [price, setPrice]   = useState("");    // 현재가 (시장가를 서버결정으로 바꾸면 안보내도 됨)
   const [qty, setQty]       = useState("");    // 수량
 //  const [loading, setLoading] = useState(false);
@@ -1316,9 +1332,9 @@ useEffect(() => {
   const refreshPortfolio = async () => {
     try {
       const [h, k, t] = await Promise.all([
-        axios.get(`${TRADE_API}/holdings`,    { params: { user_id: USER_ID } }),
-        axios.get(`${TRADE_API}/krw_balance`, { params: { user_id: USER_ID } }),
-        axios.get(`${TRADE_API}/trades`,      { params: { user_id: USER_ID } }),
+        axios.get(`${TRADE_API}/holdings`,    { params: { user_id: user_id } }),
+        axios.get(`${TRADE_API}/krw_balance`, { params: { user_id: user_id } }),
+        axios.get(`${TRADE_API}/trades`,      { params: { user_id: user_id } }),
       ]);
       window.dispatchEvent(
         new CustomEvent("portfolio:updated", {
@@ -1331,59 +1347,171 @@ useEffect(() => {
   };
 
   const guard = () => {
-    if (!assetId) return "assetId(자산 ID)를 입력하세요.";
+    if (!asset_id) return "asset_id(자산 ID)를 입력하세요.";
     if (!qty) return "수량(qty)을 입력하세요.";
     if (!price) return "가격(price)을 입력하세요.";
     return null;
   };
 
-  // ✅ await 붙는 자리: 버튼 핸들러 내부
+  
+  // 리스트 클릭 시 asset_id 저장
+  const handleSelectCoin = (coin) => {
+    setSelectedCoin(coin); // coin = { asset_id, symbol, price, ... }
+  };
+
+  // 매수 버튼 클릭
   const handleBuy = async () => {
-    const msg = guard();
-    if (msg) return alert(msg);
+    if (!selectedCoin) {
+      return alert("코인을 먼저 선택하세요!");
+    }
+
     try {
-      setLoading(true);
       const body = {
-        // PlaceOrderRequest 그대로 사용
-        user_id: USER_ID,
-        asset_id: Number(assetId),
-        amount: qty,   // 문자열 OK (서버 BigDecimal)
-        price: price,  // 서버가 가격결정이면 이 필드 제거 가능
+        user_id: user_id,
+        asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
+        amount: orderQty,
+        price: orderPrice,
       };
-      const { data } = await axios.post(`${TRADE_API}/market_buy`, body);
-      alert(`매수 체결! 주문번호 ${data.order_id}`);
-      await refreshPortfolio();
-      setQty("");
-    } catch (e) {
-      alert(e.response?.data?.error ?? "매수 실패");
-    } finally {
-      setLoading(false);
+      alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
+
+      await axios.post("http://localhost:8080/api/trade/market_buy", body);
+      alert(`${selectedCoin.symbol} 매수 성공!`);
+    } catch (err) {
+      alert("handleBuy:매수 실패: " + err.message);
     }
   };
 
+
+  // 매도 버튼 클릭
   const handleSell = async () => {
-    const msg = guard();
-    if (msg) return alert(msg);
+    if (!selectedCoin) {
+      return alert("코인을 먼저 선택하세요!");
+    }
+
     try {
-      setLoading(true);
       const body = {
-        user_id: USER_ID,
-        asset_id: Number(assetId),
-        amount: qty,
-        price: price,
+        user_id: user_id,
+        asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
+        amount: orderQty,
+        price: orderPrice,
       };
-      const { data } = await axios.post(`${TRADE_API}/market_sell`, body);
-      alert(`매도 체결! 주문번호 ${data.order_id}`);
-      await refreshPortfolio();
-      setQty("");
-    } catch (e) {
-      alert(e.response?.data?.error ?? "매도 실패");
-    } finally {
-      setLoading(false);
+      alert("handleSell:매도 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
+      await axios.post("http://localhost:8080/api/trade/market_sell", body);
+      alert(`${selectedCoin.symbol} 매도 성공!`);
+    } catch (err) {
+      alert("handleBuy:매도 실패: " + err.message);
     }
   };
 
-  //=======
+
+//=================거래내역 출력
+//미체결 내역
+const [unconcluded_orders,setUnconcluded_orders] = useState([]);
+//체결 내역
+const [concluded_orders,setConcluded_orders]=useState([]);
+
+//======거래내역 데이터 정리
+// 0=매수, 1=매도 (문자/숫자 둘 다 대응)
+const ORDER_TYPE_TEXT = { 0: "매수", "0": "매수", 1: "매도", "1": "매도" };
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const formatTS = (v) => {
+  if (!v) return "-";
+  // '2025-08-22T11:47:38.791752' → 마이크로초 3자리로 줄여 Safari NaN 방지
+  let s = typeof v === "string" ? v.replace(" ", "T").replace(/(\.\d{3})\d+$/, "$1") : v;
+
+  // 숫자 타임스탬프도 허용
+  if (typeof s !== "string") {
+    const n = Number(s);
+    if (Number.isFinite(n)) s = new Date(n).toISOString();
+  }
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return "-";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+};
+
+const formatQty = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n ?? "-");
+  if (num === 0) return "0";
+  if (Math.abs(num) < 1e-8) return num.toExponential(2); // 아주 작은 수는 지수표기
+  return num.toFixed(8).replace(/\.?0+$/, "");          // 최대 8자리, 뒤 0 제거
+};
+
+const safePrice = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString() : String(v ?? "-");
+};
+
+// 백엔드 레코드 1개 → 표준 레코드(r.ts/r.side/r.qty/r.price)
+const normalizeOrder = (row, i) => {
+  const tsRaw = row.order_date ?? row.created_at ?? row.timestamp ?? row.ts;
+  const typeRaw = row.order_type ?? row.type ?? row.side;
+  const amtRaw  = row.amount ?? row.qty ?? row.quantity;
+  const priceRaw = row.price;
+
+  return {
+    id: row.order_id ?? row.id ?? `${typeRaw ?? "x"}-${i}`,
+    ts: formatTS(tsRaw),
+    side: ORDER_TYPE_TEXT[typeRaw] ?? (typeof typeRaw === "string" ? typeRaw : "-"),
+    qty: formatQty(amtRaw),
+    price: safePrice(priceRaw),
+  };
+};
+
+// 배열 전체 매핑
+const normalizeOrders = (payload) => {
+  const arr = Array.isArray(payload)
+    ? payload
+    : (Array.isArray(payload?.data) ? payload.data : []);
+  return arr.map(normalizeOrder);
+};
+
+//백에서 체결 거래내역 가져오기
+const Concluded_orders = async () => {
+  if (!user_id || !asset_id) return;
+  const { data } = await axios.get(`${TRADE_API}/asset_concluded_orders`, {
+      params: { user_id, asset_id },
+      headers: { Accept: "application/json" },
+    });
+
+    setConcluded_orders(normalizeOrders(data));
+}
+//백에서 미체결 거래내역 가져오기
+const Unconcluded_orders = async () => {
+  if (!user_id || !asset_id) return;
+  const params = { user_id, asset_id };
+  const res = await axios.get(`${TRADE_API}/asset_unconcluded_orders`, { params });
+  setConcluded_orders(res.data);
+}
+
+
+// 탭 선택에 따른 체결/미체결 주문 내역 상태 자동 선택
+// 주문 탭 상태
+const [orderTab, setOrderTab] = useState("매도");
+// 거래내역 서브탭 상태
+const [historyTab, setHistoryTab] = useState("체결");
+
+
+useEffect(() => {
+  if (orderTab !== "거래내역") return;
+  if (!user_id || !asset_id) return;
+  // 탭 들어올 때 둘 다 갱신
+  Concluded_orders();
+  Unconcluded_orders();
+  //리스트 클릭해 asset_id가 선택된 상태인지 확인용
+  //alert(`data: ${user_id}, ${asset_id}`);
+}, [orderTab, user_id, asset_id]);
+
+// 체결/미체결 토글할 때도 새로고침 하고 싶으면
+useEffect(() => {
+  if (orderTab !== "거래내역") return;
+  if (!user_id || !asset_id) return;
+  if (historyTab === "체결") Concluded_orders();
+  else Unconcluded_orders();
+}, [historyTab]);
 
 
   // Responsive height: Coin list matches main chart+order book+order panel area (red box)
@@ -1794,8 +1922,7 @@ useEffect(() => {
 
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
-  // 주문 탭 상태
-const [orderTab, setOrderTab] = useState("매도");
+
 
 // 현재가(실시간 우선)
 const currentPriceKRW = useMemo(() => {
@@ -1837,21 +1964,17 @@ const totalAmountKRW = useMemo(
   [orderPrice, orderQty]
 );
 
-// 거래내역 서브탭 상태
-const [historyTab, setHistoryTab] = useState("미체결");
+
 
 // (데모) 미체결/체결 리스트 — 나중에 API 결과로 교체하면 됨
-const openOrders = useMemo(() => ([
-  { id: 1, t: "12:10:11", side: "매수", qty: "0.005", price: "163,210,000" },
-  { id: 2, t: "12:03:22", side: "매도", qty: "0.002", price: "163,230,000" },
-]), []);
+// const openOrders = useMemo(() => ([
+//   { id: 1, t: "12:10:11", side: "매수", qty: "0.005", price: "163,210,000" },
+//   { id: 2, t: "12:03:22", side: "매도", qty: "0.002", price: "163,230,000" },
+// ]), []);
 
-const filledOrders = useMemo(() => ([
-  { id: 11, t: "12:01:02", side: "매수", qty: "0.003", price: "163,200,000" },
-  { id: 12, t: "11:58:45", side: "매도", qty: "0.001", price: "163,180,000" },
-]), []);
 
-  return (
+
+return (
     <div className="w-full p-0 space-y-4">
     {/* 🚨 연결 상태 표시 추가 */}
       <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
@@ -1968,7 +2091,28 @@ const filledOrders = useMemo(() => ([
                   filteredCoinList.map((coin, index) => (
                     <div
                       key={coin.symbol}
-                      onClick={() => setSelectedCoin(coin.symbol)}
+                      // onClick={async () => {setSelectedCoin(coin.symbol);
+                      //   if (coin.asset_id != null) setAssetId(coin.asset_id);
+                      //   else await ensureAssetId(coin.symbol);
+                      // }
+                      // }
+                      onClick={async () => {
+                                setSelectedCoin(coin.symbol);
+                                const market = activeTab === "BTC" ? "BTC" : "KRW";
+                                const assetSymbol = `${coin.symbol}-${market}`;  // 예) ETH-KRW
+                                const id = await fetchAssetId(assetSymbol);
+                                setAsset_id(id);
+                                // try {
+                                //   const id = await fetchAssetId(assetSymbol);
+                                //   setAssetId(id);
+                                //   console.log("새 에셋아이디로컬:",+ id);
+                                //   {alert(`코인 ${coin.symbol} 선택됨,assetSymbol : ${assetSymbol},asset_id: ${id}`)};
+                                // } catch {
+                                //   setAssetId(null);
+                                // }
+                              }
+                            }
+
                       className={`grid grid-cols-4 gap-1 p-2 text-xs cursor-pointer border-b items-center
                         ${selectedCoin === coin.symbol ? 'bg-blue-50 border-blue-200' : ''}`}
                     >
@@ -2219,6 +2363,7 @@ const filledOrders = useMemo(() => ([
                         value={orderQty ? orderQty : ""}               // 비어 있으면 빈칸
                         onChange={(e) => {
                           const v = e.target.value.replace(/[^\d.]/g, ""); // 숫자/소수점만 허용
+                          console.log("수량 입력:", v);
                           setOrderQty(v === "" ? 0 : Number(v));
                         }}
                         placeholder="0"
@@ -2245,19 +2390,22 @@ const filledOrders = useMemo(() => ([
 
                     {/* ✅ 매수/매도 탭별 버튼 */}
                     {orderTab === "매수" && (
-                      <button
-                        className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
-                        type="button"
-                        onClick={() => console.log("매수 전송")}
-                      >
-                        매수
-                      </button>
-                    )}
-                    {orderTab === "매도" && (
+
                       <button
                         className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
                         type="button"
-                        onClick={() => console.log("매도 전송")}
+                        onClick={handleBuy}
+
+                      >
+                        매수
+                      </button>
+
+                    )}
+                    {orderTab === "매도" && (
+                      <button
+                        className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
+                        type="button"
+                        onClick={handleSell}
                       >
                         매도
                       </button>
@@ -2325,22 +2473,22 @@ const filledOrders = useMemo(() => ([
                       {/* 리스트 */}
                       <div className="border rounded">
                         <div className="grid grid-cols-4 p-2 font-semibold bg-gray-50 border-b">
-                          <div>시간</div>
-                          <div>구분</div>
-                          <div>수량(BTC)</div>
+                            <div>일시</div>
+                            <div>구분</div>
+                            <div>수량(BTC)</div>
                           <div className="text-right">가격(KRW)</div>
                         </div>
 
-                        {(historyTab === "미체결" ? openOrders : filledOrders).map((r) => (
+                        {(historyTab === "미체결" ? unconcluded_orders : concluded_orders).map((r) => (
                           <div key={r.id} className="grid grid-cols-4 p-2 border-b last:border-b-0">
-                            <div>{r.t}</div>
-                            <div className={r.side === "매수" ? "text-emerald-600" : "text-red-600"}>{r.side}</div>
+                            <div>{r.ts}</div>
+                            <div className={r.side === "매수" ? "text-red-600" : "text-emerald-600"}>{r.side}</div>
                             <div>{r.qty}</div>
                             <div className="text-right">{r.price}</div>
                           </div>
                         ))}
 
-                        {(historyTab === "미체결" ? openOrders : filledOrders).length === 0 && (
+                        {(historyTab === "미체결" ? unconcluded_orders : concluded_orders).length === 0 && (
                           <div className="p-4 text-center text-gray-400">내역이 없습니다.</div>
                         )}
                       </div>
