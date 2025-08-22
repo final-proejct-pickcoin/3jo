@@ -18,5 +18,5 @@ public interface ReportRepository {
     List<Report> findAll(@Param("status") ReportStatus status);
 
     void updateStatus(@Param("report_id") int reportId,
-                      @Param("status") ReportStatus status);
+                        @Param("status") ReportStatus status);
 }

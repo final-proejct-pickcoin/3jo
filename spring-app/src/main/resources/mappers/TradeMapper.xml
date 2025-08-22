@@ -8,10 +8,10 @@
     <!-- 1) 주문 생성: insert_order(Orders o, int order_type_code, int status_code) -->
     <insert id="insert_order">
     INSERT INTO orders
-    (user_id, order_type, asset_id, price, amount, unconcluded_amount, status)
+    (user_id, order_type, asset_id, price, amount, unconcluded_amount, status,order_date)
     VALUES
     (#{param1.user_id}, #{param2}, #{param1.asset_id}, #{param1.price},
-    #{param1.amount}, #{param1.unconcluded_amount}, #{param3})
+    #{param1.amount}, #{param1.unconcluded_amount}, #{param3}, NOW(6))
     </insert>
 
     <select id="last_id" resultType="long">
@@ -24,17 +24,6 @@
     VALUES (#{param1}, #{param2}, 0)
     ON DUPLICATE KEY UPDATE user_id = user_id
     </insert>
-
-    <!-- (유니크 키가 없을시 사용)
-    <insert id="ensure_wallet">
-    INSERT INTO wallet (user_id, asset_id, amount)
-    SELECT #{param1}, #{param2}, 0
-    FROM DUAL
-    WHERE NOT EXISTS (
-        SELECT 1 FROM wallet WHERE user_id=#{param1} AND asset_id=#{param2}
-    )
-    </insert>
-    -->
 
     <!-- 3) 잠금 조회 -->
     <select id="select_wallet_for_update" resultType="map">
@@ -128,6 +117,30 @@
     WHERE o.user_id = #{param1}
     ORDER BY t.tx_id DESC
     LIMIT 200
+</select>
+
+<!-- 자산별 미체결 거래 내역 -->
+<select id="asset_unconcluded_orders" resultType="map">
+    select
+    order_date,order_type,amount,price
+    from orders
+    where  status = 0
+    and asset_id=#{asset_id}
+    and user_id = #{user_id}
+    ORDER BY order_date DESC
+    LIMIT 20
+</select>
+
+<!-- 자산별 체결 거래 내역 -->
+<select id="asset_concluded_orders" resultType="map">
+    select
+    order_date,order_type,amount,price
+    from orders
+    where  status = 1
+    and asset_id=#{asset_id}
+    and user_id = #{user_id}
+    ORDER BY order_date DESC
+    LIMIT 20
 </select>
 
 

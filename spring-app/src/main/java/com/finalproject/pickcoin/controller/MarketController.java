@@ -45,4 +45,9 @@ public class MarketController {
         marketService.delete_bookmark(user_id, asset_id);
     }
     
+    
+    @GetMapping("/asset-id")
+    public List<Market_item> get_assets_id(@RequestParam("asset_symbol") String asset_symbol) {
+        return marketService.get_assets_id(asset_symbol);
+    }
 }
