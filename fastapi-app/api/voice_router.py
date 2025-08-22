@@ -443,6 +443,9 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
                 volume_formatted = f"{market_analysis['volume']/100000000:.1f}억원"
                 
                 final_prompt = f"""
+                당신은 암호화폐 시장을 분석하는 전문 애널리스트입니다.
+                아래 제공된 최신 실시간 데이터를 바탕으로, 전문적인 분석가의 관점에서 사용자 질문에 답변해주세요.
+
                 [실시간 정보]
                 - 코인: {korean_name} ({found_coin_symbol})
                 - 현재 가격: {price_formatted} 원 (KRW)
@@ -453,10 +456,16 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
                 - 거래량 상태: {market_analysis['volume_status']}
                 
                 위 최신 실시간 정보를 바탕으로 다음 사용자 질문에 대해 친절하고 정확하게 답변해주세요: "{user_text}"
-                
-                답변할 때는 구체적인 가격과 변동률을 포함해서 설명해주세요.
-                별도의 요구가 없을 시 투자 조언은 하지 말고, 객관적인 시장 정보만 제공해주세요.
+
+                [답변 가이드라인]
+                1. 먼저 현재 시세를 명확하게 언급해주세요.
+                2. 제공된 데이터를 근거로 현재 시장 상황을 분석해주세요. (예: '변동률을 보아 단기적인 매수세가 강합니다.')
+                3. 일반적인 시장 패턴이나 기술적 분석 관점에 기반하여 앞으로 가능한 시나리오를 제시해주세요. (예: '현재와 같은 상승 추세는 추가 상승의 가능성을 시사하지만, 단기 급등에 따른 조정 가능성도 염두에 두어야 합니다.')
+                4. 답변 마지막에는 반드시 "이 분석은 주어진 데이터를 바탕으로 한 참고용 의견이며, 투자 조언이 아닙니다." 와 같은 면책 조항을 포함해주세요.
+                                
                 """
+                # 답변할 때는 구체적인 가격과 변동률을 포함해서 설명해주세요.
+                # 별도의 요구가 없을 시 투자 조언은 하지 말고, 객관적인 시장 정보만 제공해주세요.
                 print(f"📊 정보 보강 완료: {found_coin_symbol} 가격은 {price_formatted} 원, 추세: {market_analysis['trend']}")
                 
             else:
