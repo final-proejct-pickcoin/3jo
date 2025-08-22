@@ -306,7 +306,7 @@ export function AIAssistant() {
         const messageObjects = res.data.map(msg => {
           const parsed = JSON.parse(msg);
           // timestamp 문자열을 Date 객체로 변환
-          parsed.timestamp = new Date(parsed.timestamp.replace(' ', 'T') + 'Z');
+          parsed.timestamp =  new Date(parsed.timestamp.replace(/(\.\d{3})\d+Z$/, "$1Z"));
           return parsed;
         });
         setMessages(messageObjects)
