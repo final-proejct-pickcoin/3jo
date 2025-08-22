@@ -251,7 +251,7 @@ export default function DashboardOverview({ isDarkMode }) {
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">어제 {dashboardInfo.yesterday_tx?.toFixed(2)}</span>
+                  <span className="text-sm text-green-600">어제 {dashboardInfo.yesterday_tx?.toFixed(2)}원</span>
                 </div>
               </div>
               {/* <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
