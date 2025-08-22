@@ -123,7 +123,7 @@ export default function DashboardOverview({ isDarkMode }) {
   const getAdminInfo = (tkn) => {
     axios.get("http://localhost:8000/admin/info", {headers:{Authorization:`Bearer ${tkn}`}})
       .then((res) => {
-        console.log("대시보드정보:",res.data)
+        // console.log("대시보드정보:",res.data)
         setDashboardInfo(res.data)
       })
       . catch((err)=>{
