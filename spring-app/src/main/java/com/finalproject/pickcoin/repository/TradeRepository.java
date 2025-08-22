@@ -30,5 +30,11 @@ public interface TradeRepository {
 
     List<Map<String,Object>> holdings(Long user_id);
     BigDecimal krw_balance(Long user_id);
+    //사용자 전체 거래 내역
     List<Map<String,Object>> find_trades(Long user_id);
+    // 자산별 미체결 거래 내역
+    List<Map<String,Object>> asset_unconcluded_orders(Long user_id, Long asset_id);
+    // 자산별 체결 거래 내역
+    List<Map<String,Object>> asset_concluded_orders(Long user_id, Long asset_id);
+    
 }

@@ -34,11 +34,13 @@ export const MarketAnalysis = () => {
   const [currency, setCurrency] = useState("KRW")
 
   const [marketNews, setMarketNews] = useState([])
+  //===========================================================================================
   //유저 아이디 값을 가져오기 위한 상태 변수선언
   const [user_id, setUserId] = useState(null);
 
+  // 유저 아이디를 가져오기 위한 useEffect
+  // 이 부분은 컴포넌트가 마운트될 때 한 번만
   useEffect(() => {
-      //===========================================================================================
   console.log("북마크 추가 요청", user_id);
   console.log("토큰확인", JSON.parse(atob(sessionStorage.getItem("auth_token").split('.')[1])));
     
@@ -66,9 +68,9 @@ export const MarketAnalysis = () => {
   }, [])
 
     //변경된 user_id값 최종 확인
-  useEffect(() => {
-    console.log("user_id 변경됨:", user_id);
-  }, [user_id]);
+  // useEffect(() => {
+  //   console.log("user_id 변경됨:", user_id);
+  // }, [user_id]);
 
   //===========================================================================================
 
@@ -85,7 +87,6 @@ export const MarketAnalysis = () => {
 
   // 마켓 리스트 가져오기
   useEffect(() => {
-    //const user_id = 12; // 임시. JWT 붙이면 서버에서 꺼내게 변경
     if (!user_id) return;
     axios
       .get(`http://localhost:8080/api/Market_assets/assets_and_bookmarks`, { params: { user_id } })
@@ -106,7 +107,6 @@ export const MarketAnalysis = () => {
 const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks";
 
 const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
-  //const user_id = 12; // 임시
   const is_bookmarked = Number(is_bookmarkedRaw) === 1; // 0/1 정규화
   try {
     if (is_bookmarked) {

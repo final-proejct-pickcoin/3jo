@@ -37,4 +37,10 @@ public class MarketServiceImpl implements MarketService {
         marketRepository.delete_bookmark(userId, assetId);
     }
 
+    @Override
+    public List<Market_item> get_assets_id(String  asset_symbol) {
+        // 심볼을 기준으로 asset_id 가져오기
+        return marketRepository.get_assets_id(asset_symbol);
+    }
+
 }
