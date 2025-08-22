@@ -1,6 +1,8 @@
 "use client"
+import React from "react";
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import { fetchUpbitAssetInfo } from "../utils/upbit-asset-info"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -59,7 +61,8 @@ const fetchCoinCapData = async (symbol) => {
      console.log(`📦 ${symbol} 폴백 데이터 사용`);
      return result.fallback_data;
    } else {
-     throw new Error(result.message || 'API 오류');
+     console.warn(`⚠️ ${symbol} CoinCap 데이터 없음, 로컬 폴백 사용`);
+     return createLocalFallbackData(symbol);
    }
 
  } catch (error) {
@@ -135,6 +138,48 @@ const createLocalFallbackData = (symbol) => {
    market_position_risk: { level: '보통', description: '시장 지위가 안정적입니다.' }
  };
 };
+
+const UpbitProjectIntro = ({ coin, coinDetail, getKoreanName }) => {
+  const [upbitDesc, setUpbitDesc] = useState(""); // ✅ let 제거
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+    setLoading(true);
+    setUpbitDesc("");
+    
+    fetchUpbitAssetInfo(coin.symbol)
+      .then((desc) => {
+        if (!ignore) {
+          setUpbitDesc(desc);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!ignore) setLoading(false);
+      });
+    
+    return () => { ignore = true; };
+  }, [coin.symbol]);
+
+  const rawDesc = upbitDesc && upbitDesc.trim()
+    ? upbitDesc.trim()
+    : (coinDetail?.description || `${getKoreanName()}은 혁신적인 블록체인 기술을 활용한 디지털 자산 프로젝트입니다.`);
+  
+  const desc = rawDesc.length > 500 ? rawDesc.slice(0, 500) + "..." : rawDesc;
+
+  return (
+    <div className="bg-white p-6 rounded-xl border border-gray-100">
+      <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+        🔍 {getKoreanName()} 프로젝트 소개
+      </h3>
+      <p className="text-gray-700 leading-relaxed text-lg">
+        {loading ? "불러오는 중..." : desc}
+      </p>
+    </div>
+  );
+};
+
 /*
 // 자동 심볼-ID 매핑 캐시
 let symbolToIdCache = {};
@@ -769,18 +814,10 @@ const processcoinDetail = (data) => {
         <div className="p-6">
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* 프로젝트 소개 */}
-              <div className="bg-white p-6 rounded-xl border border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  🔍 {getKoreanName()} 프로젝트 소개
-                </h3>
-                <p className="text-gray-700 leading-relaxed text-lg">
-                  {coinDetail?.description ? 
-                    coinDetail.description.slice(0, 500) + (coinDetail.description.length > 500 ? '...' : '') :
-                    `${getKoreanName()}은 혁신적인 블록체인 기술을 활용한 디지털 자산 프로젝트입니다.`
-                  }
-                </p>
-              </div>
+              {/* 프로젝트 소개 (Upbit API 우선) */}
+              <UpbitProjectIntro 
+                coin={coin} coinDetail={coinDetail} getKoreanName={getKoreanName} 
+              />
 
               {/* 기본 정보 그리드 */}
               <div className="grid grid-cols-2 gap-6">
@@ -1727,7 +1764,11 @@ useEffect(() => {
   // 가격 하이라이트 상태 관리
   // 하이라이트 상태 관리 (현재가: 파랑, 전일대비: 베이지)
   const [highlighted, setHighlighted] = useState({});
+  const highlightedRef = React.useRef(highlighted);
+  React.useEffect(() => { highlightedRef.current = highlighted; }, [highlighted]);
+
   useEffect(() => {
+    const timeouts = [];
     coinList.forEach(coin => {
       const realtimeKey = coin.symbol + '_KRW';
       const realtimeInfo = realTimeData[realtimeKey];
@@ -1743,33 +1784,12 @@ useEffect(() => {
             newHighlight.priceHL = true;
             newHighlight.price = price;
             updated = true;
-            setTimeout(() => {
-              setHighlighted(prev2 => ({
-                ...prev2,
-                [coin.symbol]: {
-                  ...prev2[coin.symbol],
-                  priceHL: false,
-                  price,
-                }
-              }));
-            }, 100);
           }
           if (prevHighlight.change !== change || prevHighlight.changeAmount !== changeAmount) {
             newHighlight.changeHL = true;
             newHighlight.change = change;
             newHighlight.changeAmount = changeAmount;
             updated = true;
-            setTimeout(() => {
-              setHighlighted(prev2 => ({
-                ...prev2,
-                [coin.symbol]: {
-                  ...prev2[coin.symbol],
-                  changeHL: false,
-                  change,
-                  changeAmount,
-                }
-              }));
-            }, 500);
           }
           if (updated) {
             return {
@@ -1779,8 +1799,37 @@ useEffect(() => {
           }
           return prev;
         });
+        // Move setTimeouts outside setHighlighted
+        if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
+          if (highlightedRef.current[coin.symbol]?.price !== price) {
+            timeouts.push(setTimeout(() => {
+              setHighlighted(prev2 => ({
+                ...prev2,
+                [coin.symbol]: {
+                  ...prev2[coin.symbol],
+                  priceHL: false,
+                  price,
+                }
+              }));
+            }, 100));
+          }
+          if (highlightedRef.current[coin.symbol]?.change !== change || highlightedRef.current[coin.symbol]?.changeAmount !== changeAmount) {
+            timeouts.push(setTimeout(() => {
+              setHighlighted(prev2 => ({
+                ...prev2,
+                [coin.symbol]: {
+                  ...prev2[coin.symbol],
+                  changeHL: false,
+                  change,
+                  changeAmount,
+                }
+              }));
+            }, 500));
+          }
+        }
       }
     });
+    return () => { timeouts.forEach(t => clearTimeout(t)); };
   }, [coinList, realTimeData]);
 
   const updatedCoinList = useMemo(() => {
@@ -1867,10 +1916,11 @@ useEffect(() => {
   // 시세/코인정보 탭 상태
   const [view, setView] = useState("chart");
   // 주문 탭 상태
-  const [orderTab, setOrderTab] = useState("매도");
+  const [orderTab, setOrderTab] = useState("매수");
 
-  // 오더북 상태
+  // 오더북 상태 및 호가단위
   const [orderbook, setOrderbook] = useState({ bids: [], asks: [], timestamp: null });
+  const [tickSize, setTickSize] = useState(1);
   // 종목정보 상태 (24h 고가/저가/거래량 등)
   const [marketInfo, setMarketInfo] = useState({});
 
@@ -1923,6 +1973,11 @@ useEffect(() => {
             asks: data.data.asks || [],
             timestamp: data.data.timestamp || null
           });
+          if (typeof data.tick_size !== 'undefined') {
+            setTickSize(data.tick_size);
+          } else {
+            setTickSize(1);
+          }
         }
       });
     // 마켓정보 fetch (24h 고가/저가/거래량 등)
@@ -2137,99 +2192,68 @@ useEffect(() => {
                 {/* 매도호가: 현재가 기준 위로 9틱 */}
                 {(() => {
                   const rows = [];
-                  const tick = 1; // 1틱 단위 (원화)
-                  const price = parseInt(currentPriceKRW);
+                  const tick = tickSize || 1;
+                  const price = parseFloat(currentPriceKRW);
+                  // 매도호가 10줄: 현재가보다 높은 가격부터 위로 10개
                   for (let i = 10; i >= 1; i--) {
                     const askPrice = price + i * tick;
                     let askQty = '0.000';
                     if (orderbook.asks && orderbook.asks.length > 0) {
-                      const found = orderbook.asks.find(a => parseInt(a.price) === askPrice);
+                      const found = orderbook.asks.find(a => Math.abs(parseFloat(a.price) - askPrice) < tick/2);
                       if (found) askQty = parseFloat(found.quantity).toFixed(3);
                     }
-                    const isSelected = orderPrice === askPrice;
+                    const isSelected = orderPrice === askPrice && parseFloat(askQty) > 0 && askPrice > 0;
                     rows.push(
                       <div
-                        key={i}
+                        key={"ask-" + i}
                         className={
-                          `grid grid-cols-3 text-xs h-7 items-center` +
-                          (isSelected ? ' ring-2 ring-blue-500 ring-inset' : '')
+                          `grid grid-cols-3 text-xs h-7 items-center`
                         }
-                        style={isSelected ? { zIndex: 2, border: '2px solid #2563eb' } : {}}
                       >
                         <div className="text-blue-700 bg-blue-100 text-left pl-2 font-mono rounded-l">{askQty}</div>
                         <div
                           className="text-center font-bold font-mono text-blue-600 bg-blue-100 cursor-pointer transition-all duration-200 hover:bg-blue-200 hover:scale-105 hover:shadow-md"
-                          style={{ border: '2px solid transparent' }}
+                          style={isSelected ? { border: '2px solid #2563eb', zIndex: 2 } : { border: '2px solid transparent' }}
                           onClick={() => setOrderPrice(askPrice)}
                         >
-                          {askPrice.toLocaleString()}
+                          {askPrice > 0 ? askPrice.toLocaleString() : ''}
                         </div>
                         <div className="bg-white"></div>
                       </div>
                     );
                   }
-                  return rows;
-                })()}
-                {/* 현재가: 항상 매수 첫번째 호가 위치 (asks[0]) */}
-                {/* 현재가 (중앙) */}
-                {(() => {
-                  const price = parseInt(currentPriceKRW);
-                  // 수량: bids에서 우선, 없으면 asks에서
-                  let qty = '';
-                  if (orderbook.bids && orderbook.bids.length > 0) {
-                    const found = orderbook.bids.find(b => parseInt(b.price) === price);
-                    if (found) qty = parseFloat(found.quantity).toFixed(3);
-                  }
-                  if (!qty && orderbook.asks && orderbook.asks.length > 0) {
-                    const found = orderbook.asks.find(a => parseInt(a.price) === price);
-                    if (found) qty = parseFloat(found.quantity).toFixed(3);
-                  }
-                  return (
-                    <div className="grid grid-cols-3 text-xs h-7 items-center">
-                      <div className="bg-white"></div>
-                      <div
-                        className="text-center font-bold font-mono text-red-600 bg-red-100 border-2 border-pink-600 cursor-pointer transition-all duration-200 hover:bg-red-200 hover:scale-105 hover:shadow-md hover:border-4 hover:border-pink-500"
-                        style={{ border: '2px solid #ec4899' }}
-                        onClick={() => setOrderPrice(price)}
-                      >
-                        {price.toLocaleString()}
-                      </div>
-                      <div className="text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r">{qty}</div>
-                    </div>
-                  );
-                })()}
-
-                {/* 매수호가: 현재가 기준 아래로 9틱 */}
-                {(() => {
-                  const rows = [];
-                  const tick = 1; // 1틱 단위 (원화)
-                  const price = parseInt(currentPriceKRW);
-                  for (let i = 1; i <= 9; i++) {
+                  // 매수호가 10줄: 현재가 포함, 아래로 9개
+                  for (let i = 0; i < 10; i++) {
                     const bidPrice = price - i * tick;
                     let bidQty = '0.000';
                     if (orderbook.bids && orderbook.bids.length > 0) {
-                      const found = orderbook.bids.find(b => parseInt(b.price) === bidPrice);
+                      const found = orderbook.bids.find(b => Math.abs(parseFloat(b.price) - bidPrice) < tick/2);
                       if (found) bidQty = parseFloat(found.quantity).toFixed(3);
                     }
-                    const isSelected = orderPrice === bidPrice;
+                    // 현재가 row 강조(매수 첫줄)
+                    const isCurrent = i === 0;
+                    const isSelected = orderPrice === bidPrice && parseFloat(bidQty) > 0 && bidPrice > 0;
                     rows.push(
                       <div
-                        key={i}
+                        key={"bid-" + i}
                         className={
                           `grid grid-cols-3 text-xs h-7 items-center` +
-                          (isSelected ? ' ring-2 ring-pink-500 ring-inset' : '')
+                          (isCurrent ? ' border-2 border-black' : '')
                         }
-                        style={isSelected ? { zIndex: 2, border: '2px solid #ec4899' } : {}}
+                        style={isCurrent ? { zIndex: 3, border: '2px solid #000' } : {}}
                       >
-                        <div className="bg-white"></div>
+                        <div className={isCurrent ? "bg-red-100" : "bg-red-100"}></div>
                         <div
-                          className="text-center font-bold font-mono text-red-600 bg-red-100 cursor-pointer transition-all duration-200 hover:bg-red-200 hover:scale-105 hover:shadow-md"
-                          style={{ border: '2px solid transparent' }}
+                          className={
+                            `text-center font-bold font-mono cursor-pointer transition-all duration-200 hover:bg-gray-100 hover:scale-105 hover:shadow-md` +
+                            (isCurrent ? ' text-red-600 bg-red-100' : ' text-red-600 bg-red-100')
+                          }
+                          style={isSelected ? { border: '2px solid #ec4899', zIndex: 2 } : { border: '2px solid transparent' }}
                           onClick={() => setOrderPrice(bidPrice)}
                         >
                           {bidPrice > 0 ? bidPrice.toLocaleString() : ''}
                         </div>
-                        <div className="text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r">{bidQty}</div>
+                        <div className={isCurrent ? "text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r" : "text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r"}>{bidQty}</div>
                       </div>
                     );
                   }
@@ -2339,12 +2363,12 @@ useEffect(() => {
                       <button className="w-8 h-8 text-gray-400" type="button"
                         onClick={() => setOrderPrice(p => {
                           const n = Number(p) || 0;
-                          return Math.max(0, n - 1);
+                          return Math.max(0, n - (tickSize || 1));
                         })}>-</button>
                       <button className="w-8 h-8 text-gray-400" type="button"
                         onClick={() => setOrderPrice(p => {
                           const n = Number(p) || 0;
-                          return n + 1;
+                          return n + (tickSize || 1);
                         })}>+</button>
                     </div>
 

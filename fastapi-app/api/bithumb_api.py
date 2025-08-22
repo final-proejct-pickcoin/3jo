@@ -1,3 +1,22 @@
+def get_tick_size(price):
+    if price >= 2000000:
+        return 1000
+    elif price >= 1000000:
+        return 500
+    elif price >= 500000:
+        return 100
+    elif price >= 100000:
+        return 50
+    elif price >= 10000:
+        return 10
+    elif price >= 1000:
+        return 1
+    elif price >= 100:
+        return 0.1
+    elif price >= 10:
+        return 0.01
+    else:
+        return 0.001
 import json
 import asyncio
 import websockets
@@ -34,20 +53,76 @@ async def get_markets():
         return {"status": "error", "message": str(e)}
 
 
-# 빗썸 오더북(호가) 데이터 조회
+
+# 빗썸 호가단위 테이블 (2024년 8월 기준, 공식 API 기준)
+BITHUMB_TICK_SIZE_TABLE = {
+    # 가격구간: (최소가격, 최대가격, 호가단위)
+    "BTC": [
+        (0, 2_000_000, 1_000),
+        (2_000_000, 10_000_000, 5_000),
+        (10_000_000, float('inf'), 10_000)
+    ],
+    "ETH": [
+        (0, 100_000, 100),
+        (100_000, 500_000, 500),
+        (500_000, float('inf'), 1_000)
+    ],
+    "DOGE": [
+        (0, float('inf'), 1)
+    ],
+    # 기타 코인은 기본 tick size 사용 (아래 함수)
+}
+
+def get_bithumb_tick_size(symbol: str, price: float) -> float:
+    table = BITHUMB_TICK_SIZE_TABLE.get(symbol.upper())
+    if table:
+        for min_p, max_p, tick in table:
+            if min_p <= price < max_p:
+                return tick
+    # 기본 빗썸 tick size (공식)
+    if price >= 2_000_000:
+        return 1_000
+    elif price >= 1_000_000:
+        return 500
+    elif price >= 500_000:
+        return 100
+    elif price >= 100_000:
+        return 50
+    elif price >= 10_000:
+        return 10
+    elif price >= 1_000:
+        return 1
+    elif price >= 100:
+        return 0.1
+    elif price >= 10:
+        return 0.01
+    else:
+        return 0.001
+
 @router.get("/orderbook/{symbol}")
 async def get_orderbook(symbol: str):
-    """특정 코인의 오더북(호가) 데이터 조회"""
+    """특정 코인의 오더북(호가) 데이터 조회 및 호가단위 반환"""
     try:
         url = f"https://api.bithumb.com/public/orderbook/{symbol}_KRW?count=15"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
+                    orderbook = data.get("data", {})
+                    # 현재가 기준 tick size 계산
+                    price = 0
+                    try:
+                        price = float(orderbook.get("bids", [{}])[0].get("price", 0))
+                        if price == 0:
+                            price = float(orderbook.get("asks", [{}])[0].get("price", 0))
+                    except Exception:
+                        price = 0
+                    tick_size = get_bithumb_tick_size(symbol, price)
                     return {
                         "status": "success",
                         "symbol": symbol,
-                        "data": data.get("data", {})
+                        "data": orderbook,
+                        "tick_size": tick_size
                     }
                 else:
                     return {"status": "error", "message": f"API 오류: {response.status}"}
@@ -732,12 +807,13 @@ async def get_coin_detail(symbol: str):
                     if data.get("status") == "0000":
                         ticker_info = data["data"]
                         
+                        closing_price = float(ticker_info.get("closing_price", 0))
                         return {
                             "status": "success",
                             "data": {
                                 "symbol": symbol,
                                 "korean_name": get_korean_name(symbol),
-                                "current_price": float(ticker_info.get("closing_price", 0)),
+                                "current_price": closing_price,
                                 "opening_price": float(ticker_info.get("opening_price", 0)),
                                 "max_price": float(ticker_info.get("max_price", 0)),
                                 "min_price": float(ticker_info.get("min_price", 0)),
@@ -746,7 +822,8 @@ async def get_coin_detail(symbol: str):
                                 "volume": float(ticker_info.get("acc_trade_value_24H", 0)),
                                 "units_traded": float(ticker_info.get("units_traded_24H", 0)),
                                 "prev_closing_price": float(ticker_info.get("prev_closing_price", 0)),
-                                "timestamp": ticker_info.get("date")
+                                "timestamp": ticker_info.get("date"),
+                                "tick_size": get_tick_size(closing_price)
                             }
                         }
                 
