@@ -1556,7 +1556,6 @@ useEffect(() => {
     active_subscriptions: 0,
     last_update: null
   });
-  const ws = useRef(null);
 
   // Docker Compose 환경에서는 항상 host.docker.internal 사용
   const getBackendUrl = (path = '') => {
@@ -1565,8 +1564,8 @@ useEffect(() => {
 
   // 빗썸 WebSocket 연결 (실시간 데이터 진단 로그 포함)
   useEffect(() => {
-    // console.log('🚀 빗썸 실시간 데이터 연결 시작...');
-    // let ws;
+    console.log('🚀 빗썸 실시간 데이터 연결 시작...');
+    let ws;
     let reconnectTimeout;
     let heartbeatInterval;
 
@@ -1576,9 +1575,9 @@ useEffect(() => {
       console.log(`🔌 연결 시도: ${wsUrl}`);
 
       try {
-        ws.current = new WebSocket('ws://localhost:8000/api/realtime');
+        ws = new WebSocket(wsUrl);
 
-        ws.current.onopen = () => {
+        ws.onopen = () => {
           setWsConnected(true);
           setConnectionStatus("빗썸 실시간 연결됨");
           console.log('✅ 빗썸 실시간 WebSocket 연결 성공');
@@ -1591,7 +1590,7 @@ useEffect(() => {
           }, 30000);
         };
 
-        ws.current.onmessage = (event) => {
+        ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
             // console.log('📨 WebSocket 메시지 수신:', data.type, data.content?.symbol);
@@ -1639,7 +1638,7 @@ useEffect(() => {
           }
         };
 
-        ws.current.onclose = (event) => {
+        ws.onclose = (event) => {
           setWsConnected(false);
           setConnectionStatus("연결 끊어짐");
           console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
@@ -1656,7 +1655,7 @@ useEffect(() => {
           }, 3000);
         };
 
-        ws.current.onerror = (error) => {
+        ws.onerror = (error) => {
           console.error('❌ WebSocket 오류:', error);
           setWsConnected(false);
           setConnectionStatus("연결 오류");
@@ -1676,7 +1675,7 @@ useEffect(() => {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.current.close();
+        ws.close();
       }
     };
   }, []);
@@ -1837,7 +1836,7 @@ useEffect(() => {
   }, [realTimeData, activeTab]);
 
   const updatedCoinList = useMemo(() => {
-    // console.log('🔄 updatedCoinList 계산 중, coinList 길이:', coinList.length); // ✅ 추가
+    console.log('🔄 updatedCoinList 계산 중, coinList 길이:', coinList.length); // ✅ 추가
     
     const result = coinList.map(coin => {
       const marketKey = activeTab === 'BTC' ? '_BTC' : '_KRW';
@@ -1867,7 +1866,7 @@ useEffect(() => {
       }
     });
   
-    // console.log('✅ updatedCoinList 결과 길이:', result.length); // ✅ 추가
+    console.log('✅ updatedCoinList 결과 길이:', result.length); // ✅ 추가
     return result;
   }, [coinList, realTimeData, activeTab]);
 
