@@ -112,6 +112,8 @@ def getinq(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
 
             cursor.execute(sql, (limit, offset))
             inquiries = cursor.fetchall()
+
+            print(inquiries)
     except Exception as err:
         print("Error in /admin/getinq:", err)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(err))
