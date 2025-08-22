@@ -399,10 +399,43 @@ export const CommunityHub = () => {
   const [currentUser, setCurrentUser] = useState({ user_id: 1, name: "테스트유저" })
   const [posts, setPosts] = useState(communityPosts)
   const [likedPostIds, setLikedPostIds] = useState([])
-  const [likedLoaded, setLikedLoaded] = useState(false) // ✅ 1단계: 좋아요 로드 완료 플래그
+  const [likedLoaded, setLikedLoaded] = useState(false) //  좋아요 로드 완료 플래그
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
   const [popularKeywords, setPopularKeywords] = useState([])
+
+  //통계 상태 
+  const [stats, setStats] = useState({
+  activeUsers: 0,
+  postsToday: 0,
+  onlineNow: null,
+  totalPosts: 0,
+})
+
+
+
+//페이지네이션 상태
+const [page, setPage] = useState(1)
+const PAGE_SIZE = 7
+
+//총 페이지 수
+const totalPages = useMemo(
+  () => Math.max(1, Math.ceil(posts.length / PAGE_SIZE)),
+  [posts.length]
+)
+
+// 현재 페이지 항목만 슬라이스
+const pageItems = useMemo(
+  () => posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+  [posts, page]
+)
+
+//페이지 바뀌면 상단으로 스크롤
+useEffect(() => {
+  window.scrollTo({ top: 0, behavior: "smooth" })
+}, [page])
+
+
 
   // 신고 기능
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -436,6 +469,25 @@ export const CommunityHub = () => {
       kwCacheRef.current.loading = false
     }
   }, [])
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data } = await axios.get("http://localhost:8080/community/stats")
+      setStats({
+        activeUsers: Number(data.activeUsers ?? 0),
+        postsToday: Number(data.postsToday ?? 0),
+        onlineNow: data.onlineNow ?? null,
+        totalPosts: Number(data.totalPosts ?? 0),
+      })
+    } catch (e) {
+      console.error("통계 불러오기 실패:", e)
+    }
+  }, [])
+
+  useEffect(() => {
+  fetchStats()
+}, [fetchStats])
+
 
   // 신고 여부 체크
   const checkReported = useCallback(async (postId) => {
@@ -618,8 +670,10 @@ export const CommunityHub = () => {
       })
       setNewPost("")
       setSelectedTags([])
-      getPopularKeyword(true) // ✅ 성공 시에만 강제 새로고침
+      getPopularKeyword(true) //  성공 시에만 강제 새로고침
       fetchPosts()
+      fetchStats() //등록 후 통계 새로고침
+
     } catch (error) {
       console.error("글 등록 실패:", error?.response?.data || error?.message)
       const newPostObj = {
@@ -639,7 +693,7 @@ export const CommunityHub = () => {
       setSelectedTags([])
       // 실패 시에는 서버 데이터가 갱신되지 않았으므로 키워드 강제 새로고침 불필요
     }
-  }, [newPost, selectedTags, currentUser.user_id, currentUser.name, fetchPosts, getPopularKeyword])
+  }, [newPost, selectedTags, currentUser.user_id, currentUser.name, fetchPosts, getPopularKeyword, fetchStats])
 
   const handleDelete = useCallback(async (postId, postUserId) => {
     const me = safeToNumber(currentUser.user_id)
@@ -652,12 +706,14 @@ export const CommunityHub = () => {
       await axios.delete(`http://localhost:8080/community/${postId}`, { params: { userId: me } })
       alert("삭제 완료되었습니다.")
       fetchPosts()
+      fetchStats()
     } catch (err) {
       console.error("삭제 실패:", err)
       setPosts(prev => prev.filter(p => p.post_id !== postId))
       alert("삭제 완료되었습니다.")
+      fetchStats()
     }
-  }, [currentUser.user_id, fetchPosts])
+  }, [currentUser.user_id, fetchPosts, fetchStats])
 
   const handleUpdate = useCallback(async (postId, currentContent, postUserId) => {
     const me = safeToNumber(currentUser.user_id)
@@ -755,7 +811,7 @@ export const CommunityHub = () => {
 
         {/* Posts Feed */}
         <div className="space-y-4">
-          {posts.map((post, idx) => (
+          {pageItems.map((post, idx) => (
             <PostCard
               key={post.post_id ?? post.id ?? `row-${idx}`}
               post={post}
@@ -768,9 +824,53 @@ export const CommunityHub = () => {
               reported={alreadyReportedIds.includes(post.post_id)}
             />
           ))}
-        </div>
+        </div> 
+      {/* Pagination */}
+    <div className="flex items-center justify-center gap-2 pt-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setPage((p) => Math.max(1, p - 1))}
+        disabled={page === 1}
+      >
+        이전
+      </Button>
+
+      {Array.from({ length: totalPages }, (_, i) => i + 1)
+        .filter(p => Math.abs(p - page) <= 2 || p === 1 || p === totalPages)
+        .reduce((acc, p, idx, arr) => {
+          if (idx > 0 && p - arr[idx - 1] > 1) acc.push("…")
+          acc.push(p)
+          return acc
+        }, /** @type {(number | string)[]} */ ([]))
+        .map((p, i) =>
+          typeof p === "string" ? (
+            <span key={`dots-${i}`} className="px-2 text-muted-foreground">…</span>
+          ) : (
+            <Button
+              key={`page-${p}`}
+              variant={p === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </Button>
+          )
+        )
+      }
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+        disabled={page === totalPages}
+      >
+        다음
+      </Button>
+    </div>
       </div>
 
+        
       {/* Sidebar */}
       <div className="space-y-6">
         {/* Top Traders */}
@@ -826,28 +926,30 @@ export const CommunityHub = () => {
         {/* Community Stats */}
         <Card>
           <CardHeader>
-            <CardTitle>커뮤니티 통계</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">활동 회원</span>
-                <span className="font-semibold">12,456</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">오늘의 게시글</span>
-                <span className="font-semibold">89</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">현재 접속자</span>
-                <span className="font-semibold text-green-500">1,234</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">누적 게시글</span>
-                <span className="font-semibold">45,678</span>
-              </div>
+    <CardTitle>커뮤니티 통계</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">활동 회원</span>
+              <span className="font-semibold">{stats.activeUsers.toLocaleString()}</span>
             </div>
-          </CardContent>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">오늘의 게시글</span>
+              <span className="font-semibold">{stats.postsToday.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">현재 접속자</span>
+              <span className="font-semibold text-green-500">
+                {stats.onlineNow == null ? "-" : Number(stats.onlineNow).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">누적 게시글</span>
+              <span className="font-semibold">{stats.totalPosts.toLocaleString()}</span>
+            </div>
+          </div>
+        </CardContent>
         </Card>
       </div>
 
