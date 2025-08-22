@@ -1465,11 +1465,11 @@ useEffect(() => {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log('📨 WebSocket 메시지 수신:', data.type, data.content?.symbol);
+            // console.log('📨 WebSocket 메시지 수신:', data.type, data.content?.symbol);
             
             if (data.type === 'ticker' && data.content) {
               const content = data.content;
-              console.log('💰 실시간 가격:', content.symbol, content.closePrice, content.chgRate);
+              // console.log('💰 실시간 가격:', content.symbol, content.closePrice, content.chgRate);
 
               // 오직 빗썸 24H 틱 데이터만 반영 (중복/오류 방지)
               if (content.tickType && content.tickType !== '24H') return;

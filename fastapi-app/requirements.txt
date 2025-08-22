@@ -21,8 +21,12 @@ aiohttp
 
 websockets
 broadcaster
-elasticsearch==8.17.2
+elasticsearch==7.17.12
 
 # Google cloud API_0806_feature_l
 google-cloud-speech
 google-generativeai
+
+sqlalchemy
+APScheduler==3.10.4
+

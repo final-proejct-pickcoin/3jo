@@ -361,7 +361,7 @@ async def get_coin_list():
                     # 모든 코인 포함 (거래대금 필터 제거)
                     market_info = market_map.get(symbol, {})
 
-                    print(f"🔍 {symbol} 거래대금 원시값: {info.get('acc_trade_value_24H')}")
+                    # print(f"🔍 {symbol} 거래대금 원시값: {info.get('acc_trade_value_24H')}")
 
                     # 한글명 결정 우선순위: 빗썸 한글명 > 업비트 한글명 > 빗썸 영문명 > 기본매핑 > 심볼
                     bithumb_korean = market_info.get("korean_name", "").strip()
@@ -375,8 +375,8 @@ async def get_coin_list():
                         (basic_korean if basic_korean != symbol else symbol)
                     )
 
-                    print(f"🔍 {symbol} 거래대금 원시값: {info.get('acc_trade_value_24H')}")
-                    print(f"💰 {symbol} 변환된 값: {round(trade_value, 4)}")
+                    # print(f"🔍 {symbol} 거래대금 원시값: {info.get('acc_trade_value_24H')}")
+                    # print(f"💰 {symbol} 변환된 값: {round(trade_value, 4)}")
 
                     coins.append({
                         "symbol": symbol,
@@ -390,7 +390,7 @@ async def get_coin_list():
                         "units_traded": round(float(info.get("units_traded_24H", 0)), 4)
                     })
 
-                    print(f"💰 {symbol} 최종 volume: {round(trade_value, 4)}")
+                    # print(f"💰 {symbol} 최종 volume: {round(trade_value, 4)}")
 
                 except (ValueError, TypeError) as e:
                     print(f"⚠️ {symbol} 데이터 처리 오류: {e}")

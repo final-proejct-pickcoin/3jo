@@ -63,6 +63,14 @@ spring:
             auth: true
             starttls:
               enable: true
+    
+  elasticsearch:
+    ssl:
+      enabled: false              # SSL 사용 여부 (필요시 true)
+    rest:
+      uris: http://elasticsearch:9200  # Elasticsearch 서버 주소 및 포트
+    connection-timeout: 1000
+    read-timeout: 3000
 
 logging:
   level:
@@ -72,7 +80,6 @@ logging:
       org.springframework.web: DEBUG
       org.hibernate.SQL: DEBUG
       org.hibernate.type: TRACE
-    
 
 jwt:
   secret: a_super_secret_key_that_is_long_and_random_123

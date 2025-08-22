@@ -103,6 +103,15 @@
   WHERE post_id = #{post_id}
 </update>
 
-  
+  <!--누적 게시글 수 -->
+  <select id="countTotalPosts" resultType="int">
+    SELECT COUNT(*) FROM community
+  </select>
 
+  <!-- 오늘의 게시글 수 -->
+  <select id="countPostsToday" resultType="int">
+    SELECT COUNT(*)
+    FROM community
+    WHERE DATE(created_at) = CURDATE()
+  </select>
 </mapper>
