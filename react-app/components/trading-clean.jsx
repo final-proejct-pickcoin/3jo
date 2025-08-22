@@ -1965,15 +1965,6 @@ const totalAmountKRW = useMemo(
 );
 
 
-
-// (데모) 미체결/체결 리스트 — 나중에 API 결과로 교체하면 됨
-// const openOrders = useMemo(() => ([
-//   { id: 1, t: "12:10:11", side: "매수", qty: "0.005", price: "163,210,000" },
-//   { id: 2, t: "12:03:22", side: "매도", qty: "0.002", price: "163,230,000" },
-// ]), []);
-
-
-
 return (
     <div className="w-full p-0 space-y-4">
     {/* 🚨 연결 상태 표시 추가 */}
@@ -2091,25 +2082,12 @@ return (
                   filteredCoinList.map((coin, index) => (
                     <div
                       key={coin.symbol}
-                      // onClick={async () => {setSelectedCoin(coin.symbol);
-                      //   if (coin.asset_id != null) setAssetId(coin.asset_id);
-                      //   else await ensureAssetId(coin.symbol);
-                      // }
-                      // }
                       onClick={async () => {
                                 setSelectedCoin(coin.symbol);
                                 const market = activeTab === "BTC" ? "BTC" : "KRW";
                                 const assetSymbol = `${coin.symbol}-${market}`;  // 예) ETH-KRW
                                 const id = await fetchAssetId(assetSymbol);
                                 setAsset_id(id);
-                                // try {
-                                //   const id = await fetchAssetId(assetSymbol);
-                                //   setAssetId(id);
-                                //   console.log("새 에셋아이디로컬:",+ id);
-                                //   {alert(`코인 ${coin.symbol} 선택됨,assetSymbol : ${assetSymbol},asset_id: ${id}`)};
-                                // } catch {
-                                //   setAssetId(null);
-                                // }
                               }
                             }
 

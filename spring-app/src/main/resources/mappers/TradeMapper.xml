@@ -116,7 +116,7 @@
     JOIN orders o ON o.order_id = t.order_id
     WHERE o.user_id = #{param1}
     ORDER BY t.tx_id DESC
-    LIMIT 200
+    LIMIT 100
 </select>
 
 <!-- 자산별 미체결 거래 내역 -->

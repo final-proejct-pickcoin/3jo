@@ -39,9 +39,6 @@ export const MarketAnalysis = () => {
   const [user_id, setUserId] = useState(null)
   const [items, setItems] = useState([])
 
-  // 북마크 훅
-  const { toggle_Bookmark } = useBookmark()
-
   // JWT에서 사용자 email 꺼내서 user_id 조회
   useEffect(() => {
     const tokenValue = sessionStorage.getItem("auth_token")
@@ -592,7 +589,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => toggle_Bookmark(coin.asset_id, coin.is_bookmarked)}
+                            onClick={() => toggleBookmark(coin.asset_id, coin.is_bookmarked)}
                           >
                             <Star
                               className="h-3 w-3"
