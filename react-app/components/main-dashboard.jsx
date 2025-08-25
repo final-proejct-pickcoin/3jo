@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Navigation } from "@/components/navigation"
-import { TradingInterface } from "@/components/trading-clean"
+import  TradingInterface  from "@/components/trading-clean"
 import { MarketAnalysis } from "@/components/market-analysis"
 import { CommunityHub } from "@/components/community-hub"
 import { AIAssistant } from "@/components/ai-assistant"
