@@ -2439,7 +2439,7 @@ return (
                       // }
                       onClick={async () => {
                                 setSelectedCoin(coin.symbol);
-                                const market = activeTab === "BTC" ? "BTC" : "KRW";
+                                const market = "KRW";
                                 const assetSymbol = `${coin.symbol}-${market}`;  // 예) ETH-KRW
                                 const id = await fetchAssetId(assetSymbol);
                                 setAsset_id(id);
