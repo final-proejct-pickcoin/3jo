@@ -13,13 +13,6 @@ import { Heart, MessageCircle, Share, Plus, TrendingUp, Users, Award, Flag } fro
 // 더미 초기값 - user_id 추가
 const communityPosts = []
 
-const topTraders = [
-  { name: "CryptoKing", profit: "+156%", followers: 2340, badge: "🏆" },
-  { name: "BlockchainBull", profit: "+134%", followers: 1890, badge: "🥈" },
-  { name: "DeFiMaster", profit: "+128%", followers: 1650, badge: "🥉" },
-  { name: "AltcoinAce", profit: "+98%", followers: 1200, badge: "⭐" },
-]
-
 // 안전 숫자 변환
 const safeToNumber = (v) => {
   if (v === null || v === undefined || v === "") return null
@@ -403,40 +396,54 @@ export const CommunityHub = () => {
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
   const [popularKeywords, setPopularKeywords] = useState([])
-
   //통계 상태 
   const [stats, setStats] = useState({
   activeUsers: 0,
   postsToday: 0,
   onlineNow: null,
   totalPosts: 0,
-})
+  })
 
 
 
-//페이지네이션 상태
-const [page, setPage] = useState(1)
-const PAGE_SIZE = 7
+  //페이지네이션 상태
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 7
 
-//총 페이지 수
-const totalPages = useMemo(
-  () => Math.max(1, Math.ceil(posts.length / PAGE_SIZE)),
-  [posts.length]
-)
+  //총 페이지 수
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(posts.length / PAGE_SIZE)),
+    [posts.length]
+  )
 
-// 현재 페이지 항목만 슬라이스
-const pageItems = useMemo(
-  () => posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-  [posts, page]
-)
+  // 현재 페이지 항목만 슬라이스
+  const pageItems = useMemo(
+    () => posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [posts, page]
+  )
 
-//페이지 바뀌면 상단으로 스크롤
-useEffect(() => {
-  window.scrollTo({ top: 0, behavior: "smooth" })
-}, [page])
+  //페이지 바뀌면 상단으로 스크롤
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [page])
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data } = await axios.get("http://localhost:8080/community/stats")
+      setStats({
+        activeUsers: Number(data.activeUsers ?? 0),
+        postsToday: Number(data.postsToday ?? 0),
+        onlineNow: data.onlineNow ?? null,
+        totalPosts: Number(data.totalPosts ?? 0),
+      })
+    } catch (e) {
+      console.error("통계 불러오기 실패:", e)
+    }
+  }, [])
 
-
+  useEffect(() => {
+  fetchStats()
+}, [fetchStats])
   // 신고 기능
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportReason, setReportReason] = useState("")
@@ -470,25 +477,6 @@ useEffect(() => {
     }
   }, [])
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const { data } = await axios.get("http://localhost:8080/community/stats")
-      setStats({
-        activeUsers: Number(data.activeUsers ?? 0),
-        postsToday: Number(data.postsToday ?? 0),
-        onlineNow: data.onlineNow ?? null,
-        totalPosts: Number(data.totalPosts ?? 0),
-      })
-    } catch (e) {
-      console.error("통계 불러오기 실패:", e)
-    }
-  }, [])
-
-  useEffect(() => {
-  fetchStats()
-}, [fetchStats])
-
-
   // 신고 여부 체크
   const checkReported = useCallback(async (postId) => {
     try {
@@ -514,7 +502,14 @@ useEffect(() => {
       setAlreadyReportedIds(prev => [...prev, postId])
       return
     }
-    setReportTargetId(postId)
+
+    // 신고게시글 작성자 가져오기*************************
+    axios.get(`http://localhost:8080/community/${postId}`)
+      .then((res)=>{
+        console.log("게시글 작성자:", res.data.user_id)
+        setReportTargetId(res.data.user_id)
+      })
+
     setReportModalOpen(true)
   }, [currentUser.user_id, checkReported])
 
@@ -811,7 +806,7 @@ useEffect(() => {
 
         {/* Posts Feed */}
         <div className="space-y-4">
-          {pageItems.map((post, idx) => (
+          {posts.map((post, idx) => (
             <PostCard
               key={post.post_id ?? post.id ?? `row-${idx}`}
               post={post}
@@ -873,35 +868,6 @@ useEffect(() => {
         
       {/* Sidebar */}
       <div className="space-y-6">
-        {/* Top Traders */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              수익률 상위 트레이더
-            </CardTitle>
-            <CardDescription>이달의 베스트 트레이더</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topTraders.map((trader) => (
-                <div key={trader.name} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">{trader.badge}</span>
-                    <div>
-                      <p className="font-medium">{trader.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        <Users className="h-3 w-3 inline mr-1" />
-                        팔로워 {trader.followers.toLocaleString()}명
-                      </p>
-                    </div>
-                  </div>
-                  <Badge className="bg-green-100 text-green-700">{trader.profit}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Trending Topics */}
         <Card>
@@ -910,13 +876,14 @@ useEffect(() => {
               <TrendingUp className="h-5 w-5" />
               인기 키워드
             </CardTitle>
+            <CardDescription>이달의 베스트 코인</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {topKeywords.map((topic) => (
                 <div key={topic.keyword} className="flex items-center justify-between">
                   <span className="font-medium text-primary cursor-pointer hover:underline"># {topic.keyword}</span>
-                  <span className="text-sm text-muted-foreground">{topic.count}건</span>
+                  <Badge className="bg-green-100 text-green-700">{topic.count}건</Badge>
                 </div>
               ))}
             </div>

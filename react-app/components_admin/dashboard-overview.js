@@ -39,6 +39,7 @@ import {
   Cell,
 } from "recharts";
 import { createContext } from "vm";
+import axios from "axios";
 
 const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -81,7 +82,7 @@ export default function DashboardOverview({ isDarkMode }) {
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tradingEnabled, setTradingEnabled] = useState(true);
-
+  const [dashboardInfo, setDashboardInfo] = useState({});
   const [interval, setInterval] = useState("month"); // 기본: 일별
   const [userTrend, setUserTrend] = useState([]);  // { date, count } 데이터 배열
   const [latestTotal, setLatestTotal] = useState(0);
@@ -118,7 +119,20 @@ export default function DashboardOverview({ isDarkMode }) {
     // 실제로는 KYC 상세 페이지로 이동
   };
 
+  // 대시보드 상단 정보 가져오기
+  const getAdminInfo = (tkn) => {
+    axios.get("http://localhost:8000/admin/info", {headers:{Authorization:`Bearer ${tkn}`}})
+      .then((res) => {
+        // console.log("대시보드정보:",res.data)
+        setDashboardInfo(res.data)
+      })
+      . catch((err)=>{
+        console.error("대시보드 에러:", err)
+      })
+  }
+
   useEffect(() => {
+    const token = localStorage.getItem("access_token")
     const fetchInterval = interval || "month";
     fetch(`http://localhost:8000/api/stats/users?interval=${fetchInterval}`)
       .then((res) => res.json())
@@ -128,7 +142,8 @@ export default function DashboardOverview({ isDarkMode }) {
           setLatestTotal(data[data.length - 1].count); // 마지막 항목의 count
         }
       });
-
+    
+    getAdminInfo(token);
   },[interval])
 
   return (
@@ -185,11 +200,11 @@ export default function DashboardOverview({ isDarkMode }) {
                   총 사용자
                 </p>
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  {latestTotal}
+                  {dashboardInfo.total_users}
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+12.5%</span>
+                  <span className="text-sm text-green-600">{(dashboardInfo.user_growth_rate ?? 0) + '%'}</span>
                 </div>
               </div>
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -228,19 +243,20 @@ export default function DashboardOverview({ isDarkMode }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                  24시간 거래량
+                  24시간 거래대금
                 </p>
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  {stats.dailyVolume.toFixed(2)} BTC
+                  {dashboardInfo.today_tx && 
+                  Number(dashboardInfo.today_tx.toFixed(2)).toLocaleString("ko-KR")} 원
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+8.3%</span>
+                  <span className="text-sm text-green-600">어제 {dashboardInfo.yesterday_tx?.toFixed(2)}원</span>
                 </div>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              {/* <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-green-600" />
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>
@@ -250,19 +266,20 @@ export default function DashboardOverview({ isDarkMode }) {
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                  총 거래량
+                  이달 거래대금
                 </p>
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  ${stats.revenue.toLocaleString()}
+                  {dashboardInfo.total_tx && 
+                    Number(dashboardInfo.total_tx.toFixed(2)).toLocaleString("ko-KR")}원
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">+15.2%</span>
+                  <span className="text-sm text-green-600">{(dashboardInfo.tx_growth_rate ?? 0) + '%'}</span>
                 </div>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              {/* <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-purple-600" />
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>

@@ -56,5 +56,4 @@ node_modules/
 ## gcp key ##
 key/pickcoin-687a99cb3128.json
 
-## elk ##
-elasticsearch_data
+elasticsearch_data/

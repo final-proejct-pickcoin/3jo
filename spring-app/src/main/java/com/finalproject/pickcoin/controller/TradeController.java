@@ -49,11 +49,28 @@ public class TradeController {
         return Map.of("krw", tradeService.krw_balance(userId));
     }
 
-    //거래내역
+    //사용자 거래내역
     @GetMapping("/trades")
     public java.util.List<Map<String,Object>> getTrades(@RequestParam("user_id") Long userId) {
         return tradeService.trades(userId);
     }
+
+    // 자산별 미체결 거래 내역
+    @GetMapping("/asset_unconcluded_orders")
+    public java.util.List<Map<String,Object>> getAssetUnconcludedOrders(
+            @RequestParam("user_id") Long user_id,
+            @RequestParam("asset_id") Long asset_id) {
+        return tradeService.asset_unconcluded_orders(user_id, asset_id);
+    }
+
+    // 자산별 체결 거래 내역
+    @GetMapping("/asset_concluded_orders")
+    public java.util.List<Map<String,Object>> getAssetConcludedOrders(
+            @RequestParam("user_id") Long user_id,
+            @RequestParam("asset_id") Long asset_id) {
+        return tradeService.asset_concluded_orders(user_id, asset_id);
+    }
+
 
     /* ===== 에러 핸들링 (간단 JSON) ===== */
     @ResponseStatus(HttpStatus.BAD_REQUEST)

@@ -85,7 +85,43 @@ export const MarketAnalysis = () => {
       .catch(console.error)
   }, [user_id])
 
-  // 실시간 구독
+  
+
+// 웹소켓 구독은 서버 리스트 기준
+  // useEffect(() => {
+  //   if (items.length) subscribe(items.map(c => c.symbol));
+  // }, [subscribe, items]);
+
+const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks";
+
+const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
+  const is_bookmarked = Number(is_bookmarkedRaw) === 1; // 0/1 정규화
+  try {
+    if (is_bookmarked) {
+      // 해제
+      await axios.delete(BOOKMARK_API, { params: { user_id, asset_id } });
+      setItems(prev =>
+        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 0 } : i)
+      );
+    } else {
+      // 추가
+      await axios.post(BOOKMARK_API, null, { params: { user_id, asset_id } });
+      setItems(prev =>
+        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 1 } : i)
+      );
+    }
+  } catch (e) {
+    console.error("[bookmark err]", e?.response?.status, e?.response?.data || e);
+  }
+};
+
+  const exchangeRate = 1391
+  const totalMarketCapUSD = 16800
+  const totalMarketCapKRW = totalMarketCapUSD * 1e8 * exchangeRate
+  const totalMarketCapKRWDisplay = `${Math.round(totalMarketCapKRW / 1e12)}조 원`
+  const volumeUSD = 892
+  const volumeKRW = volumeUSD * 1e8 * exchangeRate
+  const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
   useEffect(() => {
     if (items.length) subscribe(items.map((c) => c.symbol))
   }, [subscribe, items])

@@ -63,8 +63,26 @@ export default function SupportManagement({ isDarkMode }) {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const ws = useRef(null);
   const messagesEndRef = useRef(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
   
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(total / itemsPerPage);
+  // 한 번에 보여줄 페이지 번호 수 설정
+  const maxPageButtons = 5;
+  const getPageNumbers = () => {
+    let start = Math.max(currentPage - Math.floor(maxPageButtons / 2), 1);
+    let end = start + maxPageButtons - 1;
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(end - maxPageButtons + 1, 1);
+    }
+    let pages = [];
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =      
@@ -196,20 +214,35 @@ export default function SupportManagement({ isDarkMode }) {
     }
   };
 
-  useEffect(() => {
-    axios.get("http://localhost:8000/admin/getinq")
-      .then((inq) => {
-        // console.log(inq.data)
+  const getPage = async (requestPage, itemsPerPage) => {
+
+    setCurrentPage(requestPage)
+
+    await axios.get("http://localhost:8000/admin/getinq",{
+      params:{
+        page: requestPage,
+        limit: itemsPerPage
+      }
+    })
+      .then((res) => {
+        // console.log(res.data.inquiry)
         // 메세지 - redis에서 저장된 것 가져옮 (handleTicketClick에서 백엔드 요청 -> redis)
-        const updatedTickets = inq.data.map(ticket => ({
+        const updatedTickets = res.data.inquiry.map(ticket => ({
           ...ticket,
           messages: ticket.messages || [],  // 기존에 message가 없으면 빈 배열 할당
         }));
-        setTickets(updatedTickets) // setTickets(inq.data) 로 바꿔야함
+        console.log("프론트 문의:", res)
+        setTickets(updatedTickets)
+        setTotal(res.data.total);
+        
       }).catch((error) => {
       console.error("데이터 불러오기 실패:", error);
     });
+  }
 
+  useEffect(() => {
+    
+    getPage(currentPage, itemsPerPage)
     // 웹소켓 - 연결
     // room_id 생성    
     const roomId = selectedTicket?.user_id    
@@ -256,6 +289,13 @@ export default function SupportManagement({ isDarkMode }) {
     }
     // , selectedTicket?.messages
   },[selectedTicket?.user_id, selectedTicket?.messages])
+
+  // 버튼 클릭 시 페이지 증가
+const loadMore = () => {
+  if (currentPage < Math.ceil(total / itemsPerPage)) {
+    setCurrentPage(currentPage + 1);
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -383,8 +423,8 @@ export default function SupportManagement({ isDarkMode }) {
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>                
-                <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>                
+              <TableRow>          
+                <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>          
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>카테고리</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>신청금액</TableHead>
                 <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태</TableHead>
@@ -393,7 +433,7 @@ export default function SupportManagement({ isDarkMode }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTickets.map((ticket) => (
+              {tickets.map((ticket) => (
                 <TableRow
                   key={ticket.inquiry_id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -412,7 +452,7 @@ export default function SupportManagement({ isDarkMode }) {
                     <Badge variant="outline">{ticket.category}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className={isDarkMode ? "text-gray-300" : ""}              >
+                    <div className={isDarkMode ? "text-gray-300" : ""}>
                       {ticket.amount !== undefined && ticket.amount !== null
                         ? `${ticket.amount.toLocaleString()} 원`
                         : "기타문의"}
@@ -456,10 +496,45 @@ export default function SupportManagement({ isDarkMode }) {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
-                </TableRow>
+                </TableRow>          
               ))}
-            </TableBody>
+            </TableBody>          
           </Table>
+
+          {/* 페이지네이션 UI 입력 */}
+          <div style={{ marginTop: "16px", display: "flex", gap: "8px", justifyContent: "center" }}>
+            <button onClick={() => getPage(1)} disabled={currentPage === 1}>
+              맨 처음
+            </button>
+            <button onClick={() => getPage(currentPage - 1)} disabled={currentPage === 1}>
+              이전
+            </button>
+
+            {getPageNumbers().map(pageNum => (
+              <button
+                key={pageNum}
+                onClick={() => getPage(pageNum)}
+                style={{
+                  fontWeight: pageNum === currentPage ? 'bold' : 'normal',
+                  textDecoration: pageNum === currentPage ? 'underline' : 'none',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  border: pageNum === currentPage ? '2px solid #2563eb' : '1px solid #ccc',
+                  backgroundColor: pageNum === currentPage ? '#bfdbfe' : 'transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                {pageNum}
+              </button>
+            ))}
+
+            <button onClick={() => getPage(currentPage + 1)} disabled={currentPage === total}>
+              다음
+            </button>
+            <button onClick={() => getPage(total)} disabled={currentPage === total}>
+              맨 끝
+            </button>
+          </div>     
         </CardContent>
       </Card>
 

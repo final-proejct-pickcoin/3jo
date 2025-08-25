@@ -2,8 +2,12 @@ package com.finalproject.pickcoin.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,13 +27,15 @@ public class TradeServiceImpl implements TradeService {
     private static final BigDecimal FEE_RATE = new BigDecimal("0.001");
     private static final int SCALE_MONEY = 0, SCALE_CRYPTO = 8;
 
+    private Logger logger = LoggerFactory.getLogger(TradeServiceImpl.class);
+
     // Helper: BigDecimal 변환
     private static BigDecimal toBD(Object v) {
-    if (v == null) return BigDecimal.ZERO;
-    if (v instanceof BigDecimal) return (BigDecimal) v;
-    if (v instanceof Number) return BigDecimal.valueOf(((Number) v).doubleValue());
-    throw new IllegalArgumentException("unsupported number type: " + v.getClass());
-}
+        if (v == null) return BigDecimal.ZERO;
+        if (v instanceof BigDecimal) return (BigDecimal) v;
+        if (v instanceof Number) return BigDecimal.valueOf(((Number) v).doubleValue());
+        throw new IllegalArgumentException("unsupported number type: " + v.getClass());
+    }
 
     //===============매수 관련=============
     @Override @Transactional
@@ -93,6 +99,19 @@ public class TradeServiceImpl implements TradeService {
     repo.conclude_order(orderId,
         com.finalproject.pickcoin.enums.OrderStatus.CONCLUDED.ordinal());
 
+    // === 로그 남기기 (MDC + 이벤트) ===
+    MDC.put("event_type", "trade");
+    MDC.put("user_id", String.valueOf(req.getUser_id()));
+    MDC.put("asset_id", String.valueOf(req.getAsset_id()));
+    MDC.put("amount", req.getAmount().toPlainString());
+    MDC.put("order_type", "buy");
+    MDC.put("price", req.getPrice().toPlainString());
+    MDC.put("timestamp", Instant.now().toString());
+
+    logger.info("Trade executed (order_id={})", orderId);
+
+    MDC.clear();
+
     return Map.of("order_id", orderId, "status", "concluded");
     }
 
@@ -142,6 +161,19 @@ public class TradeServiceImpl implements TradeService {
         repo.insert_transaction(orderId, req.price, req.amount, fee);
         repo.conclude_order(orderId, CONCLUDED);
 
+        // === 로그 남기기 (MDC + 이벤트) ===
+        MDC.put("event_type", "trade");
+        MDC.put("user_id", String.valueOf(req.getUser_id()));
+        MDC.put("asset_id", String.valueOf(req.getAsset_id()));
+        MDC.put("amount", req.getAmount().toPlainString());
+        MDC.put("order_type", "sell");
+        MDC.put("price", req.getPrice().toPlainString());
+        MDC.put("timestamp", Instant.now().toString());
+
+        logger.info("Trade executed (order_id={})", orderId);
+
+        MDC.clear();
+
         return Map.of("order_id", orderId, "status", "concluded");
     }
 
@@ -162,6 +194,18 @@ public class TradeServiceImpl implements TradeService {
     @Override
     public java.util.List<Map<String,Object>> trades(Long userId) {
         return repo.find_trades(userId);
+    }
+
+    /** 자산별 미체결 거래 내역 */
+    @Override
+    public java.util.List<Map<String,Object>> asset_unconcluded_orders(Long user_id, Long asset_id) {
+        return repo.asset_unconcluded_orders(user_id, asset_id);
+    }
+    
+    /** 자산별 체결 거래 내역 */
+    @Override
+    public java.util.List<Map<String,Object>> asset_concluded_orders(Long user_id, Long asset_id) {
+        return repo.asset_concluded_orders(user_id, asset_id);
     }
         
 }
