@@ -19,6 +19,8 @@ public interface UsersRepository extends CrudRepository<Users, Integer> {
     Optional<Users> findByPhone(String phone);
     Optional<Users> findByProviderAndProviderId(String provider, String providerId);
 
+    Optional<Users> findById(Integer user_id);
+
     Optional<Users> findByGoogleId(String googleId);
     Optional<Users> findByKakaoId(String kakaoId);
 

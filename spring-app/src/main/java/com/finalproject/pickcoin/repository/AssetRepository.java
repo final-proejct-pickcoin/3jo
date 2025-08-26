@@ -10,4 +10,6 @@ public interface AssetRepository {
         @Autowired
         List<Asset> get_asset_list();
 
+        Asset get_asset_info(Integer asset_id);
+
 }
