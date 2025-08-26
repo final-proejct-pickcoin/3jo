@@ -43,5 +43,7 @@ public class Report {
 
     @Column(name="processed_at", updatable = true)   
     private Date processedAt; // 신고 생성 시간
-    
+   
+    private Boolean admin_seen;     // getter/setter 포함
+    private java.time.LocalDateTime admin_seen_at;
 }  

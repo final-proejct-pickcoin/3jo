@@ -87,6 +87,7 @@ export default function Component() {
   });
 
   // Mock notifications
+  const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -506,15 +507,25 @@ const handleSaveEdit = async () => {
       )
     );
   };
-  const handleMarkAllNotificationsAsRead = () => {
+  const handleMarkAllNotificationsAsRead = async () => {
+  try {
+    // (선택) 백엔드 모두 읽음 API 호출
+    await axios.patch(`${BASE}/report/alerts/read-all`);
+
+    // 프론트 상태 업데이트
     setNotifications(
       notifications.map((notif) => ({
         ...notif,
         read: true
       }))
     );
-  };
-  const unreadCount = notifications.filter((n) => !n.read).length;
+
+    // 뱃지 숫자 초기화
+    setUnreadCount(0);
+  } catch (err) {
+    console.error("모두 읽음 처리 실패:", err);
+  }
+};
   const handleDeleteSelectedLogs = () => {
     setLogs(logs.filter((log) => !selectedLogs.includes(log.id)));
     setSelectedLogs([]);
@@ -591,6 +602,7 @@ const handleSaveEdit = async () => {
       const role = localStorage.getItem("role");
 
       setProfileData((prev) => ({ ...prev, role, name, email }));
+
       // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
       axios.get("http://localhost:8000/admin/getuser")
         .then((result)=>{
@@ -600,6 +612,29 @@ const handleSaveEdit = async () => {
 
       setIsLoggedIn(true);
       fetchAnnouncements();
+
+      
+      const fetchReports = async () => {
+      try {
+      const { data: countRes } = await axios.get(`${BASE}/report/alerts/count`);
+      setUnreadCount(countRes.count);
+
+      const { data: unreadRes } = await axios.get(`${BASE}/report/alerts/unread?limit=10`);
+      // Report → notification 형태로 변환
+      const mapped = unreadRes.map(r => ({
+        id: r.report_id,
+        title: `${r.reported_type} 신고`,
+        message: r.description || "신고 사유 없음",
+        time: new Date(r.createdAt || r.created_at).toLocaleString("ko-KR"),
+        read: r.admin_seen === true
+      }));
+      setNotifications(mapped);
+    } catch (err) {
+      console.error("신고 알림 불러오기 실패:", err);
+    }
+  };
+
+  fetchReports();
     }
   }, []);
 
