@@ -524,7 +524,7 @@ export default function DepositManager() {
                       disabled={isBusy || !selectedBank || !accountNumber || !accountHolder || toNumber(withdrawAmount) <= 0}
                       onClick={handleWithdraw}
                     >
-                      원화 출금 신청
+                      원화 출금
                     </Button>
                   </TabsContent>
                 </Tabs>

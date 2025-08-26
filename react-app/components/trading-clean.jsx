@@ -483,17 +483,17 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
   const investmentGrade = getInvestmentGrade();
 
 
-  const market_buy =async (user_id,asset_id,amount,price) => {
-    try {
-    if(user_id !== null){
-      await axios.post(TRADE_API + '/market-buy', {params : {user_id, asset_id, amount, price}});
-    }
-    } catch (error) {
-      console.error('매수 실패:', error);
-      toast.error('거래에 실패했습니다. 나중에 다시 시도해주세요.');
-    }
-
-  }
+//market_buy
+  // const market_buy =async (user_id,asset_id,amount,price) => {
+  //   try {
+  //   if(user_id !== null){
+  //     await axios.post(TRADE_API + '/market-buy', {params : {user_id, asset_id, amount, price}});
+  //   }
+  //   } catch (error) {
+  //     console.error('매수 실패:', error);
+  //     toast.error('거래에 실패했습니다. 나중에 다시 시도해주세요.');
+  //   }
+  // }
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto" style={{ height: '1100px' }}>
@@ -1232,6 +1232,17 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
 };
 
 export const TradingInterface = () => {
+
+
+
+    // (중복 제거) 검색어 상태는 한 번만 선언
+  const [selectedCoin, setSelectedCoin] = useState("BTC");
+  const [activeTab, setActiveTab] = useState("원화"); // "원화" or "BTC"
+  const [showSettings, setShowSettings] = useState(false);
+  const [realTimeData, setRealTimeData] = useState({});
+  const [wsConnected, setWsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("연결 중...");
+
   //사용자 id 추출
   const [user_id, setUserId] = useState(null);
 
@@ -1290,13 +1301,40 @@ useEffect(() => {
 }, []);
 
 //    변경된 user_id값 최종 확인
-  useEffect(() => {
-    console.log("user_id 변경됨:", user_id);
-  }, [user_id]);
+  // useEffect(() => {
+  //   alert("user_id 변경됨:", user_id);
+  // }, [user_id]);
 
 
 //=======코인 id(asset_id) 가져오기
 const [asset_id, setAsset_id] = useState(null);    // 현재 선택 코인의 자산 ID
+
+// 리스트 클릭시 에셋 심볼에서 id 추출
+const asset_symbol_to_Id = async (coin) => {
+  if (!coin?.symbol) return;
+
+  // 1) 선택 코인 심볼 상태 갱신
+  setSelectedCoin(coin.symbol);
+
+  // 2) 마켓 (BTC / KRW)
+  const market = activeTab === "BTC" ? "BTC" : "KRW";
+
+  // 3) "ETH-KRW" 같은 형태의 assetSymbol 만들기
+  const assetSymbol = `${coin.symbol}-${market}`;
+
+  // 4) 백엔드에서 asset_id 가져오기
+  const id = await fetchAssetId(assetSymbol);
+
+  // 5) 상태 갱신
+  setAsset_id(id);
+
+  // 6) 디버깅 로그/알림
+  // if (id) {
+  //   alert(`[asset_id] set: ${id} (${assetSymbol})`);
+  // } else {
+  //   alert(`[자산ID 없음] ${assetSymbol}`);
+  // }
+};
 
 // 클릭한 코인 심볼 통해 id 가져오고 [123] 형태 파싱 → 숫자 or null
 async function fetchAssetId(assetSymbol) {
@@ -1313,6 +1351,92 @@ async function fetchAssetId(assetSymbol) {
   } catch {}
   return null;
 }
+
+
+
+//선택한 모인/마켓 바뀔때 자동 asset_id 세팅
+// useEffect(() => {
+//   let mounted = true;
+//   (async () => {
+//     if (!selectedCoin) { setAsset_id(null); return; }
+//     const market = activeTab === "BTC" ? "BTC" : "KRW";
+//     const id = await resolveAssetId(selectedCoin, market);
+//     if (!mounted) return;
+//     setAsset_id(id);
+//     if (id == null) {
+//       alert("[asset_id] not found", { selectedCoin, market });
+//       // 필요시 사용자 알림:
+//       // toast.error(`${selectedCoin}/${market} 의 자산 ID를 찾을 수 없습니다.`);
+//     }
+//   })();
+//   return () => { mounted = false; };
+// }, [selectedCoin, activeTab]);
+
+
+// 매수 버튼 클릭
+  // const handleBuy = async () => {
+  //   if (!selectedCoin) {
+  //     return alert("코인을 먼저 선택하세요!");
+  //   }
+
+  //   try {
+  //     const body = {
+  //       user_id: user_id,
+  //       asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
+  //       amount: orderQty,
+  //       price: orderPrice,
+  //     };
+  //     alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
+
+  //     await axios.post("http://localhost:8080/api/trade/market_buy", body);
+  //     alert(`${selectedCoin.symbol} 매수 성공!`);
+  //   } catch (err) {
+  //     alert("handleBuy:매수 실패: " + err.message);
+  //   }
+  // };
+
+//뭐하는건지 모르겠음 주석
+// useEffect(() => {
+//   let mounted = true;
+//   (async () => {
+//     if (!selectedCoin) {
+//       setAsset_id(null);
+//       return;
+//     }
+//     const market = activeTab === "BTC" ? "BTC" : "KRW";
+//     const id = await resolveAssetId(selectedCoin, market);
+//     if (!mounted) return;
+//     setAsset_id(id);
+//     if (id == null) {
+//       //toast.warning(`[자산ID 없음] ${selectedCoin}/${market} 의 자산 ID를 찾을 수 없습니다.`);
+//       alert(`[자산ID 없음] ${selectedCoin}/${market} 의 자산 ID를 찾을 수 없습니다.`);
+//     } else {
+//       alert(`[asset_id] set:${asset_id}`);
+//     }
+//   })();
+//   return () => {
+//     mounted = false;
+//   };
+// }, [selectedCoin, activeTab]);
+
+
+
+// 파일 상단(컴포넌트 바깥 OK, 안쪽도 OK) 어딘가에 추가
+async function resolveAssetId(symbol, market) {
+    const tries = [
+    `${symbol}-${market}`,
+    `${market}-${symbol}`,
+    `${symbol}/${market}`,
+  ];
+  for (const s of tries) {
+    try {
+      const id = await fetchAssetId(s);
+      if (id) return id;
+    } catch {}
+  }
+  return null;
+}
+
 
 
 
@@ -1346,62 +1470,385 @@ async function fetchAssetId(assetSymbol) {
     }
   };
 
-  const guard = () => {
-    if (!asset_id) return "asset_id(자산 ID)를 입력하세요.";
-    if (!qty) return "수량(qty)을 입력하세요.";
-    if (!price) return "가격(price)을 입력하세요.";
-    return null;
-  };
+  // const guard = () => {
+  //   if (!asset_id) return "asset_id(자산 ID)를 입력하세요.";
+  //   if (!qty) return "수량(qty)을 입력하세요.";
+  //   if (!price) return "가격(price)을 입력하세요.";
+  //   return null;
+  // };
 
   
   // 리스트 클릭 시 asset_id 저장
   const handleSelectCoin = (coin) => {
-    setSelectedCoin(coin); // coin = { asset_id, symbol, price, ... }
+    setSelectedCoin(coin.symbol); // coin = { asset_id, symbol, price, ... }
   };
-
+  
+  
   // 매수 버튼 클릭
-  const handleBuy = async () => {
-    if (!selectedCoin) {
-      return alert("코인을 먼저 선택하세요!");
-    }
+  // const handleBuy = async () => {
+  //   if (!selectedCoin) {
+  //     return alert("코인을 먼저 선택하세요!");
+  //   }
 
-    try {
-      const body = {
-        user_id: user_id,
-        asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
-        amount: orderQty,
-        price: orderPrice,
-      };
-      alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
+  //   try {
+  //     const body = {
+  //       user_id: user_id,
+  //       asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
+  //       amount: orderQty,
+  //       price: orderPrice,
+  //     };
+  //     alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
 
-      await axios.post("http://localhost:8080/api/trade/market_buy", body);
-      alert(`${selectedCoin.symbol} 매수 성공!`);
-    } catch (err) {
-      alert("handleBuy:매수 실패: " + err.message);
-    }
+  //     await axios.post("http://localhost:8080/api/trade/market_buy", body);
+  //     alert(`${selectedCoin.symbol} 매수 성공!`);
+  //   } catch (err) {
+  //     alert("handleBuy:매수 실패: " + err.message);
+  //   }
+  // };
+
+
+  // // 매도 버튼 클릭
+  // const handleSell = async () => {
+  //   if (!selectedCoin) {
+  //     return alert("코인을 먼저 선택하세요!");
+  //   }
+
+  //   try {
+  //     const body = {
+  //       user_id: user_id,
+  //       asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
+  //       amount: orderQty,
+  //       price: orderPrice,
+  //     };
+  //     alert("handleSell:매도 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
+  //     await axios.post("http://localhost:8080/api/trade/market_sell", body);
+  //     alert(`${selectedCoin.symbol} 매도 성공!`);
+  //   } catch (err) {
+  //     alert("handleBuy:매도 실패: " + err.message);
+  //   }
+  // };
+
+
+// TradingInterface 내부 어딘가(핸들러들 가까이)
+const api = {
+  marketBuy: (body) =>
+    axios.post(`${TRADE_API}/market_buy`, body, {
+      headers: { "Content-Type": "application/json" },
+    }),
+  limitBuy: (body) =>
+    axios.post(`${TRADE_API}/limit_buys`, body, {
+      headers: { "Content-Type": "application/json" },
+    }),
+  marketSell: (body) =>
+    axios.post(`${TRADE_API}/market_sell`, body, {
+      headers: { "Content-Type": "application/json" },
+    }),
+  limitSell: (body) =>
+    axios.post(`${TRADE_API}/limit_sells`, body, {
+      headers: { "Content-Type": "application/json" },
+    }),
+};
+
+  // ================= 주문 핸들러 =================
+
+// 공통: 주문 파라미터 검증 & body 생성
+const buildOrderBody = () => {
+  if (!user_id) {
+    toast.error("로그인이 필요합니다."); return null;
+  }
+  if (!asset_id) {
+    toast.error("코인을 먼저 선택하세요."); return null;
+  }
+  if (!orderQty || orderQty <= 0) {
+    toast.error("수량을 입력하세요."); return null;
+  }
+  if (orderType === "지정가" && (!orderPrice || orderPrice <= 0)) {
+    toast.error("지정가 주문은 가격을 입력하세요."); return null;
+  }
+  // 시장가일 때는 orderPrice를 현재가로 강제 세팅(백엔드가 가격 쓰는 설계면 유리)
+  const priceToSend = orderType === "시장가" ? currentPriceKRW : orderPrice;
+
+  return {
+    user_id,
+    asset_id,
+    amount: orderQty,
+    price: priceToSend,
   };
+};
+
+// const handleBuy = async () => {
+//   const body = buildOrderBody();
+//   if (!body) return;
+
+//   try {
+//     const url =
+//       orderType === "시장가"
+//         ? `${TRADE_API}/market_buy`
+//         : `${TRADE_API}/limit_buys`;
+
+//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
+
+//     toast.success(`${selectedCoin} ${orderType} 매수 주문 완료`);
+//     refreshPortfolio();
+//   } catch (err) {
+//     console.error("매수 실패:", err);
+//     toast.error("매수 주문 실패: " + (err.response?.data?.message || err.message));
+//   }
+// };
 
 
-  // 매도 버튼 클릭
-  const handleSell = async () => {
-    if (!selectedCoin) {
-      return alert("코인을 먼저 선택하세요!");
+
+// const handleSell = async () => {
+//   const body = buildOrderBody();
+//   if (!body) return;
+
+//   try {
+//     const url =
+//       orderType === "시장가"
+//         ? `${TRADE_API}/market_sell`
+//         : `${TRADE_API}/limit_sells`;
+
+//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
+
+//     toast.success(`${selectedCoin} ${orderType} 매도 주문 완료`);
+//     refreshPortfolio();
+//   } catch (err) {
+//     console.error("매도 실패:", err);
+//     toast.error("매도 주문 실패: " + (err.response?.data?.message || err.message));
+//   }
+// };
+
+//테스트로 주석
+const handleBuy = async () => {
+  const body = buildOrderBody();  // { user_id, asset_id, amount: orderQty, price: ... }
+  if (!body) return;
+
+  try {
+    if (orderType === "시장가") {
+      await api.marketBuy(body);
+    } else {
+      await api.limitBuy(body);
     }
+    toast.success(`${selectedCoin} ${orderType} 매수 주문 완료`);
+    refreshPortfolio();
+    setOrderQty(0);
+  } catch (err) {
+    console.error("매수 실패:", err);
+    toast.error("매수 주문 실패: " + (err.response?.data?.message || err.message));
+  }
+};
 
-    try {
-      const body = {
-        user_id: user_id,
-        asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
-        amount: orderQty,
-        price: orderPrice,
-      };
-      alert("handleSell:매도 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
-      await axios.post("http://localhost:8080/api/trade/market_sell", body);
-      alert(`${selectedCoin.symbol} 매도 성공!`);
-    } catch (err) {
-      alert("handleBuy:매도 실패: " + err.message);
+// ✅ 지정가/시장가 공용 매수 함수 (그대로 복붙해서 기존 handleBuy 대체)
+// const handleBuy = async () => {
+//   try {
+//     // --- 기본 검증 ---
+//     if (!user_id) {
+//       toast.error("로그인이 필요합니다.");
+//       return;
+//     }
+//     if (!asset_id) {
+//       toast.error("코인을 먼저 선택하세요.");
+//       return;
+//     }
+//     const qtyNum = Number(orderQty);
+//     if (!qtyNum || qtyNum <= 0) {
+//       toast.error("수량을 입력하세요.");
+//       return;
+//     }
+
+//     // --- 주문 타입별 처리 ---
+//     let url = "";
+//     let priceToSend = 0;
+
+//     if (orderType === "시장가") {
+//       // 시장가: 백엔드가 가격을 안쓰면 price를 빼도 되지만,
+//       // 네 API가 price를 받도록 설계된 경우 현재가를 넣어준다.
+//       priceToSend = Number(currentPriceKRW) || 0;
+//       url = `${TRADE_API}/market_buy`;
+//     } else {
+//       // 지정가
+//       const limitPrice = Number(orderPrice);
+//       if (!limitPrice || limitPrice <= 0) {
+//         toast.error("지정가 주문은 가격을 입력하세요.");
+//         return;
+//       }
+//       priceToSend = limitPrice;
+//       url = `${TRADE_API}/limit_buys`;
+//     }
+
+//     const body = {
+//       user_id,
+//       asset_id,
+//       amount: qtyNum,
+//       price: priceToSend,
+//     };
+
+//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
+//     alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
+//     toast.success(`${selectedCoin} ${orderType} 매수 주문 완료`);
+//     // 성공 후 포트폴리오 새로고침 (이미 구현돼 있음)
+//     refreshPortfolio();
+
+//   } catch (err) {
+//     console.error("매수 실패:", err);
+//     toast.error("매수 주문 실패: " + (err?.response?.data?.message || err.message));
+//   }
+// };
+
+// const handleBuy = async (coin) => {
+//   try {
+//     // 1) 클릭으로 넘어온 coin 우선 반영(없으면 현재 상태 사용)
+//     let symbol = selectedCoin;
+//     let assetId = asset_id;
+
+//     if (coin?.symbol) {
+//       symbol = coin.symbol;
+//       const market = activeTab === "BTC" ? "BTC" : "KRW";
+//       // try: BTC-ETH / ETH-BTC / ETH/BTC 등 변형을 모두 시도
+//       assetId = await resolveAssetId(symbol, market);
+
+//       // UI 상태도 동기화 (요청엔 위 로컬 변수 assetId 사용)
+//       setSelectedCoin(symbol);
+//       setAsset_id(assetId);
+//     }
+
+//     // 2) 기본 검증
+//     if (!user_id) {
+//       toast.error("로그인이 필요합니다.");
+//       return;
+//     }
+//     if (!assetId) {
+//       toast.error("코인을 먼저 선택하세요.");
+//       return;
+//     }
+//     const qtyNum = Number(orderQty);
+//     if (!qtyNum || qtyNum <= 0) {
+//       toast.error("수량을 입력하세요.");
+//       return;
+//     }
+
+//     // 3) 주문 타입별 URL/가격 결정
+//     let url = "";
+//     let priceToSend = 0;
+
+//     if (orderType === "시장가") {
+//       priceToSend = Number(currentPriceKRW) || 0; // 백엔드가 무시해도 안전하게 채워줌
+//       url = `${TRADE_API}/market_buy`;
+//     } else {
+//       const limitPrice = Number(orderPrice);
+//       if (!limitPrice || limitPrice <= 0) {
+//         toast.error("지정가 주문은 가격을 입력하세요.");
+//         return;
+//       }
+//       priceToSend = limitPrice;
+//       url = `${TRADE_API}/limit_buys`;
+//     }
+
+//     // 4) 요청 바디 (로컬 assetId/symbol 사용!)
+//     const body = {
+//       user_id,
+//       asset_id: assetId,
+//       amount: qtyNum,
+//       price: priceToSend,
+//     };
+
+//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
+
+//     toast.success(`${symbol} ${orderType} 매수 주문 완료`);
+//     refreshPortfolio();
+//   } catch (err) {
+//     console.error("매수 실패:", err);
+//     toast.error("매수 주문 실패: " + (err?.response?.data?.message || err.message));
+//   }
+// };
+
+
+const handleSell = async () => {
+  const body = buildOrderBody();
+  if (!body) return;
+
+  try {
+    if (orderType === "시장가") {
+      await api.marketSell(body);
+    } else {
+      await api.limitSell(body);
     }
-  };
+    toast.success(`${selectedCoin} ${orderType} 매도 주문 완료`);
+    refreshPortfolio();
+    setOrderQty(0);    
+  } catch (err) {
+    console.error("매도 실패:", err);
+    toast.error("매도 주문 실패: " + (err.response?.data?.message || err.message));
+  }
+};
+
+// const handleSell = async (coin) => {
+//   try {
+//     // 1) 클릭으로 넘어온 coin 우선 적용(없으면 현재 상태 사용)
+//     let symbol = selectedCoin;
+//     let assetId = asset_id;
+
+//     if (coin?.symbol) {
+//       symbol = coin.symbol;
+//       const market = activeTab === "BTC" ? "BTC" : "KRW";
+//       assetId = await resolveAssetId(symbol, market);
+
+//       // UI 상태도 맞춰주되, 실제 요청엔 로컬 assetId/symbol 사용
+//       setSelectedCoin(symbol);
+//       setAsset_id(assetId);
+//     }
+
+//     // 2) 기본 검증
+//     if (!user_id) {
+//       toast.error("로그인이 필요합니다.");
+//       return;
+//     }
+//     if (!assetId) {
+//       toast.error("코인을 먼저 선택하세요.");
+//       return;
+//     }
+//     const qtyNum = Number(orderQty);
+//     if (!qtyNum || qtyNum <= 0) {
+//       toast.error("수량을 입력하세요.");
+//       return;
+//     }
+
+//     // 3) 주문 타입별 URL/가격 결정
+//     let priceToSend = 0;
+//     if (orderType === "시장가") {
+//       // 백엔드가 price를 무시하더라도 안전하게 현재가 전달
+//       priceToSend = Number(currentPriceKRW) || 0;
+//       await api.marketSell({
+//         user_id,
+//         asset_id: assetId,
+//         amount: qtyNum,
+//         price: priceToSend,
+//       });
+//     } else {
+//       const limitPrice = Number(orderPrice);
+//       if (!limitPrice || limitPrice <= 0) {
+//         toast.error("지정가 주문은 가격을 입력하세요.");
+//         return;
+//       }
+//       priceToSend = limitPrice;
+//       await api.limitSell({
+//         user_id,
+//         asset_id: assetId,
+//         amount: qtyNum,
+//         price: priceToSend,
+//       });
+//     }
+
+//     toast.success(`${symbol} ${orderType} 매도 주문 완료`);
+//     refreshPortfolio();
+//   } catch (err) {
+//     console.error("매도 실패:", err);
+//     toast.error("매도 주문 실패: " + (err?.response?.data?.message || err.message));
+//   }
+// };
+
+
+
 
 
 //=================거래내역 출력
@@ -1480,11 +1927,21 @@ const Concluded_orders = async () => {
     setConcluded_orders(normalizeOrders(data));
 }
 //백에서 미체결 거래내역 가져오기
+// const Unconcluded_orders = async () => {
+//   if (!user_id || !asset_id) return;
+//   const params = { user_id, asset_id };
+//   const res = await axios.get(`${TRADE_API}/asset_unconcluded_orders`, { params });
+//   setConcluded_orders(normalizeOrders(res.data));
+// }
+
 const Unconcluded_orders = async () => {
   if (!user_id || !asset_id) return;
-  const params = { user_id, asset_id };
-  const res = await axios.get(`${TRADE_API}/asset_unconcluded_orders`, { params });
-  setConcluded_orders(res.data);
+  const { data } = await axios.get(`${TRADE_API}/asset_unconcluded_orders`, {
+      params: { user_id, asset_id },
+      headers: { Accept: "application/json" },
+    });
+
+    setUnconcluded_orders(normalizeOrders(data));
 }
 
 
@@ -1512,6 +1969,10 @@ useEffect(() => {
   if (historyTab === "체결") Concluded_orders();
   else Unconcluded_orders();
 }, [historyTab]);
+
+
+
+
 
 
   // Responsive height: Coin list matches main chart+order book+order panel area (red box)
@@ -1544,12 +2005,7 @@ useEffect(() => {
 
   // State hooks for UI controls
   // (중복 제거) 검색어 상태는 한 번만 선언
-  const [selectedCoin, setSelectedCoin] = useState("BTC");
-  const [activeTab, setActiveTab] = useState("원화"); // "원화" or "BTC"
-  const [showSettings, setShowSettings] = useState(false);
-  const [realTimeData, setRealTimeData] = useState({});
-  const [wsConnected, setWsConnected] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState("연결 중...");
+
   // WebSocket 통계 상태
   const [wsStats, setWsStats] = useState({
     total_symbols: 0,
@@ -1943,20 +2399,22 @@ const [quickAmount, setQuickAmount] = useState(0);  // 간편주문 총액(KRW)
 const [availableKrw, setAvailableKrw] = useState(1_000_000);
 
 // 종목/현재가 변할 때 주문가격 동기화
-useEffect(() => {
-  setOrderPrice(currentPriceKRW);
-}, [currentPriceKRW, selectedCoin]);
+//지정가일때 값 갱신 막기위해 주석처리
+// useEffect(() => {
+//   setOrderPrice(currentPriceKRW);
+// }, [currentPriceKRW, selectedCoin]);
 
 const formatKRW = (n) => (Number.isFinite(n) ? n.toLocaleString() : "-");
 
 
 // 현재가로 orderPrice 자동 동기화 (실시간 우선)
-useEffect(() => {
-  const rt = realTimeData[selectedCoin + "_KRW"]?.closePrice;
-  const latest = rt ? parseInt(rt, 10)
-    : (updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 0);
-  setOrderPrice(latest);
-}, [selectedCoin, realTimeData, updatedCoinList]);
+// 지정가 주문시 칸 비 동기화 위해 주석처리
+// useEffect(() => {
+//   const rt = realTimeData[selectedCoin + "_KRW"]?.closePrice;
+//   const latest = rt ? parseInt(rt, 10)
+//     : (updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 0);
+//   setOrderPrice(latest);
+// }, [selectedCoin, realTimeData, updatedCoinList]);
 
 // 총액 자동 계산
 const totalAmountKRW = useMemo(
@@ -1964,6 +2422,45 @@ const totalAmountKRW = useMemo(
   [orderPrice, orderQty]
 );
 
+
+//=============지정가 거래 관련============
+
+// ⬇️ TradingInterface 컴포넌트 상단 state 모음 근처에 추가
+const [orderType, setOrderType] = useState("시장가");
+const [syncOrderPrice, setSyncOrderPrice] = useState(true); // 시장가일 때만 현재가 동기화
+
+// ✅ 시장가일 때만 orderPrice를 현재가로 동기화
+// useEffect(() => {
+//   if (!syncOrderPrice) return;     // 지정가면 동기화 안 함
+//   setOrderPrice(currentPriceKRW);  // 시장가면 계속 따라감
+// }, [currentPriceKRW, syncOrderPrice]);
+useEffect(() => {
+  if (orderType !== "시장가") return;     // 지정가면 건드리지 않음
+  setOrderPrice(currentPriceKRW);
+}, [orderType, currentPriceKRW, selectedCoin]);
+
+
+// match_limits 과호출 방지용
+const lastMatchCallTsRef = useRef(0);
+const MATCH_COOLDOWN_MS = 1500; // 1.5s 쿨다운
+
+// ⬇️ 종목/실시간 가격/주문유형이 바뀔 때, 시장가면 자동으로 현재가를 반영
+// useEffect(() => {
+//   if (orderType !== 'market') return;         // 지정가는 고정
+//   setOrderPrice(currentPriceKRW || 0);        // 시장가는 계속 최신가로
+// }, [orderType, currentPriceKRW, selectedCoin]);
+
+// 현재가로 orderPrice 자동 동기화 (✅ 시장가일 때만)
+useEffect(() => {
+  if (orderType !== "시장가") return;  // 지정가면 손대지 않음
+
+  const rt = realTimeData[selectedCoin + "_KRW"]?.closePrice;
+  const latest = rt
+    ? parseInt(rt, 10)
+    : (updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 0);
+
+  setOrderPrice(latest);
+}, [selectedCoin, realTimeData, updatedCoinList, orderType]);
 
 return (
     <div className="w-full p-0 space-y-4">
@@ -2082,14 +2579,18 @@ return (
                   filteredCoinList.map((coin, index) => (
                     <div
                       key={coin.symbol}
-                      onClick={async () => {
-                                setSelectedCoin(coin.symbol);
-                                const market = activeTab === "BTC" ? "BTC" : "KRW";
-                                const assetSymbol = `${coin.symbol}-${market}`;  // 예) ETH-KRW
-                                const id = await fetchAssetId(assetSymbol);
-                                setAsset_id(id);
-                              }
-                            }
+                      // onClick={() => setSelectedCoin(coin.symbol)}
+                      // onClick={() => handleSelectCoin(coin)}
+                      // onClick={() => handleBuy(coin)}
+                      onClick={() => asset_symbol_to_Id(coin)}
+                      // onClick={async () => {
+                      //           setSelectedCoin(coin.symbol);
+                      //           const market = activeTab === "BTC" ? "BTC" : "KRW";
+                      //           const assetSymbol = `${coin.symbol}-${market}`;  // 예) ETH-KRW
+                      //           const id = await fetchAssetId(assetSymbol);
+                      //           setAsset_id(id);
+                      //         }
+                      //       }
 
                       className={`grid grid-cols-4 gap-1 p-2 text-xs cursor-pointer border-b items-center
                         ${selectedCoin === coin.symbol ? 'bg-blue-50 border-blue-200' : ''}`}
@@ -2265,7 +2766,7 @@ return (
               <div className="flex-1 flex flex-col bg-white px-6 py-4 overflow-auto">
                 {/* 탭 헤더 */}
                 <div className="flex border-b border-gray-200 mb-4">
-                  {["매수", "매도", "간편주문", "거래내역"].map((t) => (
+                  {["매수", "매도", "거래내역"].map((t) => (
                     <button
                       key={t}
                       className={`flex-1 py-2 text-sm ${
@@ -2283,79 +2784,118 @@ return (
                 {/* 매수/매도 탭 공통 */}
                 {orderTab === "매수" || orderTab === "매도" ? (
                   <>
-                    {/* 주문유형 */}
+                    {/* ==== */}
+
                     <div className="flex items-center gap-4 mb-3">
-                      <span className="text-xs font-semibold">주문유형</span>
-                      <label className="flex items-center gap-1 text-xs font-semibold text-blue-600">
-                        <input type="radio" name="orderType" defaultChecked className="accent-blue-500" /> 지정가
-                      </label>
-                      <label className="flex items-center gap-1 text-xs text-gray-400">
-                        <input type="radio" name="orderType" className="accent-blue-500" /> 시장가
-                      </label>
-                      <label className="flex items-center gap-1 text-xs text-gray-400">
-                        <input type="radio" name="orderType" className="accent-blue-500" /> 예약지정가
-                      </label>
-                      <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
-                    </div>
+                    <span className="text-xs font-semibold">주문유형</span>
 
-                    
-                    {/* 가격 */}
-                    <div className="text-xs font-semibold mb-1 flex items-center justify-between">
-                      <span>{orderTab === "매도" ? "매도가격 (KRW)" : "매수가격 (KRW)"}</span>
-                      <span
-                        className={[
-                          "ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] border",
-                          priceDir === "up" ? "text-red-600 border-red-200 bg-red-50"
-                          : priceDir === "down" ? "text-blue-600 border-blue-200 bg-blue-50"
-                          : "text-gray-600 border-gray-200 bg-gray-50"
-                        ].join(" ")}
-                        title="실시간 현재가"
-                      >
-                        현재가 {formatKRW(currentPriceKRW)} KRW
-                        {priceDir === "up" && <span className="ml-1">▲</span>}
-                        {priceDir === "down" && <span className="ml-1">▼</span>}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center border rounded h-10">
+                    <label className="flex items-center gap-1 text-xs font-semibold">
                       <input
-                        type="text"
-                        value={formatKRW(orderPrice)}
-                        onChange={(e) => {
-                          const raw = e.target.value.replace(/[^\d]/g, "");
-                          setOrderPrice(raw ? parseInt(raw, 10) : 0);
-                        }}
-                        className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
+                        type="radio"
+                        name="orderType"
+                        className="accent-blue-500"
+                        checked={orderType === "지정가"}
+                        onChange={() => {
+                            setOrderType("지정가");      // ❌ 지정가: orderPrice 자동 갱신 중단
+                          }}
                       />
-                      <button className="w-8 h-8 text-gray-400" type="button"
-                              onClick={() => setOrderPrice(p => Math.max(0, p - 100))}>-</button>
-                      <button className="w-8 h-8 text-gray-400" type="button"
-                              onClick={() => setOrderPrice(p => p + 100)}>+</button>
-                    </div>
+                      지정가
+                    </label>
+
+                    <label className="flex items-center gap-1 text-xs font-semibold">
+                      <input
+                        type="radio"
+                        name="orderType"
+                        className="accent-blue-500"
+                        checked={orderType === "시장가"}
+                        onChange={() => {
+                          setOrderType("시장가");          // ✅ 자동으로 현재가를 따라가게 됨
+                          setOrderPrice(currentPriceKRW); // 즉시 한 번 반영
+                        }}
+                      />
+                      시장가
+                    </label>
+
+                    <label className="flex items-center gap-1 text-xs text-gray-400">
+                      <input
+                        type="radio"
+                        name="orderType"
+                        className="accent-blue-500"
+                        checked={orderType === "예약지정가"}
+                        onChange={() => setOrderType("예약지정가")}
+                        disabled
+                      />
+                      예약지정가(준비중)
+                    </label>
+
+                    <span className="ml-auto text-xs text-gray-400">0 BTC<br />~ 0 KRW</span>
+                  </div>
+                  
+                      {/* 가격 */}
+                      <div className="text-xs font-semibold mb-1 flex items-center justify-between">
+                        <span>{orderTab === "매도" ? "매도가격 (KRW)" : "매수가격 (KRW)"}</span>
+                        <span
+                          className={[
+                            "ml-2 inline-flex items-center px-2 py-0.5 rounded text-[11px] border",
+                            priceDir === "up" ? "text-red-600 border-red-200 bg-red-50"
+                            : priceDir === "down" ? "text-blue-600 border-blue-200 bg-blue-50"
+                            : "text-gray-600 border-gray-200 bg-gray-50"
+                          ].join(" ")}
+                          title="실시간 현재가"
+                        >
+                          현재가 {formatKRW(currentPriceKRW)} KRW
+                          {priceDir === "up" && <span className="ml-1">▲</span>}
+                          {priceDir === "down" && <span className="ml-1">▼</span>}
+                        </span>
+                      </div>
+
+                      <div className={`flex items-center border rounded h-10 ${orderType === "시장가" ? "bg-gray-50" : ""}`}>
+                        <input
+                          type="text"
+                          value={formatKRW(orderPrice)}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/[^\d]/g, "");
+                            setOrderPrice(raw ? parseInt(raw, 10) : 0);
+                          }}
+                          className="flex-1 px-2 border-0 bg-transparent text-right font-semibold focus:outline-none"
+                          readOnly={orderType === "시장가"}        // ✅ 시장가면 입력 불가
+                        />
+                        <button
+                          className="w-8 h-8 text-gray-400"
+                          type="button"
+                          onClick={() => setOrderPrice((p) => Math.max(0, p - 100))}
+                          disabled={orderType === "시장가"}         // ✅ 시장가면 +/− 비활성
+                        >-</button>
+                        <button
+                          className="w-8 h-8 text-gray-400"
+                          type="button"
+                          onClick={() => setOrderPrice((p) => p + 100)}
+                          disabled={orderType === "시장가"}         // ✅ 시장가면 +/− 비활성
+                        >+</button>
+                      </div>
 
                     {/* 수량 */}
-                    <div className="mb-3">
-                      <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
-                      <input
-                        type="text"
-                        value={orderQty ? orderQty : ""}               // 비어 있으면 빈칸
-                        onChange={(e) => {
-                          const v = e.target.value.replace(/[^\d.]/g, ""); // 숫자/소수점만 허용
-                          console.log("수량 입력:", v);
-                          setOrderQty(v === "" ? 0 : Number(v));
-                        }}
-                        placeholder="0"
-                        className="w-full border rounded h-10 px-2 mb-2"
-                      />
-                      <div className="flex gap-2">
-                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.1).toFixed(6)))}>+0.1</button>
-                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.25).toFixed(6)))}>+0.25</button>
-                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.5).toFixed(6)))}>+0.5</button>
-                        <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(0)}>초기화</button>
+                      <div className="mb-3">
+                        <div className="text-xs font-semibold mb-1">주문수량 (BTC)</div>
+                        <input
+                          type="text"
+                          value={orderQty ? orderQty : ""}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/[^\d.]/g, "");
+                            setOrderQty(v === "" ? 0 : Number(v));
+                          }}
+                          placeholder="0"
+                          className="w-full border rounded h-10 px-2 mb-2"
+                        />
+                        <div className="flex gap-2">
+                          <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.1).toFixed(6)))}>+0.1</button>
+                          <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.25).toFixed(6)))}>+0.25</button>
+                          <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(q => Number(((q||0)+0.5).toFixed(6)))}>+0.5</button>
+                          <button className="flex-1 border rounded py-1 text-xs" type="button" onClick={() => setOrderQty(0)}>초기화</button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* 총액(표시용) */}
+                      {/* 총액(표시용) */}
                       <div className="mb-3">
                         <div className="text-xs font-semibold mb-1">주문총액 (KRW)</div>
                         <input
@@ -2366,58 +2906,32 @@ return (
                         />
                       </div>
 
-                    {/* ✅ 매수/매도 탭별 버튼 */}
-                    {orderTab === "매수" && (
+                      {/* 주문 버튼 */}
+                      {orderTab === "매수" && (
+                        <button
+                          className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
+                          type="button"
+                          onClick={handleBuy}
+                        >
+                          {orderType === "시장가" ? "시장가 매수" : "지정가 매수"}
+                        </button>
+                      )}
+                      {orderTab === "매도" && (
+                        <button
+                          className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
+                          type="button"
+                          onClick={handleSell}
+                        >
+                          {orderType === "시장가" ? "시장가 매도" : "지정가 매도"}
+                        </button>
+                      )}
 
-                      <button
-                        className="w-full h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90"
-                        type="button"
-                        onClick={handleBuy}
+                      <div className="text-[11px] text-gray-400 mt-3">
+                        * 최소주문금액 : KRW · 수수료(부가세 포함) : -%
+                      </div>
 
-                      >
-                        매수
-                      </button>
-
-                    )}
-                    {orderTab === "매도" && (
-                      <button
-                        className="w-full h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90"
-                        type="button"
-                        onClick={handleSell}
-                      >
-                        매도
-                      </button>
-                    )}
-
-                    <div className="text-[11px] text-gray-400 mt-3">
-                      * 최소주문금액 : KRW · 수수료(부가세 포함) : -%
-                    </div>
                   </>
                 ) : null}
-
-                {/* 간편주문 */}
-                {orderTab === "간편주문" && (
-                  <div className="flex flex-col gap-4">
-                    <div className="text-xs text-gray-500">
-                      원하는 비율을 선택하고 즉시 주문하세요.
-                    </div>
-                    <div className="grid grid-cols-5 gap-2">
-                      {["10%", "25%", "50%", "75%", "100%"].map(p => (
-                        <button key={p} className="border rounded py-2 text-xs hover:bg-gray-50">
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="flex-1 h-11 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:opacity-90">
-                        매수
-                      </button>
-                      <button className="flex-1 h-11 rounded-md bg-red-600 text-white text-sm font-semibold hover:opacity-90">
-                        매도
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* 거래내역 */}
                   {orderTab === "거래내역" && (
