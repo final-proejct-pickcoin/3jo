@@ -3,9 +3,12 @@ package com.finalproject.pickcoin.controller;
 import com.finalproject.pickcoin.domain.Users;
 import com.finalproject.pickcoin.enums.Role;
 import com.finalproject.pickcoin.service.EmailService;
+import com.finalproject.pickcoin.service.StatsService;
 // import com.finalproject.pickcoin.repository.UsersRepository;
 import com.finalproject.pickcoin.service.UserService;
 import com.finalproject.pickcoin.util.JwtHelper;
+
+import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
 import java.security.SecureRandom;
@@ -27,6 +30,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/users")
 @Transactional
+@RequiredArgsConstructor 
 public class UserController {
 
     @Autowired
@@ -46,6 +50,7 @@ public class UserController {
 
     private final Map<String, String> otpStore = new ConcurrentHashMap<>();
     private final Map<String, LocalDateTime> otpExpire = new ConcurrentHashMap<>();
+    private final StatsService statsService;
 
     // 회원가입
     @PostMapping("/register")
@@ -447,16 +452,32 @@ public class UserController {
 
     // 로그아웃
     @DeleteMapping("/logout")
-    public ResponseEntity<?> logout(@RequestParam String email){
-        try{
-            MDC.put("event_type", "login");
+public ResponseEntity<?> logout(@RequestParam String email){
+    try {
+        MDC.put("event_type", "login");
         logger.info("유저 로그아웃 발생 - 사용자: {}", email);
-        }finally{
-            MDC.remove("event_type");
-        }
-        logged_users.remove(email);
-        
-        return ResponseEntity.ok("logout");
+    } finally {
+        MDC.remove("event_type");
     }
+    logged_users.remove(email);
+
+    // ✅ 로그아웃 시 통계 브로드캐스트
+    Map<String, Object> stats = statsService.getCommunityStats();
+    StatsController.StatsWebSocket.broadcast(stats);
+
+    return ResponseEntity.ok("logout");
+}
+
+@GetMapping("/active-users")
+public ResponseEntity<Map<String, Object>> getActiveUsers() {
+    Map<String, Object> result = new HashMap<>();
+    result.put("activeUsers", logged_users.size()); // 현재 접속자 수
+    result.put("users", logged_users); // 접속자 이메일 목록 (옵션)
+
+    // ✅ 조회 시에도 WebSocket push (선택 사항)
+    StatsController.StatsWebSocket.broadcast(result);
+
+    return ResponseEntity.ok(result);
+}
 }
 

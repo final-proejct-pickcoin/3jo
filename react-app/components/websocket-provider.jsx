@@ -53,13 +53,60 @@ export const WebSocketProvider = ({ children }) => {
     })
   }, [])
 
+// 새로 추가 : 커뮤니티 통계 
+const [stats, setStats] = useState({
+    activeUsers: 0,
+    postsToday: 0,
+    onlineNow: 0,
+    totalPosts: 0,
+  })
+  const wsStatsRef = useRef(null)
+
+  useEffect(() => {
+  // 📌 초기 로딩 시 REST API 호출
+  fetch("http://localhost:8080/community/stats")
+    .then(res => res.json())
+    .then(data => {
+      setStats({
+        activeUsers: data.activeUsers ?? 0,
+        postsToday: data.postsToday ?? 0,
+        onlineNow: data.onlineNow ?? 0,
+        totalPosts: data.totalPosts ?? 0,
+      })
+    })
+    .catch(err => console.error("초기 통계 불러오기 실패:", err))
+
+  // 📡 WebSocket 연결
+  const ws = new WebSocket("ws://localhost:8080/ws/stats")
+  wsStatsRef.current = ws
+
+  ws.onopen = () => console.log("📡 Stats WebSocket 연결됨")
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      setStats({
+        activeUsers: data.activeUsers ?? 0,
+        postsToday: data.postsToday ?? 0,
+        onlineNow: data.onlineNow ?? 0,
+        totalPosts: data.totalPosts ?? 0,
+      })
+    } catch (e) {
+      console.error("Stats WS parse error:", e)
+    }
+  }
+  ws.onclose = () => console.log(" Stats WebSocket 끊김")
+
+  return () => ws.close()
+}, [])
+
   const value = {
     marketData,
     // 여기 추가
     liveData: marketData,
     isConnected: true,
     subscribe,
-    unsubscribe
+    unsubscribe,
+    stats,
   }
   return (
     <WebSocketContext.Provider value={value}>
