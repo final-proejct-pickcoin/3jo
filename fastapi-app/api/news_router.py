@@ -4,9 +4,33 @@ from typing import List
 from models.news import NewsItem
 from repository.news_repository import fetch_latest  # ← fetch만 상단 임포트
 
+from fastapi import Query
+import service.news_service as ns
+from service.news_service import fetch_article_content, crawl_and_save
+
 router = APIRouter()
 
-# ✅ 최신 뉴스 조회 (항상 DB에서 읽기)
+@router.post("/news/refresh-sync")
+def refresh_news_sync(limit: int = 10):
+    # 백그라운드 말고 즉시 실행 → 서버 터미널에 print 로그도 보임
+    saved = crawl_and_save(limit=limit)
+    return {"saved": saved}
+
+# 1) 이 서버가 실제로 쓰는 news_service.py 파일 경로 확인
+@router.get("/debug/whoami")
+def debug_whoami():
+    return {"news_service_file": ns.__file__}
+
+# 2) 특정 기사 링크 한 개로 본문 길이 테스트
+@router.get("/news/debug/fetch-one")
+def debug_fetch_one(url: str = Query(..., description="기사 상세 페이지 URL")):
+    content = fetch_article_content(url)
+    return {
+        "len": len(content),
+        "sample": content[:200]
+    }
+
+# 최신 뉴스 조회 (항상 DB에서 읽기)
 @router.get("/news", response_model=List[NewsItem])
 def get_latest_news():
     try:
@@ -27,6 +51,7 @@ def get_latest_news():
                 link=(r.get("link") or "").strip(),
                 published_at=pa,
                 source=(r.get("source") or "").strip(),
+                content=r.get("content")
             ))
         return out
     except Exception as e:
@@ -40,19 +65,8 @@ def refresh_news(background_tasks: BackgroundTasks):
     def job():
         print("[/news/refresh] background job started")
         try:
-            # 지연 임포트: 라우터 임포트 단계 블로킹/사이드이펙트 방지
-            from service.news_service import bloomingbit_news
-            from repository.news_repository import save_news
-
-            crawled = bloomingbit_news(limit=20) or []
-            print(f"[/news/refresh] crawled {len(crawled)} items")
-
-            if crawled:
-                saved = save_news(crawled)   # 업서트
-                print(f"[/news/refresh] saved {saved} rows")
-            else:
-                print("[/news/refresh] no items; skip save")
-
+            saved = crawl_and_save(limit=20)  # ← 본문까지 채워 저장
+            print(f"[/news/refresh] saved {saved} rows")
         except Exception:
             import traceback
             print("[/news/refresh] ERROR while crawling/saving")
@@ -62,3 +76,10 @@ def refresh_news(background_tasks: BackgroundTasks):
 
     background_tasks.add_task(job)
     return {"status": "queued"}
+
+# 본문 없는 뉴스들에 대해 본문 채우기 (백그라운드)
+@router.post("/news/backfill")
+def backfill(limit: int = 50):
+    from service.news_service import backfill_missing_content
+    n = backfill_missing_content(limit=limit)
+    return {"backfilled": n}

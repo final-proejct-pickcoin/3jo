@@ -47,6 +47,24 @@ from fastapi import APIRouter
 
 load_dotenv()
 
+app = FastAPI()
+
+# ✅ 헬스체크 (없으면 추가)
+@app.get("/health/db")
+def health_db():
+    from db.mysql import SessionLocal
+    try:
+        with SessionLocal() as db:
+            db.execute("SELECT 1")
+        return {"db_ok": True}
+    except Exception as e:
+        return {"db_ok": False, "error": str(e)}
+
+# 테스트용: 수동으로 한 번 크롤링해서 DB에 저장
+@app.post("/debug/crawl-now")
+def debug_crawl_now(limit: int = 20):
+    saved = crawl_and_save(limit=limit)
+    return {"saved": saved}
 
 
 # --- Gemini API 설정 추가 ---
@@ -76,6 +94,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+@app.post("/debug/crawl-now")
+def debug_crawl_now(limit: int = 20):
+    saved = crawl_and_save(limit=limit)
+    return {"saved": saved}
+
 
 # --- DB Healthcheck (임시) ---
 health = APIRouter()
