@@ -3,11 +3,16 @@ import pymysql
 from pymysql.cursors import DictCursor
 from pydantic import BaseModel
 from typing import List
-from .elasticsearch import get_user_trend
+from .elasticsearch import get_user_trend, get_trading_volume_trend
 from fastapi.security import OAuth2PasswordBearer
+import logging
+
 
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 class User(BaseModel):
     user_id: int
@@ -80,7 +85,7 @@ def getuser(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
                 user_id = user['user_id']
                 user['tx_count'] = tx_counts_map.get(user_id, 0)
 
-            print(">>>>>>>>>유저쿼리문 결과: ", users)
+            # print(">>>>>>>>>유저쿼리문 결과: ", users)
     except Exception as e:
         print("Error in /admin/getuser:", e)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(e))
@@ -182,7 +187,7 @@ def getAdminInfo(token: str = Depends(oauth2_scheme)):
         cursor.execute(sql)
         result = cursor.fetchone()
         conn.close()
-        print(result)
+        # print(result)
     
     return result
 
@@ -196,3 +201,12 @@ def stats_users(interval: str = Query("day", enum=["hour", "day", "week", "month
     result = get_user_trend(interval)
     return result
 
+# 엘라스틱 서치 거래대금 추이
+@router.get("/api/stats/volume")
+def stats_volume(interval: str = Query("day", enum=["hour", "day", "week", "month"])):
+    try:
+        result = get_trading_volume_trend(interval)
+        return result
+    except Exception as e:
+        logger.error(f"Volume stats error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

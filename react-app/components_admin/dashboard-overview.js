@@ -84,7 +84,11 @@ export default function DashboardOverview({ isDarkMode }) {
   const [tradingEnabled, setTradingEnabled] = useState(true);
   const [dashboardInfo, setDashboardInfo] = useState({});
   const [interval, setInterval] = useState("month"); // 기본: 일별
+  const [txInterval, setTxInterval] = useState("month"); // 기본: 일별
   const [userTrend, setUserTrend] = useState([]);  // { date, count } 데이터 배열
+  const [tradingData, setTradingData] = useState([]);
+  const [latestVolume, setLatestVolume] = useState(0);
+
   const [latestTotal, setLatestTotal] = useState(0);
   const INTERVAL_OPTIONS = [
     { label: "시간별", value: "hour" },
@@ -134,6 +138,9 @@ export default function DashboardOverview({ isDarkMode }) {
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     const fetchInterval = interval || "month";
+    const tradeInterval = txInterval || "month";
+
+    // 유저 추이 API 호출
     fetch(`http://localhost:8000/api/stats/users?interval=${fetchInterval}`)
       .then((res) => res.json())
       .then((data) => {
@@ -142,9 +149,19 @@ export default function DashboardOverview({ isDarkMode }) {
           setLatestTotal(data[data.length - 1].count); // 마지막 항목의 count
         }
       });
+
+    // 거래대금 추이 API 호출
+    fetch(`http://localhost:8000/api/stats/volume?interval=${tradeInterval}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setTradingData(data);
+        if (data && data.length > 0) {
+          setLatestVolume(data[data.length - 1].volume);
+        }
+      });
     
     getAdminInfo(token);
-  },[interval])
+  },[interval, txInterval])
 
   return (
     <div className="space-y-6">
@@ -286,48 +303,79 @@ export default function DashboardOverview({ isDarkMode }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 거래량 추이 */}
+        {/* 거래대금 추이 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-          <CardHeader>
-            <CardTitle className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              거래량 추이
+          {/* 헤더: 타이틀 + 셀렉트 */}
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
+              <TrendingUp className="h-5 w-5 mr-2 text-orange-500" />
+              거래대금 추이
             </CardTitle>
-            <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              24시간 거래량 및 사용자 현황
-            </CardDescription>
+            <select
+              value={txInterval}
+              onChange={(e) => setTxInterval(e.target.value)}
+              className={isDarkMode ? "bg-gray-700 text-white border-gray-500 rounded p-1" : "bg-gray-50 text-gray-900 rounded p-1"}
+            >
+              {INTERVAL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </CardHeader>
+
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={tradingData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={isDarkMode ? "#374151" : "#f0f0f0"}
-                />
-                <XAxis
-                  dataKey="time"
-                  stroke={isDarkMode ? "#9CA3AF" : "#666"}
-                  fontSize={12}
-                />
-                <YAxis stroke={isDarkMode ? "#9CA3AF" : "#666"} fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDarkMode ? "#1F2937" : "white",
-                    border: `1px solid ${isDarkMode ? "#374151" : "#e5e7eb"}`,
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                    color: isDarkMode ? "#F9FAFB" : "#111827",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="volume"
-                  stroke="#f97316"
-                  strokeWidth={2}
-                  dot={{ fill: "#f97316", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {/* KPI 영역 */}
+            <div className={`mb-4 text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+              최근 {txInterval === "day" ? "일" : txInterval === "week" ? "주간" : txInterval === "hour" ? "시간" : "월간"} 거래대금(원)&nbsp;
+              
+            </div>
+
+            {/* 차트 영역 */}
+            {tradingData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={tradingData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#e5e7eb"} />
+                  <XAxis
+                    dataKey="date"
+                    stroke={isDarkMode ? "#9CA3AF" : "#666"}
+                    fontSize={12}
+                    tickFormatter={(tick) => {
+                      const d = new Date(tick);
+                      if (txInterval === "hour") {
+                        return `${d.getHours()}시`;
+                      } else if (txInterval === "day") {
+                        return `${(d.getMonth()+1).toString().padStart(2,"0")}-${d.getDate().toString().padStart(2,"0")}`;
+                      } else if (txInterval === "month") {
+                        return `${d.getMonth()+1}월`;
+                      }
+                      return d.toLocaleDateString();
+                    }}
+                  />
+                  <YAxis stroke={isDarkMode ? "#9CA3AF" : "#666"} fontSize={12} />
+                  <Tooltip
+                    labelFormatter={(label) => new Date(label).toLocaleString()}
+                    contentStyle={{
+                      backgroundColor: isDarkMode ? "#1F2937" : "white",
+                      border: `1px solid ${isDarkMode ? "#374151" : "#e5e7eb"}`,
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                      color: isDarkMode ? "#F9FAFB" : "#111827",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="volume"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    dot={{ fill: "#f97316", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={`${isDarkMode ? "text-gray-400" : "text-gray-600"} text-center py-20`}>
+                데이터가 없습니다.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -341,6 +389,7 @@ export default function DashboardOverview({ isDarkMode }) {
               24시간 거래량 기준
             </CardDescription>
           </CardHeader>
+          
           <CardContent>
             <div className="flex items-center justify-center">
               <ResponsiveContainer width="100%" height={300}>

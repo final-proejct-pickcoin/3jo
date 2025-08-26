@@ -186,16 +186,16 @@ export function AIAssistant() {
   }
 
   useEffect(() => {
-    if (!user_id) return
-
-    axios
-      .get(`http://localhost:8080/chat/history/${user_id}`)
-      .then((res) => {
-        const messageObjects = res.data.map((msg) => {
-          const parsed = JSON.parse(msg)
-          parsed.timestamp = new Date(parsed.timestamp.replace(" ", "T") + "Z")
-          return parsed
-        })
+    // console.log("유저 아이디", user_id)
+    axios.get(`http://localhost:8080/chat/history/${user_id}`)
+      .then(res => {
+        // console.log(res.data)
+        const messageObjects = res.data.map(msg => {
+          const parsed = JSON.parse(msg);
+          // timestamp 문자열을 Date 객체로 변환
+          parsed.timestamp =  new Date(parsed.timestamp.replace(/(\.\d{3})\d+Z$/, "$1Z"));
+          return parsed;
+        });
         setMessages(messageObjects)
       })
       .catch((err) => {
