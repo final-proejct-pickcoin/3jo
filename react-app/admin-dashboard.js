@@ -159,27 +159,57 @@ export default function Component() {
   return matchesSearch && matchesStatus;
   });
 
-  const filteredLogs = logs.filter((log) => {
-    const logLevel = log.level.trim().toLowerCase();
-    const filter = logLevelFilter.toLowerCase();
-    const matchesLevel = filter === "all" || logLevel === filter;
+  // const filteredLogs = logs.filter((log) => {
+  //   const logLevel = log.level.trim().toLowerCase();
+  //   const filter = logLevelFilter.toLowerCase();
+  //   const matchesLevel = filter === "all" || logLevel === filter;
 
-    const selectedDate = dateFilter; 
-    let matchesDate = true;
+  //   const selectedDate = dateFilter; 
+  //   let matchesDate = true;
 
-    if (selectedDate) {
-      // log.timestamp은 String이라 아래쪽에서 변환해줘야함.
-      const logDateObj  = new Date(log.timestamp);
+  //   if (selectedDate) {
+  //     // log.timestamp은 String이라 아래쪽에서 변환해줘야함.
+  //     const logDateObj  = new Date(log.timestamp);
 
-      const logDate = logDateObj.getFullYear() + '-' +
-      String(logDateObj.getMonth() + 1).padStart(2, '0') + '-' +
-      String(logDateObj.getDate()).padStart(2, '0');
+  //     const logDate = logDateObj.getFullYear() + '-' +
+  //     String(logDateObj.getMonth() + 1).padStart(2, '0') + '-' +
+  //     String(logDateObj.getDate()).padStart(2, '0');
 
-      matchesDate = logDate === selectedDate;
-    }
+  //     matchesDate = logDate === selectedDate;
+  //   }
 
-    return matchesLevel && matchesDate;
-  });
+  //   return matchesLevel && matchesDate;
+  // });
+
+  const filteredLogs = Array.isArray(logs)
+    ? logs.filter((log) => {
+        const logLevel = log.level?.trim().toLowerCase() || "";
+        const filter = (logLevelFilter || "all").toLowerCase();
+        const matchesLevel = filter === "all" || logLevel === filter;
+
+        const selectedDate = dateFilter;
+        let matchesDate = true;
+
+        if (selectedDate && log.timestamp) {
+          const logDateObj = new Date(log.timestamp);
+
+          if (!isNaN(logDateObj)) {
+            const logDate =
+              logDateObj.getFullYear() +
+              "-" +
+              String(logDateObj.getMonth() + 1).padStart(2, "0") +
+              "-" +
+              String(logDateObj.getDate()).padStart(2, "0");
+
+            matchesDate = logDate === selectedDate;
+          } else {
+            matchesDate = false; // 날짜 파싱 실패 시 매칭 안 되게
+          }
+        }
+
+        return matchesLevel && matchesDate;
+      })
+    : [];
 
   
 const pagedLogs = filteredLogs.slice(startIndex, endIndex);  

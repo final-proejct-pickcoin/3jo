@@ -17,6 +17,7 @@ import com.finalproject.pickcoin.domain.Community;
 import com.finalproject.pickcoin.domain.KeywordCount;
 import com.finalproject.pickcoin.service.CommunityLikeService;
 import com.finalproject.pickcoin.service.CommunityService;
+import com.finalproject.pickcoin.service.StatsService;
 
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -29,6 +30,9 @@ public class CommunityController {
 
     @Autowired
     private CommunityLikeService communityLikeService;
+
+    @Autowired
+     private StatsService statsService;
 
     Logger logger = LoggerFactory.getLogger(CommunityController.class);
 
@@ -60,6 +64,10 @@ public class CommunityController {
         communityService.indexPostToElasticsearch(community);
         
         communityService.insert(community);
+
+        // ✅ 등록 후 최신 통계 WebSocket으로 push
+        Map<String, Object> stats = statsService.getCommunityStats();
+StatsController.StatsWebSocket.broadcast(stats);
         return community;
     }
 
@@ -109,6 +117,10 @@ public class CommunityController {
         }
 
         communityService.delete(id);
+
+        // ✅ 삭제 후 최신 통계 WebSocket으로 push
+        Map<String, Object> stats = statsService.getCommunityStats();
+        StatsController.StatsWebSocket.broadcast(stats);
         return ResponseEntity.ok().build();
     }
 
