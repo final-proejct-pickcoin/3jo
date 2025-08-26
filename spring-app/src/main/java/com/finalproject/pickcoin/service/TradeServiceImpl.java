@@ -102,7 +102,7 @@ public class TradeServiceImpl implements TradeService {
     // === 로그 남기기 (MDC + 이벤트) ===
     MDC.put("event_type", "trade");
     MDC.put("user_id", String.valueOf(req.getUser_id()));
-    MDC.put("asset_id", String.valueOf(req.getAsset_id()));
+    MDC.put("asset_id", String.valueOf(req.getAsset_id()));    
     MDC.put("amount", req.getAmount().toPlainString());
     MDC.put("order_type", "buy");
     MDC.put("price", req.getPrice().toPlainString());

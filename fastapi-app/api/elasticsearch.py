@@ -40,3 +40,47 @@ def get_user_trend(interval="month"):
             "count": bucket["unique_users"]["value"]
         })
     return result
+
+# 전체 거래대금 가져오기
+def get_trading_volume_trend(interval="hour"):
+    body = {
+                "size": 0,
+                "aggs": {
+                    "by_date": {
+                        "date_histogram": {
+                            "field": "@timestamp",
+                            "calendar_interval": interval,
+                            "time_zone": "Asia/Seoul"
+                        },
+                        "aggs": {
+                            "trading_volume": {
+                                "sum": {
+                                    "script": {
+                                        "source": """
+                                            if (!doc['price.keyword'].empty && !doc['amount.keyword'].empty) {
+                                                try {
+                                                    double p = Double.parseDouble(doc['price.keyword'].value);
+                                                    double a = Double.parseDouble(doc['amount.keyword'].value);
+                                                    return p * a;
+                                                } catch(Exception e) {
+                                                    return 0;
+                                                }
+                                            } else {
+                                                return 0;
+                                            }
+                                        """
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    res = es.search(index="trade-logs", body=body)
+    result = []
+    for bucket in res["aggregations"]["by_date"]["buckets"]:
+        result.append({
+            "date": bucket["key_as_string"],
+            "volume": bucket["trading_volume"]["value"]
+        })
+    return result
