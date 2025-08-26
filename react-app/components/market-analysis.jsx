@@ -23,6 +23,80 @@ const formatPercent = (n, d = 2) =>
 const BTC_CIRCULATING_SUPPLY = 19_700_000 // ≈ 19.7M
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 🆕 오늘의 뉴스 요약 카드 (백엔드 /news/summary 사용)
+//   - LLM(Gemini) 또는 폴백 요약을 JSON으로 받아 렌더링
+//   - 기존 "기술적 분석" 카드를 대체
+// ─────────────────────────────────────────────────────────────────────────────
+function NewsSummaryCard() {
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const sentimentClass = (s) => {
+    if (s === "상승세") return "text-green-600";
+    if (s === "하락세") return "text-red-600";
+    return "text-black";
+  };
+
+  const fetchSummary = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch("http://127.0.0.1:8000/news/summary?limit=20")
+      const data = await res.json()
+      setSummary(data)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSummary()
+    const id = setInterval(fetchSummary, 10 * 60 * 1000) // 10분마다 갱신
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>📰 오늘의 뉴스 요약</CardTitle>
+        <CardDescription>AI가 뽑은 핵심 포인트</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {loading && <div>요약 불러오는 중...</div>}
+        {error && <div className="text-red-500">불러오기 실패: {error}</div>}
+        {!loading && !error && (
+          <>
+            <ul className="list-disc pl-5">
+              {summary?.bullets?.map((b, i) => <li key={i}>{b}</li>)}
+            </ul>
+
+            {/* 시장 심리 / 키워드 분리 + 색상 */}
+            <div className="text-xs space-y-1">
+              <div className={`font-medium ${sentimentClass(summary?.sentiment)}`}>
+                시장 심리: {summary?.sentiment || "-"}
+              </div>
+              <div className="text-muted-foreground">
+                키워드: {Array.isArray(summary?.top_entities) && summary.top_entities.length
+                  ? summary.top_entities.join(", ")
+                  : "-"}
+              </div>
+            </div>
+
+            {Array.isArray(summary?.sources) && summary.sources.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                출처 : {summary.sources.slice(0, 3).map((s) => s.title).join(" / ")}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 메인 컴포넌트
 // ─────────────────────────────────────────────────────────────────────────────
 export const MarketAnalysis = () => {
@@ -82,35 +156,33 @@ export const MarketAnalysis = () => {
       .catch(console.error)
   }, [user_id])
 
-  
-
-// 웹소켓 구독은 서버 리스트 기준
+  // 웹소켓 구독은 서버 리스트 기준
   // useEffect(() => {
   //   if (items.length) subscribe(items.map(c => c.symbol));
   // }, [subscribe, items]);
 
-const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks";
+  const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks"
 
-const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
-  const is_bookmarked = Number(is_bookmarkedRaw) === 1; // 0/1 정규화
-  try {
-    if (is_bookmarked) {
-      // 해제
-      await axios.delete(BOOKMARK_API, { params: { user_id, asset_id } });
-      setItems(prev =>
-        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 0 } : i)
-      );
-    } else {
-      // 추가
-      await axios.post(BOOKMARK_API, null, { params: { user_id, asset_id } });
-      setItems(prev =>
-        prev.map(i => i.asset_id === asset_id ? { ...i, is_bookmarked: 1 } : i)
-      );
+  const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
+    const is_bookmarked = Number(is_bookmarkedRaw) === 1 // 0/1 정규화
+    try {
+      if (is_bookmarked) {
+        // 해제
+        await axios.delete(BOOKMARK_API, { params: { user_id, asset_id } })
+        setItems((prev) =>
+          prev.map((i) => (i.asset_id === asset_id ? { ...i, is_bookmarked: 0 } : i))
+        )
+      } else {
+        // 추가
+        await axios.post(BOOKMARK_API, null, { params: { user_id, asset_id } })
+        setItems((prev) =>
+          prev.map((i) => (i.asset_id === asset_id ? { ...i, is_bookmarked: 1 } : i))
+        )
+      }
+    } catch (e) {
+      console.error("[bookmark err]", e?.response?.status, e?.response?.data || e)
     }
-  } catch (e) {
-    console.error("[bookmark err]", e?.response?.status, e?.response?.data || e);
   }
-};
 
   const exchangeRate = 1391
   const totalMarketCapUSD = 16800
@@ -119,11 +191,12 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
   const volumeUSD = 892
   const volumeKRW = volumeUSD * 1e8 * exchangeRate
   const volumeKRWDisplay = `${Math.round(volumeKRW / 1e12)}조 원`
+
   useEffect(() => {
     if (items.length) subscribe(items.map((c) => c.symbol))
   }, [subscribe, items])
 
-  // ✅ symbol → 한국어명 매핑 (상승률 1위 한국어 표기용) // 🔁 변경(추가)
+  // ✅ symbol → 한국어명 매핑 (상승률 1위 한국어 표기용)
   const nameMap = useMemo(() => {
     const map = {}
     items.forEach((it) => {
@@ -137,13 +210,13 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
   //   1) 시장 모멘텀(AD 스프레드) = (상승비중 − 하락비중) × 100
   //   2) BTC 점유율(거래대금 기준)
   //   3) BTC 현재가(KRW)
-  //   4) 상승률 1위(24h) — 한국어명 표기 // 🔁 변경
+  //   4) 상승률 1위(24h) — 한국어명 표기
   // ───────────────────────────────────────────────────────────────────────────
   const [bhStats, setBhStats] = useState({
     totalVolumeKRW: null,
     btcDominance: null,
     btcPriceKRW: null,
-    sentiment: null, // 주문서 매수 비중(%)로 재활용
+    sentiment: null, // 주문서 매수 비중(%)
   })
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -151,32 +224,30 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
   //   A) BTC 24h 변동성(%)
   //   B) 상승 종목 비율(%)
   //   C) 상위 5종목 거래대금 집중도(%)
-  //   D) (교체) BTC 자금 유입 지수(%)  // 🔁 변경
+  //   D) (교체) BTC 자금 유입 지수(%)
   // +  (추가) 시장 모멘텀(%)
   // ───────────────────────────────────────────────────────────────────────────
   const [extra, setExtra] = useState({
     btcVolatilityPct: null,
     advancersRatioPct: null,
     top5ConcentrationPct: null,
-    // btcTopOfBookSpreadPct: null, // ⛔ 제거: 스프레드 카드 삭제
-    orderImbalancePct: null, // 🔁 변경(추가): (매수−매도)/(합)
+    orderImbalancePct: null, // (매수−매도)/(합)
     momentumPct: null,
   })
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 리더보드(상승률 1위만 유지)  // 🔁 변경: 체결강도 1위 제거
+  // 리더보드(상승률 1위만 유지)
   // ───────────────────────────────────────────────────────────────────────────
   const [leaders, setLeaders] = useState({
     topGainer: null, // { symbol, rate }
-    // topIntensity: null, // ⛔ 제거
   })
 
   // ───────────────────────────────────────────────────────────────────────────
   // 하단 4개 카드
   //   5) 시가총액 추정치(KRW)
-  //   6) (교체) 주문서 매수 비중(%)    // 🔁 변경
+  //   6) 주문서 매수 비중(%)    
   //   7) 변동성 지표(=BTC 24h 변동성 재표시)
-  //   8) (표기 변경) 시장 유동성 → “약 N배” // 🔁 변경
+  //   8) 시장 유동성 → “약 N배” 
   // ───────────────────────────────────────────────────────────────────────────
   const [more, setMore] = useState({
     marketCapKRW: null,
@@ -250,11 +321,9 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
             ? Math.round((bidQty / (bidQty + askQty)) * 100)
             : null
 
-        // (교체) 자금 유입 지수(%) = (매수−매도)/(합)×100  // 🔁 변경
+        // (교체) 자금 유입 지수(%) = (매수−매도)/(합)×100
         const orderImbalancePct =
           bidQty + askQty > 0 ? ((bidQty - askQty) / (bidQty + askQty)) * 100 : null
-
-        // (스프레드 계산은 삭제) // ⛔ 제거
 
         // 3) BTC 24h 변동성(%): (고가-저가)/중간값
         const hi = Number(btc?.max_price || 0)
@@ -274,7 +343,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
         const mcap =
           btcPriceKRW > 0 ? btcPriceKRW * BTC_CIRCULATING_SUPPLY : null
 
-        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량) — 표기만 ‘배’로 바꿈 // 🔁 변경
+        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량) — 표기만 ‘배’로 바꿈
         const unitsTraded24h = Number(btc?.units_traded_24H || 0) // BTC 수량
         const liquidityIdx =
           bidQty + askQty > 0 ? unitsTraded24h / (bidQty + askQty) : null
@@ -298,7 +367,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           btcVolatilityPct: volPct,
           advancersRatioPct: advRatio,
           top5ConcentrationPct: top5Pct,
-          orderImbalancePct, // 🔁 변경
+          orderImbalancePct, // 매수/매도 잔량 차이
           momentumPct,
         })
 
@@ -395,7 +464,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </CardContent>
         </Card>
 
-        {/* 4) 상승률 1위 — 한국어명 표기 // 🔁 변경 */}
+        {/* 4) 상승률 1위 — 한국어명 표기 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">상승률 1위</CardTitle>
@@ -449,7 +518,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </CardContent>
         </Card>
 
-        {/* D) (교체) BTC 자금 유입 지수(%) // 🔁 변경 */}
+        {/* D) (교체) BTC 자금 유입 지수(%) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">BTC 자금 유입 지수</CardTitle>
@@ -482,7 +551,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </CardContent>
         </Card>
 
-        {/* 6) (교체) 주문서 매수 비중(%)  // 🔁 변경 */}
+        {/* 6) 주문서 매수 비중(%)  */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">주문서 매수 비중</CardTitle>
@@ -508,7 +577,7 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </CardContent>
         </Card>
 
-        {/* 8) (표기 변경) 시장 유동성 → 약 N배  // 🔁 변경 */}
+        {/* 8) 시장 유동성 → 약 N배  */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">시장 유동성(커버리지)</CardTitle>
@@ -527,12 +596,11 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          탭(마켓/트렌드/뉴스/분석) — 기존 유지
+          탭(마켓/뉴스/분석) — 기존 유지
       ─────────────────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="markets" className="space-y-4">
         <TabsList>
           <TabsTrigger value="markets">마켓</TabsTrigger>
-          <TabsTrigger value="trending">트렌드</TabsTrigger>
           <TabsTrigger value="news">뉴스</TabsTrigger>
           <TabsTrigger value="analysis">분석</TabsTrigger>
         </TabsList>
@@ -606,62 +674,6 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </Card>
         </TabsContent>
 
-        {/* 트렌드 */}
-        <TabsContent value="trending">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>📈 급상승 코인</CardTitle>
-                <CardDescription>최근 24시간 기준 상승률 상위 코인</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { symbol: "PEPE", change: 25.8, reason: "밈코인 강세" },
-                    { symbol: "SHIB", change: 18.4, reason: "커뮤니티 성장" },
-                    { symbol: "FLOKI", change: 12.3, reason: "파트너십 발표" },
-                  ].map((coin, i) => (
-                    <div key={coin.symbol} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-lg">#{i + 1}</span>
-                        <div>
-                          <p className="font-semibold">{coin.symbol}</p>
-                          <p className="text-sm text-muted-foreground">{coin.reason}</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-green-100 text-green-700">
-                        <TrendingUp className="h-3 w-3 mr-1" />+{coin.change}%
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>📊 시장 섹터별 성과</CardTitle>
-                <CardDescription>카테고리별 수익률</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { name: "디파이 (DeFi)", change: 8.2, color: "text-green-500" },
-                    { name: "기반 블록체인 (Layer 1)", change: 3.4, color: "text-green-500" },
-                    { name: "밈코인 (Meme Coins)", change: 15.7, color: "text-green-500" },
-                    { name: "NFT (NFT)", change: -2.1, color: "text-red-500" },
-                    { name: "게임 분야 (Gaming)", change: -0.8, color: "text-red-500" },
-                  ].map((sector) => (
-                    <div key={sector.name} className="flex items-center justify-between">
-                      <span className="font-medium">{sector.name}</span>
-                      <span className={`font-semibold ${sector.color}`}>{sector.change}%</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
         {/* 뉴스 */}
         <TabsContent value="news">
@@ -694,42 +706,13 @@ const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
           </Card>
         </TabsContent>
 
-        {/* 분석(더미 UI 유지) */}
+        {/* 분석 — 🆕 기술적 분석 카드 ➜ 뉴스 요약 카드로 교체, 가격 전망 카드는 유지 */}
         <TabsContent value="analysis">
           <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>📈 기술적 분석</CardTitle>
-                <CardDescription>주요 지표 한눈에 보기</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span>RSI (14일)</span>
-                    <span className="font-semibold">
-                      58.2 <span className="text-xs text-muted-foreground">(중립)</span>
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>MACD</span>
-                    <span className="font-semibold text-green-600">상승 신호(Bullish)</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>이동평균선 (50일)</span>
-                    <span className="font-semibold">현재 가격이 50일선 위에 위치</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>지지선</span>
-                    <span className="font-medium">$41,500</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>저항선</span>
-                    <span className="font-medium">$45,200</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* 🆕 오늘의 뉴스 요약 카드 */}
+            <NewsSummaryCard />
 
+            {/* 🎯 가격 전망 — 기존 유지(더미 UI) */}
             <Card>
               <CardHeader>
                 <CardTitle>🎯 가격 전망</CardTitle>
