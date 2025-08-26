@@ -66,11 +66,16 @@ export default function Component() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [isAnnouncementDetailOpen, setIsAnnouncementDetailOpen] = useState(false);
   const [token, setToken] = useState('')
-
+  const [dateFilter, setDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
-  
   const itemsPerPage = 10;
+  const [currentLogsPage, setCurrentLogsPage] = useState(1);
+  const startIndex = (currentLogsPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  
+  
+  
   const totalPages = Math.ceil(total / itemsPerPage);
   // 한 번에 보여줄 페이지 번호 수 설정
   const maxPageButtons = 5;
@@ -153,11 +158,31 @@ export default function Component() {
     const matchesStatus = statusFilter === "all" || String(user.is_verified) === statusFilter;
   return matchesSearch && matchesStatus;
   });
+
   const filteredLogs = logs.filter((log) => {
-    const matchesLevel = logLevelFilter === "all" || log.level === logLevelFilter;
-    return matchesLevel;
+    const logLevel = log.level.trim().toLowerCase();
+    const filter = logLevelFilter.toLowerCase();
+    const matchesLevel = filter === "all" || logLevel === filter;
+
+    const selectedDate = dateFilter; 
+    let matchesDate = true;
+
+    if (selectedDate) {
+      // log.timestamp은 String이라 아래쪽에서 변환해줘야함.
+      const logDateObj  = new Date(log.timestamp);
+
+      const logDate = logDateObj.getFullYear() + '-' +
+      String(logDateObj.getMonth() + 1).padStart(2, '0') + '-' +
+      String(logDateObj.getDate()).padStart(2, '0');
+
+      matchesDate = logDate === selectedDate;
+    }
+
+    return matchesLevel && matchesDate;
   });
 
+  
+const pagedLogs = filteredLogs.slice(startIndex, endIndex);  
   // Action handlers
 const handleUserStatusToggle = async (userId) => {
   const targetUser = users.find((u) => u.user_id === userId);
@@ -931,10 +956,10 @@ const handleLogout = () => {
                   <FileText className="h-4 w-4 mr-3" />
                   공지사항
                 </TabsTrigger>
-                <TabsTrigger value="system" className="justify-start w-full mb-2">
+                {/* <TabsTrigger value="system" className="justify-start w-full mb-2">
                   <Server className="h-4 w-4 mr-3" />
                   시스템 관리
-                </TabsTrigger>
+                </TabsTrigger> */}
               </TabsList>
             </Tabs>
           </nav>
@@ -1239,7 +1264,7 @@ const handleLogout = () => {
                           <SelectItem value="error">ERROR</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Input type="date" className="w-40" />
+                      <Input type="date" className="w-40" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
                     </div>
                   </div>
                 </CardHeader>
@@ -1252,7 +1277,7 @@ const handleLogout = () => {
                             checked={selectedLogs.length === logs.length}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                setSelectedLogs(logs.map((log) => log.id));
+                                setSelectedLogs(filteredLogs.map((log) => log.id));
                               } else {
                                 setSelectedLogs([]);
                               }
@@ -1262,13 +1287,12 @@ const handleLogout = () => {
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>시간</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>레벨</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>행위</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>IP</TableHead>
+                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>행위</TableHead>                        
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {logs.map((log) => (
+                      {pagedLogs.map((log) => (
                         <TableRow key={log.id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                           <TableCell>
                             <Checkbox
@@ -1299,8 +1323,7 @@ const handleLogout = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>{log.user}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{log.action}</TableCell>
-                          <TableCell className={`font-mono text-sm ${isDarkMode ? "text-gray-300" : ""}`}>{log.ip}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{log.action}</TableCell>                          
                           <TableCell>
                             <div className="flex items-center">
                               {log.status === "성공" ? (
@@ -1315,8 +1338,25 @@ const handleLogout = () => {
                           </TableCell>
                         </TableRow>
                       ))}
-                    </TableBody>
+                    </TableBody>                    
                   </Table>
+                  <div className="flex items-center justify-center space-x-2 mt-4">
+                        <button
+                          disabled={currentLogsPage === 1}
+                          onClick={() => setCurrentLogsPage(currentLogsPage - 1)}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          이전
+                        </button>
+                        <span className="px-2">페이지 {currentLogsPage}</span>
+                        <button
+                          disabled={endIndex >= filteredLogs.length}
+                          onClick={() => setCurrentLogsPage(currentLogsPage + 1)}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          다음
+                        </button>
+                      </div>
                 </CardContent>
               </Card>
             </TabsContent>

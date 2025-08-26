@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,11 +14,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.finalproject.pickcoin.domain.Asset;
 import com.finalproject.pickcoin.domain.Orders;
 import com.finalproject.pickcoin.domain.PlaceOrderRequest;
+import com.finalproject.pickcoin.domain.Users;
 import com.finalproject.pickcoin.enums.OrderStatus;
 import com.finalproject.pickcoin.enums.TradeType;
+import com.finalproject.pickcoin.repository.AssetRepository;
 import com.finalproject.pickcoin.repository.TradeRepository;
+import com.finalproject.pickcoin.repository.UsersRepository;
 
 @Service
 public class TradeServiceImpl implements TradeService {
@@ -26,6 +31,11 @@ public class TradeServiceImpl implements TradeService {
 
     @Autowired
     private TradeRepository repo;
+
+    @Autowired
+    private AssetRepository assetRepository;
+    @Autowired
+    private UsersRepository usersRepository;
 
     // ===== 공통 상수/유틸 =====
     private static final BigDecimal FEE_RATE = new BigDecimal("0.001"); // 0.1%
@@ -117,16 +127,22 @@ public class TradeServiceImpl implements TradeService {
         repo.ensure_wallet(req.user_id, krwId);
 
         // 공통 체결
-        settleBuy(req.user_id, req.asset_id, orderId, req.price, req.amount);
+        settleBuy(req.user_id, req.asset_id, orderId, req.price, req.amount);        
+
+        // asset_id로 코인정보 가져오기
+        Asset asset = assetRepository.get_asset_info(req.getAsset_id().intValue());
+
+        // 유저 정보
+        Optional<Users> users = usersRepository.findById(req.getUser_id().intValue());
 
         // === 로그 남기기 (MDC + 이벤트) ===
-        MDC.put("event_type", "trade");
-        MDC.put("user_id", String.valueOf(req.getUser_id()));
-        MDC.put("asset_id", String.valueOf(req.getAsset_id()));    
-        MDC.put("amount", req.getAmount().toPlainString());
-        MDC.put("order_type", "buy");
+        MDC.put("event_type", "buy");
+        MDC.put("user_id", String.valueOf(req.getUser_id()));        
+        MDC.put("asset_id", String.valueOf(req.getAsset_id()));
+        MDC.put("email", users.get().getEmail());
+        MDC.put("coin_name", asset.getAsset_name());
+        MDC.put("amount", req.getAmount().toPlainString());        
         MDC.put("price", req.getPrice().toPlainString());
-        MDC.put("timestamp", Instant.now().toString());
 
         logger.info("Trade executed (order_id={})", orderId);
 
@@ -159,14 +175,18 @@ public class TradeServiceImpl implements TradeService {
 
         settleSell(req.user_id, req.asset_id, orderId, req.price, req.amount);
 
+        // asset_id로 코인정보 가져오기
+        Asset asset = assetRepository.get_asset_info(req.getAsset_id().intValue());
+        Optional<Users> users = usersRepository.findById(req.getUser_id().intValue());
+
         // === 로그 남기기 (MDC + 이벤트) ===
-        MDC.put("event_type", "trade");
+        MDC.put("event_type", "sell");
         MDC.put("user_id", String.valueOf(req.getUser_id()));
-        MDC.put("asset_id", String.valueOf(req.getAsset_id()));
+        MDC.put("asset_id", String.valueOf(req.getAsset_id()));        
         MDC.put("amount", req.getAmount().toPlainString());
-        MDC.put("order_type", "sell");
+        MDC.put("email", users.get().getEmail());
+        MDC.put("coin_name", asset.getAsset_name());        
         MDC.put("price", req.getPrice().toPlainString());
-        MDC.put("timestamp", Instant.now().toString());
 
         logger.info("Trade executed (order_id={})", orderId);
 

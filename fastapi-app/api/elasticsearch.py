@@ -95,7 +95,7 @@ def fetch_logs_from_es(index: str = "login-logs", size: int = 50):
         "query": {"match_all": {}},
         "size": size
     }
-    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs", body=body)
+    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs,buy-logs,sell-logs", body=body)
     logs = []
     for hit in res["hits"]["hits"]:
         source = hit["_source"]
@@ -103,7 +103,7 @@ def fetch_logs_from_es(index: str = "login-logs", size: int = 50):
             "id": hit["_id"],
             "timestamp": source.get("@timestamp"),
             "level": source.get("level", "info"),
-            "user": source.get("user_id") if source.get("user_id") else source.get("email", "-"),
+            "user": source.get("email") if source.get("email") else source.get("user_id", "-"),
             "action": source.get("event_type", "-"),
             "ip": source.get("ip", "-"),
             "status": source.get("status", "성공"),
