@@ -22,7 +22,7 @@ DATABASE_URL = (
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,   # 연결 살아있는지 체크
-    pool_recycle=3600,    # 1시간마다 재활용(잠수연결 방지)
+    pool_recycle=3600,    # 1시간마다 재활용
     pool_size=5,
     max_overflow=10,
     pool_timeout=5,      # 5초 동안 연결 없으면 예외 발생

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react" // 🔁 추가: useRef
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,6 +41,9 @@ export const MarketAnalysis = () => {
 
   // 북마크 훅
   const { toggle_Bookmark } = useBookmark()
+
+  // ✅ 직전 Top5 집중도 저장용(30초 전 값)  // 🔁 추가
+  const top5PrevRef = useRef(null)
 
   // JWT에서 사용자 email 꺼내서 user_id 조회
   useEffect(() => {
@@ -90,7 +93,7 @@ export const MarketAnalysis = () => {
     if (items.length) subscribe(items.map((c) => c.symbol))
   }, [subscribe, items])
 
-  // ✅ symbol → 한국어명 매핑 (상승률 1위 한국어 표기용) // 🔁 변경(추가)
+  // ✅ symbol → 한국어명 매핑 (상승률 1위 한국어 표기용)
   const nameMap = useMemo(() => {
     const map = {}
     items.forEach((it) => {
@@ -104,7 +107,7 @@ export const MarketAnalysis = () => {
   //   1) 시장 모멘텀(AD 스프레드) = (상승비중 − 하락비중) × 100
   //   2) BTC 점유율(거래대금 기준)
   //   3) BTC 현재가(KRW)
-  //   4) 상승률 1위(24h) — 한국어명 표기 // 🔁 변경
+  //   4) 상승률 1위(24h) — 한국어명 표기
   // ───────────────────────────────────────────────────────────────────────────
   const [bhStats, setBhStats] = useState({
     totalVolumeKRW: null,
@@ -118,37 +121,39 @@ export const MarketAnalysis = () => {
   //   A) BTC 24h 변동성(%)
   //   B) 상승 종목 비율(%)
   //   C) 상위 5종목 거래대금 집중도(%)
-  //   D) (교체) BTC 자금 유입 지수(%)  // 🔁 변경
+  //   D) (교체) BTC 자금 유입 지수(%)
   // +  (추가) 시장 모멘텀(%)
   // ───────────────────────────────────────────────────────────────────────────
   const [extra, setExtra] = useState({
     btcVolatilityPct: null,
     advancersRatioPct: null,
     top5ConcentrationPct: null,
+    top5ConcentrationDelta: null, // 🔁 추가: 30초 대비 변화(퍼센트포인트)
     // btcTopOfBookSpreadPct: null, // ⛔ 제거: 스프레드 카드 삭제
-    orderImbalancePct: null, // 🔁 변경(추가): (매수−매도)/(합)
+    orderImbalancePct: null, // (매수−매도)/(합)
     momentumPct: null,
   })
 
   // ───────────────────────────────────────────────────────────────────────────
-  // 리더보드(상승률 1위만 유지)  // 🔁 변경: 체결강도 1위 제거
+  // 리더보드(상승률 1위만 유지)
   // ───────────────────────────────────────────────────────────────────────────
   const [leaders, setLeaders] = useState({
     topGainer: null, // { symbol, rate }
-    // topIntensity: null, // ⛔ 제거
   })
 
   // ───────────────────────────────────────────────────────────────────────────
   // 하단 4개 카드
   //   5) 시가총액 추정치(KRW)
-  //   6) (교체) 주문서 매수 비중(%)    // 🔁 변경
-  //   7) 변동성 지표(=BTC 24h 변동성 재표시)
-  //   8) (표기 변경) 시장 유동성 → “약 N배” // 🔁 변경
+  //   6) (교체) 주문서 매수 비중(%)
+  //   7) (교체) 공포·탐욕 지수(Fear & Greed)  // 🔁 교체
+  //   8) (표기 변경) 시장 유동성 → “약 N배”
   // ───────────────────────────────────────────────────────────────────────────
   const [more, setMore] = useState({
     marketCapKRW: null,
     volatility24hPct: null,
     liquidityIndex: null, // 24h 거래량(수량) ÷ 주문서 총잔량
+    fearGreedIndex: null, // 🔁 추가
+    fearGreedLabel: null, // 🔁 추가
   })
 
   // 빗썸 API에서 모든 지표 계산
@@ -217,11 +222,9 @@ export const MarketAnalysis = () => {
             ? Math.round((bidQty / (bidQty + askQty)) * 100)
             : null
 
-        // (교체) 자금 유입 지수(%) = (매수−매도)/(합)×100  // 🔁 변경
+        // (교체) 자금 유입 지수(%) = (매수−매도)/(합)×100
         const orderImbalancePct =
           bidQty + askQty > 0 ? ((bidQty - askQty) / (bidQty + askQty)) * 100 : null
-
-        // (스프레드 계산은 삭제) // ⛔ 제거
 
         // 3) BTC 24h 변동성(%): (고가-저가)/중간값
         const hi = Number(btc?.max_price || 0)
@@ -232,16 +235,21 @@ export const MarketAnalysis = () => {
         // 4) 상승 종목 비율(%)
         const advRatio = symbols.length ? (advancers / symbols.length) * 100 : null
 
-        // 5) 상위 5종목 거래대금 집중도(%)
+        // 5) 상위 5종목 거래대금 집중도(%) + Δ 계산  // 🔁 추가
         volList.sort((a, b) => b - a)
         const top5 = volList.slice(0, 5).reduce((s, v) => s + v, 0)
         const top5Pct = totalVolume > 0 ? (top5 / totalVolume) * 100 : null
+
+        let top5Delta = null // 30초 전 대비 변화(퍼센트포인트)
+        if (top5PrevRef.current != null && top5Pct != null) {
+          top5Delta = top5Pct - top5PrevRef.current
+        }
 
         // 6) 시가총액 추정치 (KRW)
         const mcap =
           btcPriceKRW > 0 ? btcPriceKRW * BTC_CIRCULATING_SUPPLY : null
 
-        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량) — 표기만 ‘배’로 바꿈 // 🔁 변경
+        // 7) 유동성 지표 (24h 거래량 ÷ 호가잔량) — 표기만 ‘배’로 바꿈
         const unitsTraded24h = Number(btc?.units_traded_24H || 0) // BTC 수량
         const liquidityIdx =
           bidQty + askQty > 0 ? unitsTraded24h / (bidQty + askQty) : null
@@ -252,6 +260,18 @@ export const MarketAnalysis = () => {
           totalCount > 0
             ? ((advancers / totalCount) - (decliners / totalCount)) * 100
             : null
+
+        // 🔁 추가: 공포·탐욕 지수(Fear & Greed) 외부 API
+        let fearGreedIndex = null
+        let fearGreedLabel = null
+        try {
+          const { data: fgiRes } = await axios.get("https://api.alternative.me/fng/?limit=1")
+          const fgiItem = fgiRes?.data?.[0]
+          fearGreedIndex = fgiItem ? Number(fgiItem.value) : null
+          fearGreedLabel = fgiItem?.value_classification || null // e.g., "Extreme Fear", "Greed"
+        } catch (_) {
+          // 실패 시 카드에 '-' 표기
+        }
 
         // 상태 반영
         setBhStats({
@@ -265,7 +285,8 @@ export const MarketAnalysis = () => {
           btcVolatilityPct: volPct,
           advancersRatioPct: advRatio,
           top5ConcentrationPct: top5Pct,
-          orderImbalancePct, // 🔁 변경
+          top5ConcentrationDelta: top5Delta, // 🔁 추가
+          orderImbalancePct, // (매수−매도)/(합)
           momentumPct,
         })
 
@@ -280,7 +301,12 @@ export const MarketAnalysis = () => {
           marketCapKRW: mcap,
           volatility24hPct: volPct,
           liquidityIndex: liquidityIdx,
+          fearGreedIndex, // 🔁 추가
+          fearGreedLabel, // 🔁 추가
         })
+
+        // 다음 주기 비교 위해 현재값 저장  // 🔁 추가
+        top5PrevRef.current = top5Pct
       } catch (e) {
         console.error("[Bithumb fetch error]", e)
       }
@@ -362,7 +388,7 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* 4) 상승률 1위 — 한국어명 표기 // 🔁 변경 */}
+        {/* 4) 상승률 1위 — 한국어명 표기 */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">상승률 1위</CardTitle>
@@ -413,10 +439,17 @@ export const MarketAnalysis = () => {
           <CardContent>
             <div className="text-2xl font-bold">{formatPercent(extra.top5ConcentrationPct, 1)}</div>
             <p className="text-xs text-muted-foreground">Top5 24h 거래대금 / 전체</p>
+
+            {/* 🔁 추가: 30초 대비 변화(퍼센트포인트) */}
+            {typeof extra.top5ConcentrationDelta === "number" && (
+              <p className={`text-xs ${extra.top5ConcentrationDelta >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {extra.top5ConcentrationDelta >= 0 ? "▲" : "▼"} {Math.abs(extra.top5ConcentrationDelta).toFixed(1)}p
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        {/* D) (교체) BTC 자금 유입 지수(%) // 🔁 변경 */}
+        {/* D) (교체) BTC 자금 유입 지수(%) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">BTC 자금 유입 지수</CardTitle>
@@ -431,7 +464,7 @@ export const MarketAnalysis = () => {
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────
-          하단 4개 카드 (시총/주문서 매수비중/변동성/유동성)
+          하단 4개 카드 (시총/주문서 매수비중/공포·탐욕/유동성)
       ─────────────────────────────────────────────────────────────────────── */}
       <div className="grid md:grid-cols-4 gap-4">
         {/* 5) 시가총액 추정치 */}
@@ -449,7 +482,7 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* 6) (교체) 주문서 매수 비중(%)  // 🔁 변경 */}
+        {/* 6) (교체) 주문서 매수 비중(%) */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">주문서 매수 비중</CardTitle>
@@ -464,18 +497,22 @@ export const MarketAnalysis = () => {
           </CardContent>
         </Card>
 
-        {/* 7) 변동성 지표(재표시) */}
+        {/* 7) 공포·탐욕 지수(Fear & Greed)  // 🔁 교체 */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">변동성 지표</CardTitle>
+            <CardTitle className="text-sm font-medium">공포·탐욕 지수</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatPercent(more.volatility24hPct)}</div>
-            <p className="text-xs text-muted-foreground">BTC 24h 변동성 재표시</p>
+            <div className="text-2xl font-bold">
+              {typeof more.fearGreedIndex === "number" ? `${more.fearGreedIndex}` : "-"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {more.fearGreedLabel ? more.fearGreedLabel : "외부 지수(API) • 0(극공포) ~ 100(극탐욕)"}
+            </p>
           </CardContent>
         </Card>
 
-        {/* 8) (표기 변경) 시장 유동성 → 약 N배  // 🔁 변경 */}
+        {/* 8) (표기 변경) 시장 유동성 → 약 N배 */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">시장 유동성(커버리지)</CardTitle>
