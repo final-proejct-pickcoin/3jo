@@ -7,7 +7,7 @@ import axios from "axios";
 import CoinListPanel from "./trading-coinlist";
 import TradingOrderPanel from "./trading-orderform";
 import Tradingcoininfo from "./trading-coininfo";
-import TradingChart from "./trading-chart";
+import TradingChart from "./trading-chart.jsx";
 
 // ✅ import 정리
 
