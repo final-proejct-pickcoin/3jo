@@ -1408,12 +1408,12 @@ const handleLogout = () => {
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">$12,450</div>
+                            <div className="text-2xl font-bold text-green-600">12,450원</div>
                             <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>어제 수익</div>
                             <div className="text-xs text-green-600 mt-1">+15.2% &#8599;</div>
                           </div>
                           <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">$89,320</div>
+                            <div className="text-2xl font-bold text-blue-600">89,320원</div>
                             <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>이번 주</div>
                             <div className="text-xs text-blue-600 mt-1">+8.7% &#8599;</div>
                           </div>
@@ -1427,19 +1427,19 @@ const handleLogout = () => {
                               <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
                                 거래 수수료
                               </span>
-                              <span className="font-bold text-green-600">$847,230원</span>
+                              <span className="font-bold text-green-600">847,230원</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
                                 최근 한달 수익
                               </span>
-                              <span className="font-bold text-blue-600">$289,450원</span>
+                              <span className="font-bold text-blue-600">289,450원</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
                                 년간 수익
                               </span>
-                              <span className="font-bold text-purple-600">$125,600원</span>
+                              <span className="font-bold text-purple-600">125,600원</span>
                             </div>
                           </div>
                         </div>

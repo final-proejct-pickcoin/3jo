@@ -52,13 +52,7 @@ const tradingData = [
   { time: "16:00", volume: 2100, users: 78 },
   { time: "20:00", volume: 1600, users: 56 },
 ];
-const coinData = [
-  { name: "BTC", value: 45, volume: "28,450" },
-  { name: "ETH", value: 25, volume: "15,230" },
-  { name: "ADA", value: 15, volume: "8,920" },
-  { name: "DOT", value: 10, volume: "5,670" },
-  { name: "Others", value: 5, volume: "2,340" },
-];
+
 const pendingWithdrawals = [
   { id: 1, user: "user123", amount: "1.2345 BTC", time: "5분 전", status: "대기" },
   { id: 2, user: "user456", amount: "15.67 ETH", time: "12분 전", status: "대기" },
@@ -96,6 +90,14 @@ export default function DashboardOverview({ isDarkMode }) {
     { label: "주간별", value: "week" },
     { label: "월간별", value: "month" },
   ];
+
+  const [coinData, setCoinData] = useState([
+    { name: "BTC", value: 45, volume: "28,450" },
+    { name: "ETH", value: 25, volume: "15,230" },
+    { name: "ADA", value: 15, volume: "8,920" },
+    { name: "DOT", value: 10, volume: "5,670" },
+    { name: "Others", value: 5, volume: "2,340" },
+  ]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -135,6 +137,21 @@ export default function DashboardOverview({ isDarkMode }) {
       })
   }
 
+  // buy 거래대금 가져오기
+  async function fetchBuyLogs() {
+    try {
+      const response = await fetch("http://localhost:8000/buy-logs");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data; // 코인별 거래량 배열 [{coin, total_amount}, ...]
+    } catch (error) {
+      console.error("Failed to fetch buy logs:", error);
+      return null;
+    }
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     const fetchInterval = interval || "month";
@@ -159,6 +176,17 @@ export default function DashboardOverview({ isDarkMode }) {
           setLatestVolume(data[data.length - 1].volume);
         }
       });
+
+    fetchBuyLogs().then((data) => {
+      if (data) {
+        // 예: 상태에 저장하거나 차트 데이터로 변환
+        setCoinData(data.map(item => ({
+          name: item.coin,
+          value: item.total_amount,
+          volume: item.total_amount
+        })));
+      }
+    });
     
     getAdminInfo(token);
   },[interval, txInterval])
@@ -383,10 +411,10 @@ export default function DashboardOverview({ isDarkMode }) {
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader>
             <CardTitle className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              코인별 거래량 분포
+              코인별 거래대금 분포
             </CardTitle>
             <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              24시간 거래량 기준
+              전체 거래대금 기준
             </CardDescription>
           </CardHeader>
           
@@ -429,7 +457,7 @@ export default function DashboardOverview({ isDarkMode }) {
                     </span>
                   </div>
                   <span className={isDarkMode ? "text-gray-300" : "text-gray-600"}>
-                    {coin.volume} BTC
+                    {coin.volume.toLocaleString("ko-KR")}원
                   </span>
                 </div>
               ))}

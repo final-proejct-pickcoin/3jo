@@ -3,7 +3,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 from pydantic import BaseModel
 from typing import List
-from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es
+from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es, fetch_buy_logs_aggregation
 from fastapi.security import OAuth2PasswordBearer
 import logging
 
@@ -220,3 +220,13 @@ def get_logs():
     except Exception as e:
         logger.error(f"logs error: {e}")
         raise HTTPException(status_code=500, detail="get logs error")
+    
+# 매수 로그 가져오기
+@router.get("/buy-logs")
+def get_buy_logs():
+    try:
+        result = fetch_buy_logs_aggregation()
+        return result
+    except Exception as e:
+        logger.error(f"buy-logs error: {e}")
+        raise HTTPException(status_code=500, detail="get buy-logs error")

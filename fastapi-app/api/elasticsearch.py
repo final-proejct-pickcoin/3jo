@@ -110,3 +110,60 @@ def fetch_logs_from_es(index: str = "login-logs", size: int = 50):
         })
     return logs
 
+# 매수거래대금 가져오기
+def fetch_buy_logs_aggregation(index: str = "buy-logs", size: int = 0):
+    body = {
+                "size": 0,
+                "query": {
+                    "term": {
+                        "event_type": "buy"
+                    }
+                },
+                "runtime_mappings": {
+                    "trade_value": {
+                        "type": "double",
+                        "script": {
+                            "source": """
+                                if (params._source.containsKey('amount') && params._source.amount != null 
+                                    && params._source.containsKey('price') && params._source.price != null) {
+                                    try {
+                                        double amt = Double.parseDouble(params._source.amount.toString());
+                                        double prc = Double.parseDouble(params._source.price.toString());
+                                        emit(amt * prc);
+                                    } catch (Exception e) {
+                                        // 변환 실패시 skip
+                                    }
+                                }
+                            """
+                        }
+                    }
+                },
+                "aggs": {
+                    "coins": {
+                        "terms": {
+                            "field": "coin_name.keyword",
+                            "size": 10
+                        },
+                        "aggs": {
+                            "total_trade_value": {
+                                "sum": {
+                                    "field": "trade_value"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+    res = es.search(index=index, body=body)
+    buckets = res.get("aggregations", {}).get("coins", {}).get("buckets", [])
+    
+    result = []
+    for bucket in buckets:
+        coin = bucket.get("key")
+        total_trade_value = bucket.get("total_trade_value", {}).get("value", 0)
+        result.append({
+            "coin": coin,
+            "total_amount": total_trade_value
+        })
+    return result
