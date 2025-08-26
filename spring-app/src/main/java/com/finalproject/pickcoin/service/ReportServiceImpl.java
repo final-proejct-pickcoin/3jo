@@ -77,4 +77,26 @@ public class ReportServiceImpl implements ReportService {
     public boolean exists(int reporterId, EntityType reportedType, int reportedId) {
         return reportRepository.exists(reporterId, reportedType, reportedId) > 0;
     }
+    // ===== 알림(상단 종) 관련 구현 =====
+    @Override
+    public int getUnreadCount() {
+        return reportRepository.countUnread();
+    }
+
+    @Override
+    public List<Report> getUnread(int limit) {
+        return reportRepository.findUnread(limit);
+    }
+
+    @Transactional
+    @Override
+    public int markAllRead() {
+        return reportRepository.markAllRead();
+    }
+
+    @Transactional
+    @Override
+    public void markOneRead(int reportId) {
+        reportRepository.markOneRead(reportId);
+    }
 }
