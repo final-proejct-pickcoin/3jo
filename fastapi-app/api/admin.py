@@ -3,7 +3,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 from pydantic import BaseModel
 from typing import List
-from .elasticsearch import get_user_trend, get_trading_volume_trend
+from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es
 from fastapi.security import OAuth2PasswordBearer
 import logging
 
@@ -210,3 +210,13 @@ def stats_volume(interval: str = Query("day", enum=["hour", "day", "week", "mont
     except Exception as e:
         logger.error(f"Volume stats error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+# 전체 로그 가져오기    
+@router.get("/logs")
+def get_logs():
+    try:
+        result = fetch_logs_from_es()
+        return result
+    except Exception as e:
+        logger.error(f"logs error: {e}")
+        raise HTTPException(status_code=500, detail="get logs error")

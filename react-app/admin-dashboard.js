@@ -137,44 +137,7 @@ export default function Component() {
 
   // Mock data with more realistic information
   const [users, setUsers] = useState([]);  
-  const [logs, setLogs] = useState([
-    {
-      id: 1,
-      timestamp: "2024-01-15 14:30:25",
-      user: "user123",
-      action: "로그인",
-      ip: "192.168.1.100",
-      status: "성공",
-      level: "info"
-    },
-    {
-      id: 2,
-      timestamp: "2024-01-15 14:28:15",
-      user: "user456",
-      action: "거래 체결",
-      ip: "192.168.1.101",
-      status: "성공",
-      level: "info"
-    },
-    {
-      id: 3,
-      timestamp: "2024-01-15 14:25:10",
-      user: "user789",
-      action: "출금 요청",
-      ip: "192.168.1.102",
-      status: "대기",
-      level: "warn"
-    },
-    {
-      id: 4,
-      timestamp: "2024-01-15 14:22:05",
-      user: "suspicious_user",
-      action: "로그인 실패",
-      ip: "192.168.1.103",
-      status: "실패",
-      level: "error"
-    }
-  ]);
+  const [logs, setLogs] = useState([]);
 
   const [announcements, setAnnouncements] = useState([]);
 
@@ -597,6 +560,13 @@ const handleLogout = () => {
     }
   }
 
+  useEffect(() => {
+    fetch(`http://localhost:8000/logs?index=login-logs`)
+      .then(res => res.json())
+      .then(data => setLogs(data))
+      .catch(err => console.error(err));
+  }, []);
+
   const getUserPerPage = async (requestPage, itemsPerPage) => {
 
     setCurrentPage(requestPage)
@@ -657,6 +627,7 @@ const handleLogout = () => {
         time: new Date(r.createdAt || r.created_at).toLocaleString("ko-KR"),
         read: r.admin_seen === true
       }));
+
       setNotifications(mapped);
     } catch (err) {
       console.error("신고 알림 불러오기 실패:", err);
@@ -1278,10 +1249,10 @@ const handleLogout = () => {
                       <TableRow>
                         <TableHead className="w-12">
                           <Checkbox
-                            checked={selectedLogs.length === filteredLogs.length}
+                            checked={selectedLogs.length === logs.length}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                setSelectedLogs(filteredLogs.map((log) => log.id));
+                                setSelectedLogs(logs.map((log) => log.id));
                               } else {
                                 setSelectedLogs([]);
                               }
@@ -1297,7 +1268,7 @@ const handleLogout = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredLogs.map((log) => (
+                      {logs.map((log) => (
                         <TableRow key={log.id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                           <TableCell>
                             <Checkbox
@@ -1312,7 +1283,7 @@ const handleLogout = () => {
                             />
                           </TableCell>
                           <TableCell className={`font-mono text-sm ${isDarkMode ? "text-gray-300" : ""}`}>
-                            {log.timestamp}
+                            {new Date(log.timestamp).toLocaleString("ko-KR")}
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -1416,19 +1387,19 @@ const handleLogout = () => {
                               <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
                                 거래 수수료
                               </span>
-                              <span className="font-bold text-green-600">$847,230 (67%)</span>
+                              <span className="font-bold text-green-600">$847,230원</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                최근 수익률
+                                최근 한달 수익
                               </span>
-                              <span className="font-bold text-blue-600">$289,450 (23%)</span>
+                              <span className="font-bold text-blue-600">$289,450원</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                상장 수익률
+                                년간 수익
                               </span>
-                              <span className="font-bold text-purple-600">$125,600 (10%)</span>
+                              <span className="font-bold text-purple-600">$125,600원</span>
                             </div>
                           </div>
                         </div>

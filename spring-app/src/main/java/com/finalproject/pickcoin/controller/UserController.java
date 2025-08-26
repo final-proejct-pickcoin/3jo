@@ -193,9 +193,11 @@ public class UserController {
         logged_users.add(email);
         try{
             MDC.put("event_type", "login");
+            MDC.put("email", email);
             logger.info("유저 로그인 발생 - 사용자: {}", email);
         }finally{
             MDC.remove("event_type");
+            MDC.remove("email");
         }        
 
         Map<String, Object> result = new HashMap<>();
@@ -449,9 +451,11 @@ public class UserController {
     @DeleteMapping("/logout")
     public ResponseEntity<?> logout(@RequestParam String email){
         try{
-            MDC.put("event_type", "login");
+            MDC.put("event_type", "logout");
+            MDC.put("email", email);
         logger.info("유저 로그아웃 발생 - 사용자: {}", email);
         }finally{
+            MDC.remove("email");
             MDC.remove("event_type");
         }
         logged_users.remove(email);

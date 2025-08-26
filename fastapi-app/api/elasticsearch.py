@@ -84,3 +84,29 @@ def get_trading_volume_trend(interval="hour"):
             "volume": bucket["trading_volume"]["value"]
         })
     return result
+
+
+# 전체 로그 가져오기
+def fetch_logs_from_es(index: str = "login-logs", size: int = 50):
+    body = {
+        "sort": [
+            {"@timestamp": {"order": "desc"}}
+        ],
+        "query": {"match_all": {}},
+        "size": size
+    }
+    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs", body=body)
+    logs = []
+    for hit in res["hits"]["hits"]:
+        source = hit["_source"]
+        logs.append({
+            "id": hit["_id"],
+            "timestamp": source.get("@timestamp"),
+            "level": source.get("level", "info"),
+            "user": source.get("user_id") if source.get("user_id") else source.get("email", "-"),
+            "action": source.get("event_type", "-"),
+            "ip": source.get("ip", "-"),
+            "status": source.get("status", "성공"),
+        })
+    return logs
+
