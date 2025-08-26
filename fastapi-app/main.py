@@ -29,6 +29,8 @@ from api.chat import router as ws_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
+from api.elasticsearch import create_indices_if_not_exist, wait_for_es
+
 # // [news schedule] 크롤링 주기 설정
 from apscheduler.schedulers.background import BackgroundScheduler
 from service.news_service import crawl_and_save
@@ -186,7 +188,12 @@ def job_news_refresh():
 
 # 2) 앱 시작 시 스케줄러 시작 + 잡 등록
 @app.on_event("startup")
-def start_scheduler():
+async def start_scheduler():
+
+    # 엘라스틱 서치 인덱스 생성
+    await wait_for_es(timeout=90,  interval=2)
+    create_indices_if_not_exist()
+
     try:
         if not scheduler.running:
             scheduler.start()
