@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List
 from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es, fetch_buy_logs_aggregation
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.responses import JSONResponse
 import logging
 
 
@@ -190,6 +191,22 @@ def getAdminInfo(token: str = Depends(oauth2_scheme)):
         # print(result)
     
     return result
+
+@router.get("/admin/gettradeamount")
+def get_trade_amount():
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    with conn.cursor() as cursor:
+        query = """
+        SELECT
+        SUM(CASE WHEN DATE(created_at) = CURDATE() - INTERVAL 1 DAY THEN price * amount ELSE 0 END) AS yesterday,
+        SUM(CASE WHEN DATE(created_at) = CURDATE() THEN price * amount ELSE 0 END) AS today,
+        SUM(CASE WHEN YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1) THEN price * amount ELSE 0 END) AS this_week,
+        SUM(CASE WHEN YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()) THEN price * amount ELSE 0 END) AS this_month
+        FROM transaction;
+        """
+        cursor.execute(query)
+        result = cursor.fetchone()
+        return result
 
 
 # 엘라스틱서치에서 유저 추이 가져오기.

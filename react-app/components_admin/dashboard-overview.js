@@ -411,7 +411,7 @@ export default function DashboardOverview({ isDarkMode }) {
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader>
             <CardTitle className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              코인별 거래대금 분포
+              코인별 거래 분포도
             </CardTitle>
             <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
               전체 거래대금 기준
