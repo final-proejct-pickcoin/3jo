@@ -66,7 +66,7 @@ const kycPending = [
 export default function DashboardOverview({ isDarkMode }) {
   const [stats, setStats] = useState({
     totalUsers: 15420,
-    onlineUsers: 1247,
+    onlineUsers: 0,
     dailyVolume: 28450.67,
     revenue: 847230,
     systemLoad: 68,
@@ -74,6 +74,41 @@ export default function DashboardOverview({ isDarkMode }) {
     pendingWithdrawals: 23,
     kycPending: 12,
   });
+
+// ✅ 여기 78번 줄 근처에 WebSocket useEffect 추가
+useEffect(() => {
+  const socket = new WebSocket("ws://localhost:8080/ws/stats");
+
+  socket.onopen = () => {
+    console.log("✅ Admin WebSocket 연결됨");
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log("📩 WebSocket 데이터:", data);
+
+      if (data.onlineNow !== undefined) {
+        setStats(prev => ({
+          ...prev,
+          onlineUsers: data.onlineNow,
+        }));
+      }
+    } catch (e) {
+      console.error("⚠️ WebSocket 메시지 파싱 오류:", e);
+    }
+  };
+
+  socket.onclose = () => {
+    console.log("❌ Admin WebSocket 연결 종료");
+  };
+
+  return () => {
+    socket.close();
+  };
+}, []);
+
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tradingEnabled, setTradingEnabled] = useState(true);
   const [dashboardInfo, setDashboardInfo] = useState({});
@@ -269,12 +304,12 @@ export default function DashboardOverview({ isDarkMode }) {
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
                   {stats.onlineUsers.toLocaleString()}
                 </p>
-                <div className="flex items-center mt-2">
+                {/* <div className="flex items-center mt-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
                   <span className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    1분 전
+            
                   </span>
-                </div>
+                </div> */}
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Activity className="h-6 w-6 text-blue-600" />
