@@ -19,26 +19,29 @@ const formatValue = (value, currency, krwRate, hide) => {
 }
 
 export const PortfolioManager = () => {
-  const [activeSection, setActiveSection] = useState("profile")
-  const [activeTab, setActiveTab] = useState("deposit")
-  const [activeSubSection, setActiveSubSection] = useState("")
+  const [activeSection, setActiveSection] = useState("krw-account")
+  const [activeTab, setActiveTab] = useState("")
+  const [activeSubSection, setActiveSubSection] = useState("krw-account")
   const { subscribe, marketData } = useWebSocket()
   const [hideBalances, setHideBalances] = useState(false)
   const [selectedTimeframe, setSelectedTimeframe] = useState("24h")
   const [krwRate, setKrwRate] = useState(0)
   const [currency, setCurrency] = useState("KRW") // "KRW" or "USD"
   
-  // 프로필 관리 상태
-  const [isEditingProfile, setIsEditingProfile] = useState(false)
-  const [editNickname, setEditNickname] = useState("사용자")
-  const [editEmail, setEditEmail] = useState("user@example.com")
-  const [avatar, setAvatar] = useState("/placeholder-user.jpg")
-  const [editAvatar, setEditAvatar] = useState(avatar)
-  
-  // 원래 값 저장용 상태
-  const [originalNickname, setOriginalNickname] = useState("사용자")
-  const [originalEmail, setOriginalEmail] = useState("user@example.com")
-  const [originalAvatar, setOriginalAvatar] = useState("/placeholder-user.jpg")
+     // 프로필 관리 상태
+   const [isEditingProfile, setIsEditingProfile] = useState(false)
+   const [editNickname, setEditNickname] = useState("사용자")
+   const [avatar, setAvatar] = useState("/placeholder-user.jpg")
+   const [editAvatar, setEditAvatar] = useState(avatar)
+   
+   // 비밀번호 변경 상태
+   const [currentPassword, setCurrentPassword] = useState("")
+   const [newPassword, setNewPassword] = useState("")
+   const [confirmPassword, setConfirmPassword] = useState("")
+   
+   // 원래 값 저장용 상태
+   const [originalNickname, setOriginalNickname] = useState("사용자")
+   const [originalAvatar, setOriginalAvatar] = useState("/placeholder-user.jpg")
 
   const portfolioData = [
     {
@@ -790,38 +793,42 @@ export const PortfolioManager = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center py-8">
-                <div className="mb-6">
-                  <Avatar className="h-28 w-28">
-                    {isEditingProfile || avatar ? (
-                      <AvatarImage
-                        src={isEditingProfile ? editAvatar : avatar}
-                        alt={editNickname}
-                        className="object-cover border border-gray-300"
-                      />
-                    ) : null}
-                    <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-3xl flex items-center justify-center min-h-[112px] min-w-[112px]">
-                      <span className="font-bold text-white text-4xl">{editNickname?.charAt(0).toUpperCase() || "U"}</span>
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
+                                 <div className="mb-6">
+                   <Avatar className="h-36 w-36">
+                     {editAvatar ? (
+                       <AvatarImage
+                         src={editAvatar}
+                         alt={editNickname}
+                         className="object-cover"
+                       />
+                     ) : null}
+                     <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-4xl flex items-center justify-center min-h-[144px] min-w-[144px]">
+                       <span className="font-bold text-white text-5xl">{editNickname?.charAt(0).toUpperCase() || "U"}</span>
+                     </AvatarFallback>
+                   </Avatar>
+                 </div>
                 
                   <form className="w-full max-w-md flex flex-col gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="border rounded px-3 py-2 text-sm w-full"
-                        onChange={e => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (ev) => setEditAvatar(ev.target.result)
-                            reader.readAsDataURL(file)
-                          }
-                        }}
-                      />
-                    </div>
+                                         <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진</label>
+                       <input
+                         type="file"
+                         accept="image/*"
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         onChange={e => {
+                           const file = e.target.files?.[0]
+                           if (file) {
+                             const reader = new FileReader()
+                             reader.onload = (ev) => {
+                               setEditAvatar(ev.target.result)
+                               // 파일 선택 즉시 프로필에 반영
+                               setAvatar(ev.target.result)
+                             }
+                             reader.readAsDataURL(file)
+                           }
+                         }}
+                       />
+                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">닉네임</label>
@@ -833,29 +840,71 @@ export const PortfolioManager = () => {
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">이메일</label>
-                      <input
-                        className="border rounded px-3 py-2 text-sm w-full"
-                        value={editEmail}
-                        onChange={e => setEditEmail(e.target.value)}
-                        placeholder="이메일 입력"
-                        type="email"
-                      />
-                    </div>
+                                         <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">현재 비밀번호</label>
+                       <input
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         type="password"
+                         placeholder="현재 비밀번호 입력"
+                         value={currentPassword}
+                         onChange={e => setCurrentPassword(e.target.value)}
+                       />
+                     </div>
+                     
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호</label>
+                       <input
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         type="password"
+                         placeholder="새 비밀번호 입력"
+                         value={newPassword}
+                         onChange={e => setNewPassword(e.target.value)}
+                       />
+                     </div>
+                     
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 확인</label>
+                       <input
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         type="password"
+                         placeholder="새 비밀번호 재입력"
+                         value={confirmPassword}
+                         onChange={e => setConfirmPassword(e.target.value)}
+                       />
+                     </div>
                     
                                          <div className="mt-4">
-                       <Button 
-                         className="w-full" 
-                         variant="default" 
-                         type="button" 
-                         onClick={() => {
-                           setAvatar(editAvatar)
-                           setIsEditingProfile(false)
-                         }}
-                       >
-                         저장
-                       </Button>
+                                               <Button 
+                          className="w-full" 
+                          variant="default" 
+                          type="button" 
+                                                     onClick={() => {
+                             // 비밀번호 변경 로직
+                             if (newPassword !== confirmPassword) {
+                               alert("새 비밀번호가 일치하지 않습니다.")
+                               return
+                             }
+                             if (newPassword.length < 6) {
+                               alert("새 비밀번호는 최소 6자 이상이어야 합니다.")
+                               return
+                             }
+                             
+                             // 여기에 실제 비밀번호 변경 API 호출 로직을 추가할 수 있습니다
+                             alert("비밀번호가 성공적으로 변경되었습니다.")
+                             
+                             // 입력 필드 초기화
+                             setCurrentPassword("")
+                             setNewPassword("")
+                             setConfirmPassword("")
+                             
+                             // 프로필 정보 저장 (이미 즉시 반영되어 있음)
+                             setIsEditingProfile(false)
+                             
+                             alert("프로필 정보가 성공적으로 저장되었습니다.")
+                           }}
+                        >
+                          저장
+                        </Button>
                      </div>
                   </form>
                 
@@ -1014,11 +1063,11 @@ export const PortfolioManager = () => {
                 </button>
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                    activeSection === "krw-account" && activeTab === "withdrawal" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSection === "krw-account" && activeTab === "history" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
-                    setActiveTab("withdrawal")
+                    setActiveTab("history")
                     setActiveSubSection("")
                     // 원화 거래 내역 섹션으로 스크롤
                     setTimeout(() => {

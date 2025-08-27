@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Search } from "lucide-react";
 import axios from "axios";
+import TradingChart from "./trading-chart.jsx";
 
 function StarIcon({ filled = false, size = 18, className = "" }) {
   const d = "M12 17.27 18.18 21 16.54 13.97 22 9.24 14.81 8.62 12 2 9.19 8.63 2 9.24 7.46 13.97 5.82 21 12 17.27Z";
@@ -780,24 +781,36 @@ export default function TradingInterface() {
                 
                 {/* 차트 내용 (아코디언) */}
                 {chartPanelExpanded && chartTab === "차트" && (
-                  <div className="h-full bg-gray-100 p-4 border-t border-gray-200">
-                    {/* 차트 컨트롤 버튼 */}
-                    <div className="flex justify-end gap-2 mb-4">
-                      <button className="px-3 py-1 text-sm border rounded hover:bg-gray-200">간격</button>
-                      <button className="px-3 py-1 text-sm border rounded hover:bg-gray-200">종류</button>
-                      <button className="px-3 py-1 text-sm border rounded hover:bg-gray-200">지표</button>
-                    </div>
-                    
+                  <div className="p-2" style={{ height: '700px' }}>
                     {/* 차트 영역 */}
-                    <div className="h-64 bg-gray-200 rounded flex items-center justify-center">
-                      <div className="text-gray-500">차트 영역 - {selectedCoin}</div>
+                    <div className="bg-white rounded h-full">
+                      <TradingChart 
+                        symbol={`${selectedCoin}/KRW`}
+                        koreanName={selectedCoin === "BTC" ? "비트코인" : selectedCoin}
+                        height={650}
+                        theme="light"
+                        currentPrice={realTimeData[selectedCoin]?.close_price || 0}
+                        initialTimeframe="1h"
+                        onPriceUpdate={(price) => {
+                          // 실시간 가격 업데이트
+                          if (price > 0) {
+                            setRealTimeData(prev => ({
+                              ...prev,
+                              [selectedCoin]: {
+                                ...prev[selectedCoin],
+                                close_price: price
+                              }
+                            }));
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                 )}
                 
                 {/* 코인정보 내용 (아코디언) */}
                 {chartPanelExpanded && chartTab === "코인정보" && (
-                  <div className="h-full bg-gray-100 p-4 border-t border-gray-200">
+                  <div className="bg-gray-100 p-4 border-t border-gray-200" style={{ height: '600px' }}>
                     {/* 코인 정보 */}
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
@@ -820,8 +833,27 @@ export default function TradingInterface() {
                     </div>
                     
                     {/* 차트 영역 */}
-                    <div className="h-64 bg-gray-200 rounded flex items-center justify-center">
-                      <div className="text-gray-500">차트 영역</div>
+                    <div className="bg-white rounded" style={{ height: 'calc(100% - 120px)' }}>
+                      <TradingChart 
+                        symbol={`${selectedCoin}/KRW`}
+                        koreanName={selectedCoin === "BTC" ? "비트코인" : selectedCoin}
+                        height={500}
+                        theme="light"
+                        currentPrice={realTimeData[selectedCoin]?.close_price || 0}
+                        initialTimeframe="1h"
+                        onPriceUpdate={(price) => {
+                          // 실시간 가격 업데이트
+                          if (price > 0) {
+                            setRealTimeData(prev => ({
+                              ...prev,
+                              [selectedCoin]: {
+                                ...prev[selectedCoin],
+                                close_price: price
+                              }
+                            }));
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                 )}
@@ -830,8 +862,8 @@ export default function TradingInterface() {
               {/* 하단: 오더북/정보패널/주문 */}
               {detailView === "chart" && (
                 <div className="w-full flex flex-row" style={{ 
-                  height: 800, 
-                  marginTop: chartPanelExpanded ? '70px' : '20px' 
+                  height: chartPanelExpanded ? 600 : 800, 
+                  marginTop: chartPanelExpanded ? '170px' : '20px' 
                 }}>
                   {/* 오더북 및 정보 패널 (1/5) */}
                   {/* <div className="flex flex-col w-1/5 border-r border-gray-200 bg-white"> */}
@@ -872,7 +904,10 @@ export default function TradingInterface() {
                   {/* </div> */}
                   
                   {/* 주문 영역 (2/5) */}
-                  <div className="w-2/3 flex flex-col bg-white px-6 pt-7 pb-0 overflow-auto">
+                  <div className="w-2/3 flex flex-col bg-white px-6 overflow-auto" style={{
+                    paddingTop: chartPanelExpanded ? '16px' : '28px',
+                    paddingBottom: '0'
+                  }}>
                     {/* 메인 탭 헤더 */}
                     <div className="flex justify-center border-b border-gray-200 mb-4">
                         <button 

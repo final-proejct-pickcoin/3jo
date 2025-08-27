@@ -107,10 +107,6 @@ export const Navigation = () => {
                     <User className="mr-2 h-4 w-4" />
                     <span>프로필</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/mypage")}> 
-                    <Briefcase className="mr-2 h-4 w-4" />
-                    <span>마이페이지</span>
-                  </DropdownMenuItem>
 
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="cursor-pointer">
@@ -193,12 +189,12 @@ export const Navigation = () => {
           </DialogHeader>
           <div className="flex flex-col items-center justify-center mb-3">
             <div className="mt-8" />
-            <Avatar className="h-28 w-28">
+            <Avatar className="h-36 w-36">
               {isEditingProfile || avatar ? (
                 <AvatarImage
                   src={isEditingProfile ? editAvatar : avatar}
                   alt={editNickname || user?.nickname}
-                  className="object-cover border border-gray-300"
+                  className="object-cover"
                 />
               ) : null}
               <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-3xl flex items-center justify-center min-h-[112px] min-w-[112px]">
@@ -258,10 +254,7 @@ export const Navigation = () => {
                 <Badge variant="secondary">거래 등급: <span className="font-bold ml-1">{user?.tier || "일반"}</span></Badge>
                 <Badge variant="outline">잔고: <span className="font-bold ml-1">{user?.balance ? `$${user.balance}` : "비공개"}</span></Badge>
               </div>
-              <div className="flex gap-2 w-full">
-                <Button className="flex-1" variant="default" onClick={() => setIsEditingProfile(true)}>프로필 수정</Button>
-                <Button className="flex-1" variant="outline" onClick={() => setShowProfileDialog(false)}>닫기</Button>
-              </div>
+
             </>
           )}
         </DialogContent>
