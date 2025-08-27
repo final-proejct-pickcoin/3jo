@@ -34,6 +34,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from service.news_service import crawl_and_save
 from datetime import datetime
 from repository.news_repository import delete_news_older_than, trim_news_by_count
+from fastapi.responses import JSONResponse
 
 # --- 음성 AI 관련 모듈 추가  Google Cloud 관련 모듈 추가 ---
 import google.generativeai as genai
@@ -49,16 +50,11 @@ load_dotenv()
 
 app = FastAPI()
 
-# ✅ 헬스체크 (없으면 추가)
-@app.get("/health/db")
-def health_db():
-    from db.mysql import SessionLocal
-    try:
-        with SessionLocal() as db:
-            db.execute("SELECT 1")
-        return {"db_ok": True}
-    except Exception as e:
-        return {"db_ok": False, "error": str(e)}
+@app.get("/api/ping")
+def ping():
+    return {"pong": True}
+
+
 
 # 테스트용: 수동으로 한 번 크롤링해서 DB에 저장
 @app.post("/debug/crawl-now")
@@ -92,7 +88,7 @@ host = 'mysql'
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-app = FastAPI()
+
 templates = Jinja2Templates(directory="templates")
 
 @app.post("/debug/crawl-now")
@@ -190,11 +186,11 @@ def start_scheduler():
     try:
         if not scheduler.running:
             scheduler.start()
-        # 매 8시간 주기 실행
+        # 매 3시간 주기 실행
         scheduler.add_job(
             job_news_refresh,
             trigger="interval",
-            hours=8,
+            hours = 3, 
             id="news_refresh_hourly",
             replace_existing=True,
         )
@@ -356,19 +352,30 @@ async def test_voice_price(symbol: str):
         "closing_price": result.get('closing_price') if result else None
     }
 
-# --- 스케줄러 헬스체크 (추가) ---
+
+
+# --- 스케줄러 헬스체크 (무한 로딩 방지 버전) ---
 @app.get("/api/debug/scheduler")
 def scheduler_status():
     try:
-        jobs = scheduler.get_jobs()
+        # 안전하게 상태 읽기
+        state = getattr(scheduler, "state", None)
+        running = bool(getattr(scheduler, "running", False))
+
+        jobs_info = []
+        for j in scheduler.get_jobs():
+            nrt = None
+            try:
+                nrt = j.next_run_time.isoformat() if j.next_run_time else None
+            except Exception:
+                nrt = str(j.next_run_time)
+            jobs_info.append({"id": j.id, "next_run_time": nrt})
+
         return {
-            "running": scheduler.running,
-            "jobs": [
-                {
-                    "id": j.id,
-                    "next_run_time": str(j.next_run_time)
-                } for j in jobs
-            ]
+            "running": running,
+            "state": state,
+            "jobs": jobs_info
         }
     except Exception as e:
-        return {"error": str(e)}
+        # 어떤 에러여도 즉시 JSON 500 반환 -> 무한로딩 방지
+        return JSONResponse({"error": str(e)}, status_code=500)
