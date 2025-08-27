@@ -18,6 +18,7 @@ webdriver_manager
 lxml
 python-logstash
 aiohttp
+httpx
 
 websockets
 broadcaster

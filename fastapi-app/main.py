@@ -29,7 +29,7 @@ from api.chat import router as ws_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
-from api.elasticsearch import create_indices_if_not_exist, wait_for_es
+from api.elasticsearch import create_indices_if_not_exist, wait_for_es, create_kibana_index_pattern
 
 # // [news schedule] 크롤링 주기 설정
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -236,6 +236,7 @@ def job_news_refresh():
 # 2) 앱 시작 시 스케줄러 시작 + ES 초기화(비차단)
 @app.on_event("startup")
 def start_scheduler():
+    create_kibana_index_pattern()
     try:
         # ✅ ES 초기화는 앱을 막지 않도록 "백그라운드 스레드"에서 수행
         threading.Thread(target=init_search_background, daemon=True).start()

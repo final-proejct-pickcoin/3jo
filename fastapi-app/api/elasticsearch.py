@@ -1,5 +1,6 @@
 from elasticsearch import Elasticsearch
 import time
+import httpx
 import asyncio
 
 # ES 연결 객체 생성 (환경/보안에 맞게 설정)
@@ -7,6 +8,27 @@ es = Elasticsearch(
     hosts=["http://elasticsearch:9200"],  # docker 환경/실제 환경에 맞게 수정
     request_timeout=30
 )
+
+# 인덱스 패턴 자동생성
+async def create_kibana_index_pattern():
+    kibana_url = "http://kibana:5601/api/saved_objects/index-pattern"
+    headers = {
+        "kbn-xsrf": "true",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "attributes": {
+            "title": "*-logs*",
+            "timeFieldName": "@timestamp"
+        }
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(kibana_url, json=payload, headers=headers)
+        if response.status_code in (200, 201):
+            print("Kibana 인덱스 패턴 생성 성공")
+        else:
+            print(f"인덱스 패턴 생성 실패: {response.status_code} {response.text}")
+
 
 # ES 실행될 때까지 대기
 async def wait_for_es(timeout=60, interval=1):
