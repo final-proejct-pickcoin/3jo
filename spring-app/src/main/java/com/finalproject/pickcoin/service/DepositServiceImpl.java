@@ -1,17 +1,27 @@
 package com.finalproject.pickcoin.service;
 
+import com.finalproject.pickcoin.domain.Users;
 import com.finalproject.pickcoin.repository.DepositRepository;
+import com.finalproject.pickcoin.repository.UsersRepository;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class DepositServiceImpl implements DepositService {
 
     @Autowired private DepositRepository repo;
+    @Autowired private UsersRepository usersRepository;
+
+    Logger logger = LoggerFactory.getLogger(DepositRepository.class);
 
     private static BigDecimal toBD(Object v){
         if (v == null) return BigDecimal.ZERO;
@@ -33,6 +43,25 @@ public class DepositServiceImpl implements DepositService {
         repo.add_wallet_amount(user_id, krwId, amount);     // +입금
 
         BigDecimal bal = repo.krw_balance(user_id);
+
+        try{
+
+            Optional<Users> user = usersRepository.findById(user_id.intValue());
+
+            MDC.put("event_type", "krw");
+            MDC.put("user_id", user_id.toString());
+            MDC.put("email", user.get().getEmail());
+            MDC.put("amount", amount.toString());
+            MDC.put("action", "deposit");
+
+            logger.info("{} depsit {}", user.get().getEmail(), amount);
+
+        }catch(Exception e){
+
+        }finally{
+            MDC.clear();
+        }
+
         return Map.of("ok", true, "type", "deposit", "user_id", user_id, "krw_balance", bal == null ? BigDecimal.ZERO : bal);
     }
 
@@ -52,6 +81,25 @@ public class DepositServiceImpl implements DepositService {
         repo.add_wallet_amount(user_id, krwId, amount.negate()); // -출금
 
         BigDecimal newBal = repo.krw_balance(user_id);
+
+        try{
+
+            Optional<Users> user = usersRepository.findById(user_id.intValue());
+
+            MDC.put("event_type", "krw");
+            MDC.put("user_id", user_id.toString());
+            MDC.put("email", user.get().getEmail());
+            MDC.put("amount", amount.toString());
+            MDC.put("action", "withdraw");
+
+            logger.info("{} withdraw {}", user.get().getEmail(), amount);
+
+        }catch(Exception e){
+
+        }finally{
+            MDC.clear();
+        }
+
         return Map.of("ok", true, "type", "withdraw", "user_id", user_id, "krw_balance", newBal == null ? BigDecimal.ZERO : newBal);
     }
 

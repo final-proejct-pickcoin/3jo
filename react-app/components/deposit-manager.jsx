@@ -144,6 +144,7 @@ export default function DepositManager() {
       setUsedMonthly(0);
     }
   };
+  const [logs, setLogs] = useState([]);
 
   useEffect(() => {
     if (user_id) loadLimits(user_id);
@@ -175,9 +176,24 @@ export default function DepositManager() {
     }
   };
 
+  const deposit_logs = async (id) =>{
+    try{
+      // console.log("입출금 user_id:",user_id)
+      const res = await axios.get(`http://localhost:8000/users/${id}/transactions`)
+      setLogs(res.data)
+    }catch(err){
+      console.error(err)
+    }
+  }
+
   useEffect(() => {
     if (user_id) fetchBalance(user_id);
-  }, [user_id]);
+
+    if (!user_id) return;
+
+    deposit_logs(user_id);
+
+  }, [user_id, logs]);
 
   const handleDeposit = async () => {
     if (!user_id) return alert("로그인이 필요합니다.");
@@ -190,10 +206,11 @@ export default function DepositManager() {
       const { data } = await axios.post(`${ACCOUNT_API}/deposit`, null, {
         params: { user_id, amount },
       });
+      
       setKrw(Number(data?.krw_balance ?? 0));
-      setDepositAmount("");
+      setDepositAmount("");      
       // 한도 사용량 증가 (입금 시 집계)
-      bumpUsageOnDeposit(user_id, amount);
+      bumpUsageOnDeposit(user_id, amount);      
     } catch (e) {
       console.error(e);
       alert("입금 실패: " + (e.response?.data?.message ?? e.message));
@@ -215,7 +232,7 @@ export default function DepositManager() {
         params: { user_id, amount: amountRaw },
       });
       setKrw(Number(data?.krw_balance ?? 0));
-      setWithdrawAmount("");
+      setWithdrawAmount("");      
       // *출금도 한도에 반영하려면 다음 줄 주석 해제*
       // bumpUsageOnDeposit(user_id, amountRaw);
     } catch (e) {
@@ -534,13 +551,20 @@ export default function DepositManager() {
             {/* 거래 내역: 추후 백엔드 붙이면 교체 */}
             <Card className="border mt-6">
               <CardHeader>
-                <CardTitle>원화 거래 내역</CardTitle>
+                <CardTitle>입출금 내역</CardTitle>
                 <CardDescription className="text-muted-foreground">최근 원화 입금 및 출금 내역</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {/* 아직 API 없으니 비움 또는 더미 */}
                   {/* 더미가 필요하면 여기에 map으로 렌더 */}
+                  {logs.map( (log, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>{log.action === "deposit" ? "입금" : "출금"}</span>
+                      <span>{Number(log.amount).toLocaleString()} 원</span>
+                      <span>{new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

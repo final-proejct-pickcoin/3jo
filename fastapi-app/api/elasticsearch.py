@@ -97,6 +97,24 @@ def create_indices_if_not_exist():
                 }
             }
         },
+        "krw-logs": {
+            "mappings": {
+                "properties": {
+                    "@timestamp": {"type": "date"},
+                    "action": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "amount": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "email": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "port": {"type": "integer"},
+                    "event_type": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "host": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "tags": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "thread_name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "level": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "logger_name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                    "message": {"type": "text", "fields": {"keyword": {"type": "keyword"}}}
+                }
+            }
+        }
     }
 
     for index_name, body in indices_to_create.items():
@@ -196,7 +214,7 @@ def fetch_logs_from_es(index: str = "login-logs", size: int = 50):
         "query": {"match_all": {}},
         "size": size
     }
-    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs,buy-logs,sell-logs", body=body)
+    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs,buy-logs,sell-logs, krw-logs", body=body)
     logs = []
     for hit in res["hits"]["hits"]:
         source = hit["_source"]
@@ -268,3 +286,32 @@ def fetch_buy_logs_aggregation(index: str = "buy-logs", size: int = 0):
             "total_amount": total_trade_value
         })
     return result
+
+# 입출금내역 로그 가져오기
+def get_user_krw(user_id: int):
+    # print(es.search(index="krw-logs", body={"query": {"match_all": {}}}, size=5))
+    query = {
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"event_type": "krw"}},
+                    {"term": {"user_id": user_id}}
+                ]
+            }
+        },
+        "sort": [{"@timestamp": {"order": "desc"}}],
+        "size": 20
+    }
+    try:
+        res = es.search(index="krw-logs", body=query)
+        hits = res["hits"]["hits"]
+    except Exception as e:
+        print("입출금 오류:", e)
+    return [
+        {
+            "action": h["_source"].get("action"),
+            "amount": h["_source"].get("amount"),
+            "timestamp": h["_source"].get("@timestamp"),
+        }
+        for h in hits
+    ]
