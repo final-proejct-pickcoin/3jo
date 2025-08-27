@@ -319,12 +319,12 @@ export const MarketAnalysis = () => {
           >
             KRW
           </button>
-          <button
+          {/* <button
             className={`px-2 py-1 rounded text-xs font-semibold ${currency === "USD" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
             onClick={() => setCurrency("USD")}
           >
             USD
-          </button>
+          </button> */}
         </div>
       </div>
 

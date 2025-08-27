@@ -92,9 +92,39 @@ export const PortfolioManager = () => {
   const [usedDaily, setUsedDaily] = useState(0);
   const [usedMonthly, setUsedMonthly] = useState(0);
 
+  // ===== 입출금 로그 =====
+  const [logs, setLogs] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(10);
+
 
      // ===== 사용자 ID =====
   const [user_id, setUserId] = useState(null);
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + 10); // 10개씩 더 보여줌
+  };
+
+  const visibleLogs = logs.slice(0, visibleCount); // 현재 보여줄 범위
+
+  // 입출금  로그 가져오는 함수
+  const deposit_logs = async (id) =>{
+    try{
+      // console.log("입출금 user_id:",user_id)
+      const res = await axios.get(`http://localhost:8000/users/${id}/transactions`)
+      setLogs(res.data)
+    }catch(err){
+      console.error(err)
+    }
+  }
+
+  // 여기에 넣기
+  useEffect(() => {
+    if (!user_id) return;
+
+    deposit_logs(user_id);
+    // console.log("입출금 로그",logs)
+
+  }, [user_id, logs]);
 
   useEffect(() => {
     // 캐시 우선
@@ -746,53 +776,65 @@ const pagedTrades = useMemo(() => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-100">
-                        <span className="text-green-600 text-lg">↑</span>
+                  {visibleLogs.map((log, idx) => {
+                    const isDeposit = log.action === "deposit";
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between p-4 border rounded-lg ${
+                          isDeposit ? "bg-green-50" : "bg-red-50"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              isDeposit ? "bg-green-100" : "bg-red-100"
+                            }`}
+                          >
+                            <span
+                              className={`${isDeposit ? "text-green-600" : "text-red-600"} text-lg`}
+                            >
+                              {isDeposit ? "↑" : "↓"}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {isDeposit ? "입금" : "출금"}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {log.timestamp.toLocaleString().slice(0, 19).replace('T', ' ')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-gray-900">
+                            ₩{Number(log.amount).toLocaleString()}
+                          </div>
+                          { !isDeposit && log.fee && (
+                            <div className="text-sm text-gray-500">수수료: ₩{Number(log.fee).toLocaleString()}</div>
+                          )}
+                          <div
+                            className={`text-sm font-medium px-2 py-1 rounded-full inline-block ${
+                              log.status === "완료"
+                                ? "bg-green-50 text-green-600"
+                                : log.status === "처리중"
+                                ? "bg-blue-50 text-blue-600"
+                                : "bg-gray-50 text-gray-600"
+                            }`}
+                          >
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium text-gray-900">입금 - KB국민은행</div>
-                        <div className="text-sm text-gray-500">2024-01-15 14:32:15 • DEP240115001</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">₩1,000,000</div>
-                      <div className="text-sm font-medium px-2 py-1 rounded-full inline-block bg-green-50 text-green-600">완료</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-100">
-                        <span className="text-red-600 text-lg">↓</span>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">출금 - 신한은행</div>
-                        <div className="text-sm text-gray-500">2024-01-15 13:45:22 • WTH240115002</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">₩500,000</div>
-                      <div className="text-sm text-gray-500">수수료: ₩1,000</div>
-                      <div className="text-sm font-medium px-2 py-1 rounded-full inline-block bg-blue-50 text-blue-600">처리중</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-100">
-                        <span className="text-green-600 text-lg">↑</span>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">입금 - 우리은행</div>
-                        <div className="text-sm text-gray-500">2024-01-15 12:18:45 • DEP240115003</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">₩2,000,000</div>
-                      <div className="text-sm font-medium px-2 py-1 rounded-full inline-block bg-green-50 text-green-600">완료</div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
+
+                {visibleCount < logs.length && (
+                  <div className="flex justify-center mt-4">
+                    <Button onClick={handleLoadMore}>더보기</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
