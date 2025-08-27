@@ -353,7 +353,7 @@ export default function DashboardOverview({ isDarkMode }) {
           <CardContent>
             {/* KPI 영역 */}
             <div className={`mb-4 text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              최근 {txInterval === "day" ? "일" : txInterval === "week" ? "주간" : txInterval === "hour" ? "시간" : "월간"} 거래대금(원)&nbsp;
+              최근 {txInterval === "day" ? "일별" : txInterval === "week" ? "주간별" : txInterval === "hour" ? "시간별" : "월별"} 거래대금(원)&nbsp;
               
             </div>
 
@@ -411,7 +411,7 @@ export default function DashboardOverview({ isDarkMode }) {
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader>
             <CardTitle className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              코인별 거래대금 분포
+              코인별 거래 분포도
             </CardTitle>
             <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
               전체 거래대금 기준

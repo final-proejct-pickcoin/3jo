@@ -73,9 +73,26 @@ export default function Component() {
   const [currentLogsPage, setCurrentLogsPage] = useState(1);
   const startIndex = (currentLogsPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  
-  
-  
+  const [fee, setFee] = useState(0.10); // 수수료율 초기값: 0.10%
+  const [yesterdayRevenue, setYesterdayRevenue] = useState(12450);
+  const [todayRevenue, setTodayRevenue] = useState(14000);
+  const [weekRevenue, setWeekRevenue] = useState(89320);
+  const [monthRevenue, setMonthRevenue] = useState(289450);
+  const [tradeAmount, setTradeAmount] = useState({
+    yesterday: 0,
+    today: 0,
+    this_week: 0,
+    this_month: 0,
+  });
+
+  // 수수료율 적용 버튼 클릭 시 예시 계산 (실제 API 연동 시 변경)
+  const applyFee = () => {
+    setYesterdayRevenue(Math.round(tradeAmount.yesterday * (fee / 100)));
+    setTodayRevenue(Math.round(tradeAmount.today * (fee / 100)));
+    setWeekRevenue(Math.round(tradeAmount.this_week * (fee / 100)));
+    setMonthRevenue(Math.round(tradeAmount.this_month * (fee / 100)));
+  };
+
   const totalPages = Math.ceil(total / itemsPerPage);
   // 한 번에 보여줄 페이지 번호 수 설정
   const maxPageButtons = 5;
@@ -159,57 +176,27 @@ export default function Component() {
   return matchesSearch && matchesStatus;
   });
 
-  // const filteredLogs = logs.filter((log) => {
-  //   const logLevel = log.level.trim().toLowerCase();
-  //   const filter = logLevelFilter.toLowerCase();
-  //   const matchesLevel = filter === "all" || logLevel === filter;
+ const filteredLogs = (Array.isArray(logs) ? logs : []).filter((log) => {
+    const logLevel = log.level.trim().toLowerCase();
+    const filter = logLevelFilter.toLowerCase();
+    const matchesLevel = filter === "all" || logLevel === filter;
 
-  //   const selectedDate = dateFilter; 
-  //   let matchesDate = true;
+    const selectedDate = dateFilter; 
+    let matchesDate = true;
 
-  //   if (selectedDate) {
-  //     // log.timestamp은 String이라 아래쪽에서 변환해줘야함.
-  //     const logDateObj  = new Date(log.timestamp);
+    if (selectedDate) {
+      // log.timestamp은 String이라 아래쪽에서 변환해줘야함.
+      const logDateObj  = new Date(log.timestamp);
 
-  //     const logDate = logDateObj.getFullYear() + '-' +
-  //     String(logDateObj.getMonth() + 1).padStart(2, '0') + '-' +
-  //     String(logDateObj.getDate()).padStart(2, '0');
+      const logDate = logDateObj.getFullYear() + '-' +
+      String(logDateObj.getMonth() + 1).padStart(2, '0') + '-' +
+      String(logDateObj.getDate()).padStart(2, '0');
 
-  //     matchesDate = logDate === selectedDate;
-  //   }
+      matchesDate = logDate === selectedDate;
+    }
 
-  //   return matchesLevel && matchesDate;
-  // });
-
-  const filteredLogs = Array.isArray(logs)
-    ? logs.filter((log) => {
-        const logLevel = log.level?.trim().toLowerCase() || "";
-        const filter = (logLevelFilter || "all").toLowerCase();
-        const matchesLevel = filter === "all" || logLevel === filter;
-
-        const selectedDate = dateFilter;
-        let matchesDate = true;
-
-        if (selectedDate && log.timestamp) {
-          const logDateObj = new Date(log.timestamp);
-
-          if (!isNaN(logDateObj)) {
-            const logDate =
-              logDateObj.getFullYear() +
-              "-" +
-              String(logDateObj.getMonth() + 1).padStart(2, "0") +
-              "-" +
-              String(logDateObj.getDate()).padStart(2, "0");
-
-            matchesDate = logDate === selectedDate;
-          } else {
-            matchesDate = false; // 날짜 파싱 실패 시 매칭 안 되게
-          }
-        }
-
-        return matchesLevel && matchesDate;
-      })
-    : [];
+    return matchesLevel && matchesDate;
+  });
 
   
 const pagedLogs = filteredLogs.slice(startIndex, endIndex);  
@@ -615,6 +602,23 @@ const handleLogout = () => {
     }
   }
 
+  // 수익 관리
+  const getTradeAmount = () => {
+    axios.get("http://localhost:8000/admin/gettradeamount")
+      .then((res)=>{
+        setTradeAmount(res.data);
+        const data = res.data;
+        setTradeAmount(data);
+        setYesterdayRevenue(Math.round(data.yesterday * (fee / 100)));
+        setTodayRevenue(Math.round(data.today * (fee / 100)));
+        setWeekRevenue(Math.round(data.this_week * (fee / 100)));
+        setMonthRevenue(Math.round(data.this_month * (fee / 100)));
+      })
+      .catch((err)=>{
+        console.log(err)
+      })
+  }
+
   useEffect(() => {
     fetch(`http://localhost:8000/logs?index=login-logs`)
       .then(res => res.json())
@@ -666,7 +670,7 @@ const handleLogout = () => {
 
       setIsLoggedIn(true);      
       fetchAnnouncements();
-
+      getTradeAmount()
       
       const fetchReports = async () => {
       try {
@@ -1395,87 +1399,67 @@ const handleLogout = () => {
               <div>
                 <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6`}>수익 관리</h1>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
                   <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
                     <CardHeader>
                       <CardTitle className={isDarkMode ? "text-white" : ""}>수수료 설정</CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>거래쌍 수수료 설정</CardDescription>
+                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>전체 거래대금에 적용할 수수료율</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <Label className={isDarkMode ? "text-gray-200" : ""}>수수료율 (%)</Label>
+                        <Input type="number" min={0} onChange={(e) => setFee(e.target.value)} className="w-28" defaultValue="0.10" />
+                      </div>
+                      <Button className="w-full" onClick={applyFee}>수수료 적용</Button>
+                    </CardContent>
+                  </Card>
+
+
+                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}>
+                    <CardHeader>
+                      <CardTitle className={isDarkMode ? "text-white" : "text-gray-900"}>
+                        수익 현황
+                      </CardTitle>
+                      <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                        기간별 수수료 수익 분석
+                      </CardDescription>
+                      <div className="mt-2">
+                        <label className={`mr-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+                          적용 수수료(%):
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          readOnly
+                          className="w-20 p-1 rounded border border-gray-300"
+                          value={fee}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4 text-center mt-4">
                         {[
-                          { pair: "BTC/USDT", volume: "28,450", fee: "0.08" },
-                          { pair: "ETH/USDT", volume: "15,230", fee: "0.10" },
-                          { pair: "ADA/USDT", volume: "8,920", fee: "0.15" }
-                        ].map((item, index) => (
+                          { label: "어제 수익", value: yesterdayRevenue, color: "green" },
+                          { label: "오늘 수익", value: todayRevenue, color: "green" },
+                          { label: "이번 주 수익", value: weekRevenue, color: "blue" },
+                          { label: "최근 한달 수익", value: monthRevenue, color: "blue" },
+                        ].map(({ label, value, color }, index) => (
                           <div
                             key={index}
-                            className={`flex items-center justify-between p-4 border rounded-lg ${
-                              isDarkMode ? "border-gray-600" : ""
-                            }`}
+                            className={`p-6 rounded-lg bg-${color}-50 flex flex-col justify-center items-center h-32`}
                           >
-                            <div>
-                              <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>{item.pair}</Label>
-                              <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                24시간 거래량: {item.volume} BTC
-                              </p>
+                            <div className={`text-2xl font-bold text-${color}-600`}>
+                              {value.toLocaleString()}원
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Input className="w-20" defaultValue={item.fee} />
-                              <span className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>%</span>
+                            <div className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                              {label}
                             </div>
                           </div>
                         ))}
                       </div>
-                      <Button className="w-full">수수료 적용</Button>
                     </CardContent>
                   </Card>
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={isDarkMode ? "text-white" : ""}>수익 현황</CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>일시적인 수수료 수익 분석</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">12,450원</div>
-                            <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>어제 수익</div>
-                            <div className="text-xs text-green-600 mt-1">+15.2% &#8599;</div>
-                          </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">89,320원</div>
-                            <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>이번 주</div>
-                            <div className="text-xs text-blue-600 mt-1">+8.7% &#8599;</div>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            {/* 계속 이어서 수익 관리 부분 */}
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                거래 수수료
-                              </span>
-                              <span className="font-bold text-green-600">847,230원</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                최근 한달 수익
-                              </span>
-                              <span className="font-bold text-blue-600">289,450원</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                년간 수익
-                              </span>
-                              <span className="font-bold text-purple-600">125,600원</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+
                 </div>
               </div>
             </TabsContent>
@@ -1722,117 +1706,6 @@ const handleLogout = () => {
                   </Table>
                 </CardContent>
               </Card>
-            </TabsContent>
-
-            <TabsContent value="system" className="space-y-6">
-              <div>
-                <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6`}>
-                  시스템 관리
-                </h1>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={`flex items-center ${isDarkMode ? "text-white" : ""}`}>
-                        <Shield className="h-5 w-5 mr-2" /> 보안 설정
-                      </CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>
-                        시스템 보안 및 접근 제어 설정
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>2단계 인증</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            모든 관련자 권한 부여에 2FA 적용
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>IP 화이트 리스트</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            허용된 IP에서만 접근 가능
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>세션 타임아웃</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            30분 비활성화 시 자동 로그아웃
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={`flex items-center ${isDarkMode ? "text-white" : ""}`}>
-                        <Server className="h-5 w-5 mr-2" /> 백업 관리
-                      </CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>
-                        데이터 백업 및 복구 설정
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>자동 백업</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            매일 새벽 2시 자동 백업 설정
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>마지막 백업</Label>
-                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                          <div>
-                            <p className="text-sm font-medium">2024-01-15 02:00</p>
-                            <p className="text-xs text-gray-600">크기: 2.4GB</p>
-                          </div>
-                          <Badge variant="default">성공</Badge>
-                        </div>
-                      </div>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        수동 백업 실행
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={isDarkMode ? "text-white" : ""}>시스템 상태</CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>
-                        현재 시스템 상태 모니터링
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                          <div className="text-2xl font-bold text-green-600">99.9%</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>가동률</div>
-                        </div>
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <div className="text-2xl font-bold text-blue-600">68%</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>CPU 사용률</div>
-                        </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                          <div className="text-2xl font-bold text-purple-600">72%</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>메모리 사용률</div>
-                        </div>
-                        <div className="text-center p-4 bg-orange-50 rounded-lg">
-                          <div className="text-2xl font-bold text-orange-600">15ms</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>응답 시간</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
             </TabsContent>
           </Tabs>
         </main>

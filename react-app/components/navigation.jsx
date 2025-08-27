@@ -116,7 +116,10 @@ export const Navigation = () => {
                     <span>설정</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => {
+                    logout();
+                    router.push("/");
+                  }} className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>로그아웃</span>
                   </DropdownMenuItem>

@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loginError, setLoginError] = useState(null)
+  const [token, setToken] = useState(null)
 
   // needPhone일 때 쓰는 전화번호 연결 요청
   const [phoneLinkRequest, setPhoneLinkRequest] = useState(null)
@@ -49,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     }
     loadGoogleSDK()
 
-    // 로그인 상태 복원
+    // 로그인 상태 복원    
     const token = sessionStorage.getItem("auth_token")
     const userData = sessionStorage.getItem("user_data")
 
@@ -57,9 +58,21 @@ export const AuthProvider = ({ children }) => {
       console.log("로그인 시 유저데이타", userData)
       setUser(JSON.parse(userData))
     }
+    
     setIsLoading(false)
+    
   }, [])
 
+  useEffect(()=>{
+    const sessionToken = sessionStorage.getItem("auth_token");
+    const localToken = localStorage.getItem("access_token");
+
+    setToken(sessionToken);
+
+    if (!sessionToken || !localToken) {
+      // window.location.reload();
+    }
+  }, [])
 
   // 일반 로그인
   const login = async (email, password) => {
@@ -132,6 +145,7 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem("auth_token")
     sessionStorage.removeItem("user_data")
     setUser(null)
+    
   }
 
 
