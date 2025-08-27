@@ -170,9 +170,69 @@ async def get_usd_to_krw_rate():
     print(f"🆘 추정값 사용: {current_realistic_rate}원")
     return current_realistic_rate
 
+# ===== 유통량 추정 함수 =====
+def estimate_realistic_supply(symbol: str, current_price: float) -> float:
+    """코인별로 현실적인 유통량을 추정하는 함수"""
+    symbol_upper = symbol.upper()
+    
+    # 메이저 코인들의 실제 유통량 (2025년 기준)
+    major_supplies = {
+        "BTC": 19_500_000,      # 비트코인: 약 1,950만개 (총 발행량 2,100만개 중)
+        "ETH": 120_000_000,     # 이더리움: 약 1억 2천만개
+        "XRP": 100_000_000_000, # 리플: 약 1,000억개
+        "ADA": 35_000_000_000,  # 에이다: 약 350억개
+        "SOL": 400_000_000,     # 솔라나: 약 4억개
+        "DOGE": 140_000_000_000, # 도지코인: 약 1,400억개
+        "MATIC": 9_000_000_000,  # 폴리곤: 약 90억개
+        "AVAX": 400_000_000,     # 아발란체: 약 4억개
+        "DOT": 1_000_000_000,    # 폴카닷: 약 10억개
+        "LINK": 1_000_000_000,   # 체인링크: 약 10억개
+        "LTC": 70_000_000,       # 라이트코인: 약 7천만개
+        "BCH": 19_000_000,       # 비트코인캐시: 약 1,900만개
+        "XLM": 25_000_000_000,   # 스텔라루멘: 약 250억개
+        "EOS": 1_000_000_000,    # 이오스: 약 10억개
+        "ATOM": 300_000_000,     # 코스모스: 약 3억개
+        "NEAR": 1_000_000_000,   # 니어프로토콜: 약 10억개
+        "ALGO": 7_000_000_000,   # 알고랜드: 약 70억개
+        "VET": 70_000_000_000,   # 비체인: 약 700억개
+        "ICP": 500_000_000,      # 인터넷컴퓨터: 약 5억개
+        "FTM": 3_000_000_000,    # 팬텀: 약 30억개
+        "THETA": 1_000_000_000,  # 세타: 약 10억개
+        "HBAR": 50_000_000_000,  # 헤데라: 약 500억개
+        "TRX": 100_000_000_000,  # 트론: 약 1,000억개
+        "FIL": 2_000_000_000,    # 파일코인: 약 20억개
+        "KLAY": 3_000_000_000,   # 클레이튼: 약 30억개
+        "WEMIX": 1_000_000_000,  # 위믹스: 약 10억개
+        "QTUM": 100_000_000,     # 퀀텀: 약 1억개
+        "ICX": 800_000_000,      # 아이콘: 약 8억개
+        "WAVES": 100_000_000,    # 웨이브: 약 1억개
+        "ZIL": 13_000_000_000,   # 질리카: 약 130억개
+        "ONE": 12_000_000_000,   # 하모니: 약 120억개
+        "CELO": 1_000_000_000,   # 셀로: 약 10억개
+    }
+    
+    # 알려진 메이저 코인인 경우
+    if symbol_upper in major_supplies:
+        return major_supplies[symbol_upper]
+    
+    # 가격 기반으로 유통량 추정 (일반적인 패턴)
+    if current_price >= 1_000_000:  # 100만원 이상: 고가 코인
+        if current_price >= 10_000_000:  # 1천만원 이상: 극고가 코인
+            return 10_000_000  # 약 1천만개
+        else:
+            return 100_000_000  # 약 1억개
+    elif current_price >= 100_000:  # 10만원 이상: 중고가 코인
+        return 1_000_000_000  # 약 10억개
+    elif current_price >= 10_000:   # 1만원 이상: 중가 코인
+        return 10_000_000_000  # 약 100억개
+    elif current_price >= 1_000:    # 1천원 이상: 중저가 코인
+        return 100_000_000_000  # 약 1,000억개
+    else:  # 1천원 미만: 저가 코인
+        return 1_000_000_000_000  # 약 1조개
+
 # ===== CoinGecko API 함수들 =====
 async def get_coingecko_coin_id(symbol: str):
-    """CoinGecko에서 심볼로 코인 ID 자동 검색"""
+    """CoinGecko에서 심볼로 코인 ID 자동 검색 (개선된 버전)"""
     try:
         # 캐시 확인 (전역 변수로 저장)
         if hasattr(get_coingecko_coin_id, 'cache') and symbol in get_coingecko_coin_id.cache:
@@ -191,24 +251,43 @@ async def get_coingecko_coin_id(symbol: str):
                     if not hasattr(get_coingecko_coin_id, 'cache'):
                         get_coingecko_coin_id.cache = {}
                     
-                    # 심볼로 ID 찾기
+                    # 심볼로 ID 찾기 (정확한 매칭 + 유사한 매칭)
+                    symbol_upper = symbol.upper()
+                    exact_match = None
+                    similar_matches = []
+                    
                     for coin in coins:
                         coin_symbol = coin.get("symbol", "").upper()
                         coin_id = coin.get("id", "")
                         
                         if coin_symbol and coin_id:
+                            # 캐시에 저장
                             get_coingecko_coin_id.cache[coin_symbol] = coin_id
+                            
+                            # 정확한 매칭
+                            if coin_symbol == symbol_upper:
+                                exact_match = coin_id
+                            # 유사한 매칭 (심볼이 포함되는 경우)
+                            elif symbol_upper in coin_symbol or coin_symbol in symbol_upper:
+                                similar_matches.append((coin_id, coin_symbol))
                     
-                    # 요청한 심볼의 ID 반환
-                    found_id = get_coingecko_coin_id.cache.get(symbol.upper())
-                    if found_id:
-                        print(f"✅ {symbol} → CoinGecko ID: {found_id}")
-                        return found_id
+                    # 정확한 매칭 우선
+                    if exact_match:
+                        print(f"✅ {symbol} → CoinGecko ID (정확): {exact_match}")
+                        return exact_match
+                    
+                    # 유사한 매칭 중에서 가장 적합한 것 선택
+                    if similar_matches:
+                        # 심볼 길이가 비슷한 것을 우선
+                        best_match = min(similar_matches, key=lambda x: abs(len(x[1]) - len(symbol_upper)))
+                        print(f"✅ {symbol} → CoinGecko ID (유사): {best_match[0]} ({best_match[1]})")
+                        return best_match[0]
                     
     except Exception as e:
         print(f"⚠️ CoinGecko ID 검색 실패 ({symbol}): {e}")
     
     # 실패시 소문자 심볼 반환 (기본값)
+    print(f"⚠️ {symbol}: CoinGecko ID를 찾을 수 없음, 기본값 사용")
     return symbol.lower()
 
 async def get_coingecko_market_cap(symbol: str):
@@ -706,108 +785,195 @@ def get_korean_name(symbol: str) -> str:
 # ===== 메인 코인 목록 API =====
 @router.get("/coins")
 async def get_coin_list():
-   """모든 활성 거래 코인 목록 조회 (업비트 한글명 포함)"""
-   print("[API] /api/coins 진입")
-   markets_url = "https://api.bithumb.com/v1/market/all"
-   ticker_url = "https://api.bithumb.com/public/ticker/ALL_KRW"
-   try:
-       # 업비트에서 한글명 먼저 가져오기
-       upbit_korean_names = await get_korean_names_from_upbit()
-       # 3초 타임아웃 강제 적용
-       timeout = aiohttp.ClientTimeout(total=3, connect=2)
-       async with aiohttp.ClientSession(timeout=timeout) as session:
-           market_task = session.get(markets_url)
-           ticker_task = session.get(ticker_url)
-           market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
-           if ticker_response.status != 200:
-               print(f"[API] 시세 API 오류: {ticker_response.status}")
-               return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
-           ticker_data = await ticker_response.json()
-           if ticker_data.get("status") != "0000":
-               print("[API] 빗썸 시세 API 오류")
-               return {"status": "error", "message": "빗썸 시세 API 오류"}
-           # 빗썸 마켓 데이터 처리
-           market_map = {}
-           if market_response.status == 200:
-               try:
-                   markets_data = await market_response.json()
-                   if isinstance(markets_data, list):
-                       for market in markets_data:
-                           market_code = market.get("market", "")
-                           if market_code.endswith("_KRW") or market_code.endswith("_BTC"):
-                               if market_code.endswith("_KRW"):
-                                   symbol = market_code.replace("_KRW", "")
-                                   market_type = "KRW"
-                               else:
-                                   symbol = market_code.replace("_BTC", "")
-                                   market_type = "BTC"
-                               market_map[symbol] = {
-                                   "korean_name": market.get("korean_name", ""),
-                                   "english_name": market.get("english_name", ""),
-                                   "market_warning": market.get("market_warning", "NONE")
-                               }
-               except Exception as e:
-                   print(f"⚠️ 빗썸 마켓 정보 파싱 실패: {e}")
-           coins = []
-           for symbol, info in ticker_data["data"].items():
-               if symbol == "date":
-                   continue
-               try:
-                   trade_value = float(info.get("acc_trade_value_24H", 0))
-                   # 모든 코인 포함 (거래대금 필터 제거)
-                   market_info = market_map.get(symbol, {})
-
-                   # 한글명 결정 우선순위: 빗썸 한글명 > 업비트 한글명 > 빗썸 영문명 > 기본매핑 > 심볼
-                   bithumb_korean = market_info.get("korean_name", "").strip()
-                   upbit_korean = upbit_korean_names.get(symbol, "")
-                   bithumb_english = market_info.get("english_name", "").strip()
-                   basic_korean = get_korean_name(symbol)
-                   display_name = (
-                       bithumb_korean or 
-                       upbit_korean or 
-                       bithumb_english or 
-                       (basic_korean if basic_korean != symbol else symbol)
-                   )
-
-                   coins.append({
-                       "symbol": symbol,
-                       "korean_name": display_name,
-                       "english_name": bithumb_english or symbol,
-                       "current_price": round(float(info.get("closing_price", 0)), 4),
-                       "change_rate": float(info.get("fluctate_rate_24H", 0)),
-                       "change_amount": round(float(info.get("fluctate_24H", 0)), 4),
-                       "volume": round(trade_value, 4),
-                       "market_warning": market_info.get("market_warning", "NONE"),
-                       "units_traded": round(float(info.get("units_traded_24H", 0)), 4)
-                   })
-
-               except (ValueError, TypeError) as e:
-                   print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
-                   continue
-           coins.sort(key=lambda x: x["volume"], reverse=True)
-           print(f"[API] /api/coins 정상 종료: {len(coins)}개 반환")
-           return {
-               "status": "success",
-               "data": coins,
-               "total_count": len(coins),
-               "upbit_korean_names": len(upbit_korean_names),
-               "last_updated": datetime.now().isoformat()
-           }
-   except Exception as e:
-       print(f"[API] /api/coins 예외 발생: {e}")
-       # 에러시 폴백 데이터 반환 (항상 최소 3개 코인)
-       fallback_data = [
-           {"symbol": "BTC", "korean_name": "비트코인", "english_name": "Bitcoin", "current_price": 163800000, "change_rate": 0.37, "change_amount": 600000, "volume": 200000000000, "market_warning": "NONE", "units_traded": 1231},
-           {"symbol": "ETH", "korean_name": "이더리움", "english_name": "Ethereum", "current_price": 5924000, "change_rate": 0.59, "change_amount": 35000, "volume": 150000000000, "market_warning": "NONE", "units_traded": 2531},
-           {"symbol": "XRP", "korean_name": "리플", "english_name": "XRP", "current_price": 4376, "change_rate": 0.32, "change_amount": 14, "volume": 100000000000, "market_warning": "NONE", "units_traded": 15234}
-       ]
-       return {
-           "status": "success",
-           "data": fallback_data,
-           "total_count": len(fallback_data),
-           "error": str(e),
-           "last_updated": datetime.now().isoformat()
-       }
+    """모든 활성 거래 코인 목록 조회 (성능 최적화 버전)"""
+    print("[API] /api/coins 진입")
+    
+    # 1. Redis 캐시 먼저 확인
+    try:
+        cached = redis_client.get("coin_list_cache")
+        if cached:
+            cached_data = json.loads(cached)
+            print(f"[API] Redis 캐시 사용: {len(cached_data.get('data', []))}개 코인")
+            return cached_data
+    except Exception as e:
+        print(f"Redis 캐시 조회 실패: {e}")
+    
+    # 2. 환율은 한 번만 가져오기
+    usd_krw_rate = await get_usd_to_krw_rate()
+    upbit_korean_names = await get_korean_names_from_upbit()
+    
+    # 3. 빗썸 데이터 가져오기 (기존과 동일)
+    markets_url = "https://api.bithumb.com/v1/market/all"
+    ticker_url = "https://api.bithumb.com/public/ticker/ALL_KRW"
+    
+    try:
+        timeout = aiohttp.ClientTimeout(total=5, connect=2)  # 타임아웃 단축
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            market_task = session.get(markets_url)
+            ticker_task = session.get(ticker_url)
+            market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
+            
+            if ticker_response.status != 200:
+                return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
+            
+            ticker_data = await ticker_response.json()
+            if ticker_data.get("status") != "0000":
+                return {"status": "error", "message": "빗썸 시세 API 오류"}
+            
+            # 마켓 데이터 처리 (기존과 동일)
+            market_map = {}
+            if market_response.status == 200:
+                try:
+                    markets_data = await market_response.json()
+                    if isinstance(markets_data, list):
+                        for market in markets_data:
+                            market_code = market.get("market", "")
+                            if market_code.endswith("_KRW"):
+                                symbol = market_code.replace("_KRW", "")
+                                market_map[symbol] = {
+                                    "korean_name": market.get("korean_name", ""),
+                                    "english_name": market.get("english_name", ""),
+                                    "market_warning": market.get("market_warning", "NONE")
+                                }
+                except Exception as e:
+                    print(f"빗썸 마켓 정보 파싱 실패: {e}")
+            
+            # 4. CoinGecko 데이터를 병렬로 처리 (핵심 최적화)
+            coin_symbols = []
+            coin_basic_data = []
+            
+            for symbol, info in ticker_data["data"].items():
+                if symbol == "date":
+                    continue
+                
+                current_price = float(info.get("closing_price", 0))
+                market_info = market_map.get(symbol, {})
+                
+                # 기본 데이터 먼저 준비
+                bithumb_korean = market_info.get("korean_name", "").strip()
+                upbit_korean = upbit_korean_names.get(symbol, "")
+                bithumb_english = market_info.get("english_name", "").strip()
+                basic_korean = get_korean_name(symbol)
+                display_name = (
+                    bithumb_korean or upbit_korean or bithumb_english or 
+                    (basic_korean if basic_korean != symbol else symbol)
+                )
+                
+                coin_basic_data.append({
+                    "symbol": symbol,
+                    "info": info,
+                    "market_info": market_info,
+                    "display_name": display_name,
+                    "current_price": current_price
+                })
+                coin_symbols.append(symbol)
+            
+            # 5. CoinGecko 데이터 병렬 처리 (최대 50개씩)
+            coingecko_results = {}
+            batch_size = 50  # 동시 요청 수 제한
+            
+            for i in range(0, len(coin_symbols), batch_size):
+                batch_symbols = coin_symbols[i:i + batch_size]
+                batch_tasks = []
+                
+                for symbol in batch_symbols:
+                    # 각 CoinGecko 호출에 개별 타임아웃 적용
+                    task = asyncio.create_task(
+                        get_coingecko_market_cap_fast(symbol, usd_krw_rate)
+                    )
+                    batch_tasks.append((symbol, task))
+                
+                # 배치 단위로 병렬 실행
+                batch_results = await asyncio.gather(
+                    *[task for _, task in batch_tasks], 
+                    return_exceptions=True
+                )
+                
+                # 결과 저장
+                for (symbol, _), result in zip(batch_tasks, batch_results):
+                    if not isinstance(result, Exception):
+                        coingecko_results[symbol] = result
+            
+            # 6. 최종 데이터 조합
+            coins = []
+            for coin_data in coin_basic_data:
+                symbol = coin_data["symbol"]
+                info = coin_data["info"]
+                current_price = coin_data["current_price"]
+                
+                try:
+                    trade_value = float(info.get("acc_trade_value_24H", 0))
+                    
+                    # CoinGecko 데이터 사용 (있으면)
+                    coingecko_data = coingecko_results.get(symbol)
+                    if coingecko_data and coingecko_data.get("market_cap_usd"):
+                        accurate_market_cap = coingecko_data["market_cap_usd"] * usd_krw_rate
+                        accurate_circulating_supply = coingecko_data["supply_info"]["used_for_calculation"]
+                    else:
+                        # 폴백: 추정값 사용
+                        estimated_supply = estimate_realistic_supply(symbol, current_price)
+                        accurate_market_cap = current_price * estimated_supply
+                        accurate_circulating_supply = estimated_supply
+                    
+                    change_rate = float(info.get("fluctate_rate_24H", 0))
+                    estimated_high = current_price * (1 + abs(change_rate) / 100)
+                    estimated_low = current_price * (1 - abs(change_rate) / 100)
+                    
+                    coins.append({
+                        "symbol": symbol,
+                        "korean_name": coin_data["display_name"],
+                        "english_name": coin_data["market_info"].get("english_name", "") or symbol,
+                        "current_price": round(current_price, 4),
+                        "change_rate": change_rate,
+                        "change_amount": round(float(info.get("fluctate_24H", 0)), 4),
+                        "volume": round(trade_value, 4),
+                        "market_warning": coin_data["market_info"].get("market_warning", "NONE"),
+                        "units_traded": float(info.get("units_traded_24H", 0)),
+                        "market_cap": round(accurate_market_cap, 2),
+                        "circulating_supply": round(accurate_circulating_supply, 2),
+                        "high_24h": round(estimated_high, 2),
+                        "low_24h": round(estimated_low, 2)
+                    })
+                    
+                except (ValueError, TypeError) as e:
+                    print(f"⚠️ {symbol} 데이터 처리 오류: {e}")
+                    continue
+            
+            coins.sort(key=lambda x: x["volume"], reverse=True)
+            
+            result = {
+                "status": "success",
+                "data": coins,
+                "total_count": len(coins),
+                "upbit_korean_names": len(upbit_korean_names),
+                "last_updated": datetime.now().isoformat()
+            }
+            
+            # Redis 캐시 저장 (5분)
+            try:
+                redis_client.setex("coin_list_cache", 300, json.dumps(result))
+                print(f"[API] Redis 캐시 저장 완료: {len(coins)}개 코인")
+            except Exception as e:
+                print(f"Redis 캐시 저장 실패: {e}")
+            
+            print(f"[API] /api/coins 정상 종료: {len(coins)}개 반환")
+            return result
+            
+    except Exception as e:
+        print(f"[API] /api/coins 예외 발생: {e}")
+        # 기존 폴백 데이터 반환
+        fallback_data = [
+            {"symbol": "BTC", "korean_name": "비트코인", "english_name": "Bitcoin", "current_price": 163800000, "change_rate": 0.37, "change_amount": 600000, "volume": 200000000000, "market_warning": "NONE", "units_traded": 1231},
+            {"symbol": "ETH", "korean_name": "이더리움", "english_name": "Ethereum", "current_price": 5924000, "change_rate": 0.59, "change_amount": 35000, "volume": 150000000000, "market_warning": "NONE", "units_traded": 2531},
+            {"symbol": "XRP", "korean_name": "리플", "english_name": "XRP", "current_price": 4376, "change_rate": 0.32, "change_amount": 14, "volume": 100000000000, "market_warning": "NONE", "units_traded": 15234}
+        ]
+        return {
+            "status": "success",
+            "data": fallback_data,
+            "total_count": len(fallback_data),
+            "error": str(e),
+            "last_updated": datetime.now().isoformat()
+        }
 
 # ===== BTC 마켓 API =====
 @router.get("/coins/btc")
@@ -1585,3 +1751,66 @@ def generate_complete_analysis(
         # 보조 정보
         "explorer": asset_data.get("explorer"),  # 참고용으로 그대로 유지
     }
+
+# ===== 실시간 티커 API =====
+@router.get("/ticker/{symbol}")
+async def get_ticker_data(symbol: str):
+    """특정 코인의 실시간 티커 데이터 조회"""
+    try:
+        url = f"https://api.bithumb.com/public/ticker/{symbol}"
+        timeout = aiohttp.ClientTimeout(total=3, connect=2)
+        
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data
+                else:
+                    return {"status": "error", "message": f"티커 API 오류: {response.status}"}
+                    
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# CoinGecko 호출 최적화 함수
+async def get_coingecko_market_cap_fast(symbol: str, usd_krw_rate: float):
+    """빠른 CoinGecko 호출 (타임아웃 단축)"""
+    try:
+        coingecko_id = await get_coingecko_coin_id(symbol)
+        if not coingecko_id:
+            return None
+        
+        url = f"https://api.coingecko.com/api/v3/coins/{coingecko_id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false"
+        
+        # 타임아웃을 3초로 단축
+        timeout = aiohttp.ClientTimeout(total=3, connect=1)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    market_data = data.get("market_data", {})
+                    
+                    if market_data:
+                        price_usd = market_data.get("current_price", {}).get("usd", 0)
+                        circulating_supply = market_data.get("circulating_supply")
+                        total_supply = market_data.get("total_supply") 
+                        max_supply = market_data.get("max_supply")
+                        
+                        supply_for_calculation = circulating_supply or total_supply or max_supply or 0
+                        
+                        if price_usd > 0 and supply_for_calculation > 0:
+                            accurate_market_cap_usd = price_usd * supply_for_calculation
+                            
+                            return {
+                                "price_usd": price_usd,
+                                "market_cap_usd": accurate_market_cap_usd,
+                                "supply_info": {
+                                    "circulating": circulating_supply,
+                                    "total": total_supply,
+                                    "max": max_supply,
+                                    "used_for_calculation": supply_for_calculation
+                                }
+                            }
+    except Exception as e:
+        print(f"CoinGecko API 실패 ({symbol}): {e}")
+    
+    return None

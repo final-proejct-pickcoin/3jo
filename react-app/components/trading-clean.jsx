@@ -48,8 +48,9 @@ export default function TradingInterface() {
     last_update: null
   });
 
-  // 호가창 표시 상태
-  const [showOrderBook, setShowOrderBook] = useState(false);
+  // 호가창 상태
+  const [orderbook, setOrderbook] = useState({ bids: [], asks: [], timestamp: null });
+  const [tickSize, setTickSize] = useState(1);
 
   // 주문 가격/수량
   const [orderPrice, setOrderPrice] = useState(0);
@@ -197,6 +198,10 @@ export default function TradingInterface() {
     return null;
   }
 
+
+
+
+  
   // 매수/매도 핸들러
   const handleBuy = async () => {
     if (!selectedCoin) {
@@ -229,6 +234,8 @@ export default function TradingInterface() {
       }
     }
   };
+
+
 
   const handleSell = async () => {
     if (!selectedCoin) {
@@ -313,15 +320,15 @@ export default function TradingInterface() {
               if (content.tickType && content.tickType !== '24H') return;
               const symbol = content.symbol;
               if (!symbol) return;
-
+        
               const closePrice = parseFloat(content.closePrice);
               const chgRate = parseFloat(content.chgRate);
               const value = parseFloat(content.value || 0);
-
+        
               if (isNaN(closePrice) || isNaN(value) || value <= 0) {
                 return;
               }
-
+        
               setRealTimeData(prev => {
                 const prevData = prev[symbol];
                 const prevPrice = prevData ? parseFloat(prevData.closePrice) : closePrice;
@@ -340,6 +347,12 @@ export default function TradingInterface() {
                   }
                 };
               });
+            } else if (data.type === 'orderbook' && data.content) {  // 이 부분 추가
+              // 호가 데이터 처리
+              const { symbol, bids, asks } = data.content;
+              if (symbol === selectedCoin + '_KRW') {
+                setOrderbook({ bids, asks, timestamp: Date.now() });
+              }
             }
           } catch (e) {
             console.error('❌ 실시간 데이터 파싱 오류:', e);
@@ -416,17 +429,24 @@ export default function TradingInterface() {
         
         if (data.status === 'success' && data.data && Array.isArray(data.data)) {
           console.log(`✅ 원화 마켓 ${data.data.length}개 코인 로드 성공`);
-          const mappedCoins = data.data.map(coin => ({
-            symbol: coin.symbol,
-            name: coin.korean_name || coin.symbol,
-            englishName: coin.english_name || coin.symbol,
-            price: coin.current_price || 0,
-            change: coin.change_rate || 0,
-            changeAmount: coin.change_amount || 0,
-            volume: coin.volume || 0,
-            trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
-            marketWarning: coin.market_warning || 'NONE'
-          }));
+                     const mappedCoins = data.data.map(coin => ({
+             symbol: coin.symbol,
+             name: coin.korean_name || coin.symbol,
+             englishName: coin.english_name || coin.symbol,
+             price: coin.current_price || 0,
+             change: coin.change_rate || 0,
+             changeAmount: coin.change_amount || 0,
+             volume: coin.volume || 0,
+             trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
+             marketWarning: coin.market_warning || 'NONE',
+             marketCap: coin.market_cap || 0,
+             marketCapRank: coin.market_cap_rank || 0,
+             // 추가 정보들
+             circulatingSupply: coin.circulating_supply || 0,
+             high24h: coin.high_24h || 0,
+             low24h: coin.low_24h || 0,
+             unitsTraded: coin.units_traded || 0
+           }));
           setCoinList(mappedCoins);
         }
       } catch (e) {
@@ -532,6 +552,30 @@ export default function TradingInterface() {
   }, [currentPriceKRW, selectedCoin]);
 
 
+  // orderbook 데이터 가져오기
+  useEffect(() => {
+    if (!selectedCoin) return;
+    
+    const fetchOrderbook = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/orderbook/${selectedCoin}_KRW`);
+        if (response.ok) {
+          const data = await response.json();
+          setOrderbook(data);
+        }
+      } catch (error) {
+        console.error('호가 데이터 가져오기 실패:', error);
+      }
+    };
+
+    // 초기 로드
+    fetchOrderbook();
+    
+    // 실시간 업데이트 (3초마다)
+    const interval = setInterval(fetchOrderbook, 3000);
+    
+    return () => clearInterval(interval);
+  }, [selectedCoin]);
 
   // 코인 선택 시 상세 화면으로 전환
   const handleCoinSelect = async (coin) => {
@@ -554,7 +598,6 @@ export default function TradingInterface() {
             {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
             </span>
             <span className="text-sm text-gray-500">
-            구독: {wsStats.active_subscriptions || 0}개 | 
             실시간: {Object.keys(realTimeData).length}개 | 
             총 코인: {coinList.length}개
             </span>
@@ -824,7 +867,7 @@ export default function TradingInterface() {
                 
                 {/* 차트 내용 (아코디언) */}
                 {chartPanelExpanded && chartTab === "차트" && (
-                  <div className="p-2" style={{ height: '700px' }}>
+                  <div className="p-2" style={{ height: '550px' }}>
                     {/* 차트 영역 */}
                     <div className="bg-white rounded h-full">
                       <TradingChart 
@@ -858,6 +901,7 @@ export default function TradingInterface() {
                     <CoinInfoPanel 
                       coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} 
                       realTimeData={realTimeData[selectedCoin + '_KRW']}
+                      marketCap={coinList.find(c => c.symbol === selectedCoin)?.marketCap || 0}
                     />
                   </div>
                 )}            
@@ -870,7 +914,9 @@ export default function TradingInterface() {
                 }}>
                   
                   {/* 주문 영역 (2/5) */}
-                  <div className="w-2/3 flex flex-col bg-white px-6 overflow-auto" style={{
+                  <div className="flex-1 w-2/3 flex flex-col bg-white px-6 overflow-auto" 
+                  style={{
+                    minHeight: '800px',
                     paddingTop: chartPanelExpanded ? '16px' : '28px',
                     paddingBottom: '0'
                   }}>
@@ -1081,7 +1127,7 @@ export default function TradingInterface() {
                   </div>
                   
                   {/* 호가창 & 거래정보 영역 (1/5) */}
-                  <div className="w-1/3 flex flex-col bg-white border-l border-gray-200 pt-7">
+                  <div className="w-1/3 flex flex-col bg-white pt-7">
                     {/* 호가창 아코디언 */}
                     <div className="border-b border-gray-200">
                       <button 
@@ -1096,42 +1142,14 @@ export default function TradingInterface() {
                       {/* 호가창 내용 (아코디언) */}
                       {expandedSections.호가 && (
                         <div className="p-4 border-t border-gray-200 bg-gray-50">
-                          {/* 호가창 헤더 */}
-                          <div className="grid grid-cols-3 text-sm font-bold text-center border-b border-gray-200 bg-white h-8 items-center mb-2 rounded">
-                            <div className="text-blue-700">매도수량</div>
-                            <div>호가</div>
-                            <div className="text-red-700">매수수량</div>
-                          </div>
-                          
-                          {/* 호가창 내용 */}
-                          <div className="space-y-1">
-                            {/* 매도 호가 (위에서부터) */}
-                            {[5, 4, 3, 2, 1].map((level) => (
-                              <div key={`ask-${level}`} className="grid grid-cols-3 text-sm text-center py-1 bg-white rounded">
-                                <div className="text-blue-700">-</div>
-                                <div className="text-blue-700 font-semibold">{(currentPriceKRW * (1 + level * 0.001)).toLocaleString()}</div>
-                                <div className="text-blue-700">-</div>
-                              </div>
-                            ))}
-                            
-                            {/* 현재가 구분선 */}
-                            <div className="border-t-2 border-gray-400 py-1 bg-white rounded">
-                              <div className="grid grid-cols-3 text-sm text-center">
-                                <div className="text-gray-600">-</div>
-                                <div className="text-gray-800 font-bold text-lg">{currentPriceKRW?.toLocaleString() || '-'}</div>
-                                <div className="text-gray-600">-</div>
-                              </div>
-                            </div>
-                            
-                            {/* 매수 호가 (아래에서부터) */}
-                            {[1, 2, 3, 4, 5].map((level) => (
-                              <div key={`bid-${level}`} className="grid grid-cols-3 text-sm text-center py-1 bg-white rounded">
-                                <div className="text-red-700">-</div>
-                                <div className="text-red-700 font-semibold">{(currentPriceKRW * (1 - level * 0.001)).toLocaleString() || '-'}</div>
-                                <div className="text-red-700">-</div>
-                              </div>
-                            ))}
-                          </div>
+                          <OrderBook 
+                            selectedCoin={selectedCoin}
+                            realTimeData={realTimeData[selectedCoin + '_KRW']}
+                            orderbook={orderbook}
+                            tickSize={tickSize}
+                            currentPriceKRW={currentPriceKRW}
+                            onPriceSelect={(price) => setOrderPrice(price)}
+                          />
                         </div>
                       )}
                     </div>
@@ -1153,32 +1171,146 @@ export default function TradingInterface() {
                           <div className="space-y-3">
                             {/* 거래정보 내용 */}
                             <div className="text-sm">
+                              {/* 거래량 */}
                               <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold text-gray-700">거래량</span>
-                                <span className="text-gray-600">-</span>
+                                <span className="text-gray-600">
+                                  {(() => {
+                                    // coinList에서 unitsTraded (거래량) 가져오기
+                                    const coin = coinList.find(c => c.symbol === selectedCoin);
+                                    if (coin?.unitsTraded && coin.unitsTraded > 0) {
+                                      const volume = coin.unitsTraded;
+                                      // 적절한 단위로 변환
+                                      if (volume >= 1000000) {
+                                        return (volume / 1000000).toFixed(2) + ' M';
+                                      } else if (volume >= 1000) {
+                                        return (volume / 1000).toFixed(2) + ' K';
+                                      } else {
+                                        return volume.toLocaleString();
+                                      }
+                                    }
+                                    // 백업: realTimeData에서 volume 확인
+                                    const rt = realTimeData[selectedCoin + '_KRW'];
+                                    if (rt?.volume) {
+                                      const volume = rt.volume;
+                                      if (volume >= 1000000) {
+                                        return (volume / 1000000).toFixed(2) + ' M';
+                                      } else if (volume >= 1000) {
+                                        return (volume / 1000).toFixed(2) + ' K';
+                                      } else {
+                                        return volume.toLocaleString();
+                                      }
+                                    }
+                                    return '-';
+                                  })()}
+                                </span>
                               </div>
+                              
+                              {/* 거래대금 */}
                               <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold text-gray-700">거래대금</span>
-                                <span className="text-gray-600">-</span>
+                                <span className="text-gray-600">
+                                  {(() => {
+                                    const rt = realTimeData[selectedCoin + '_KRW'];
+                                    if (rt?.value) {
+                                      return parseInt(rt.value).toLocaleString();
+                                    }
+                                    return '-';
+                                  })()}
+                                </span>
                               </div>
                               <div className="text-xs text-gray-400 mb-3">(최근24시간)</div>
                               
+                              {/* 24h 최고가 */}
                               <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold text-gray-700">24h 최고</span>
-                                <span className="text-red-500">-</span>
-                              </div>
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="font-semibold text-gray-700">24h 최저</span>
-                                <span className="text-blue-500">-</span>
+                                <span className="text-red-500">
+                                  {(() => {
+                                    const coin = coinList.find(c => c.symbol === selectedCoin);
+                                    if (coin?.high24h) {
+                                      return coin.high24h.toLocaleString();
+                                    }
+                                    const rt = realTimeData[selectedCoin + '_KRW'];
+                                    if (rt?.highPrice) {
+                                      return rt.highPrice.toLocaleString();
+                                    }
+                                    // 현재가 기준으로 추정 (실제로는 API에서 받아와야 함)
+                                    if (rt?.closePrice && rt?.chgRate) {
+                                      const estimatedHigh = rt.closePrice * (1 + Math.abs(rt.chgRate) / 100);
+                                      return Math.round(estimatedHigh).toLocaleString();
+                                    }
+                                    return '-';
+                                  })()}
+                                </span>
                               </div>
                               
+                              {/* 24h 최저가 */}
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="font-semibold text-gray-700">24h 최저</span>
+                                <span className="text-blue-500">
+                                  {(() => {
+                                    const coin = coinList.find(c => c.symbol === selectedCoin);
+                                    if (coin?.low24h) {
+                                      return coin.low24h.toLocaleString();
+                                    }
+                                    const rt = realTimeData[selectedCoin + '_KRW'];
+                                    if (rt?.lowPrice) {
+                                      return rt.lowPrice.toLocaleString();
+                                    }
+                                    // 현재가 기준으로 추정 (실제로는 API에서 받아와야 함)
+                                    if (rt?.closePrice && rt?.chgRate) {
+                                      const estimatedLow = rt.closePrice * (1 - Math.abs(rt.chgRate) / 100);
+                                      return Math.round(estimatedLow).toLocaleString();
+                                    }
+                                    return '-';
+                                  })()}
+                                </span>
+                              </div>
+                              
+                              {/* 시가총액 */}
                               <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold text-gray-700">시가총액</span>
-                                <span className="text-gray-600">-</span>
+                                <span className="text-gray-600">
+                                  {(() => {
+                                    const coin = coinList.find(c => c.symbol === selectedCoin);
+                                    if (coin?.marketCap && coin.marketCap > 0) {
+                                      if (coin.marketCap >= 1000000000) {
+                                        return (coin.marketCap / 1000000000).toFixed(2) + ' B';
+                                      } else if (coin.marketCap >= 1000000) {
+                                        return (coin.marketCap / 1000000).toFixed(1) + ' M';
+                                      } else if (coin.marketCap >= 1000) {
+                                        return (coin.marketCap / 1000).toFixed(1) + ' K';
+                                      } else {
+                                        return coin.marketCap.toLocaleString();
+                                      }
+                                    }
+                                    return '-';
+                                  })()}
+                                </span>
                               </div>
+                              
+                              {/* 유통량 */}
                               <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold text-gray-700">유통량</span>
-                                <span className="text-gray-600">-</span>
+                                <span className="text-gray-600">
+                                  {(() => {
+                                    const coin = coinList.find(c => c.symbol === selectedCoin);
+                                    if (coin?.circulatingSupply && coin.circulatingSupply > 0) {
+                                      const supply = coin.circulatingSupply;
+                                      // 정확한 단위 변환 및 표시
+                                      if (supply >= 1000000000) {
+                                        return (supply / 1000000000).toFixed(2) + ' B';
+                                      } else if (supply >= 1000000) {
+                                        return (supply / 1000000).toFixed(2) + ' M';
+                                      } else if (supply >= 1000) {
+                                        return (supply / 1000).toFixed(2) + ' K';
+                                      } else {
+                                        return supply.toLocaleString();
+                                      }
+                                    }
+                                    return '-';
+                                  })()}
+                                </span>
                               </div>
                             </div>
                           </div>
