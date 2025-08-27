@@ -3,7 +3,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 from pydantic import BaseModel
 from typing import List
-from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es, fetch_buy_logs_aggregation, get_user_krw
+from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es, fetch_buy_logs_aggregation, get_user_krw, get_withdraws
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
 import logging
@@ -258,3 +258,12 @@ def get_deposit_logs(user_id: int):
         logger.error(f"krw-logs error: {e}")
         raise HTTPException(status_code=500, detail="get krw-logs error")
     
+# 출금신청 로그
+@router.get("/withdraws")
+def get_withdraws_logs():
+    try:
+        result = get_withdraws()
+        return result
+    except Exception as e:
+        logger.error(f"withdraw-logs error: {e}")
+        raise HTTPException(status_code=500, detail="get withdraw-logs error")

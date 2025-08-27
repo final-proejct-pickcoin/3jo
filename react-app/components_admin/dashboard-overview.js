@@ -82,6 +82,7 @@ export default function DashboardOverview({ isDarkMode }) {
   const [userTrend, setUserTrend] = useState([]);  // { date, count } 데이터 배열
   const [tradingData, setTradingData] = useState([]);
   const [latestVolume, setLatestVolume] = useState(0);
+  const [withDrawLogs, setWithDrawLogs] = useState([]);
 
   const [latestTotal, setLatestTotal] = useState(0);
   const INTERVAL_OPTIONS = [
@@ -115,14 +116,15 @@ export default function DashboardOverview({ isDarkMode }) {
     setTradingEnabled(!tradingEnabled);
   };
 
+  const getWithdrawLogs = async () => {
+    const res = await axios.get("http://localhost:8000/withdraws");
+    console.log(res.data);
+    setWithDrawLogs(res.data)
+  }
+
   const handleWithdrawalApproval = (id, action) => {
     console.log(`Withdrawal ${id} ${action}ed`);
     // 실제로는 API 호출
-  };
-
-  const handleKycReview = (id) => {
-    console.log(`KYC ${id} review`);
-    // 실제로는 KYC 상세 페이지로 이동
   };
 
   // 대시보드 상단 정보 가져오기
@@ -188,6 +190,7 @@ export default function DashboardOverview({ isDarkMode }) {
       }
     });
     
+    getWithdrawLogs();
     getAdminInfo(token);
   },[interval, txInterval])
 
@@ -468,13 +471,14 @@ export default function DashboardOverview({ isDarkMode }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 키바나 대시보드 테스트 */}
-        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+        
+        {/* <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader className="flex justify-between items-center">
             <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
               <Users className="h-5 w-5 mr-2 text-green-500" />
               기간별 사용자 수 추이
             </CardTitle>
-            {/* 기존의 집계 기준 선택은 iframe 임베드 시 외부에서 제어 불가하므로 비워두거나 제거 가능 */}
+            
           </CardHeader>
           <CardContent>
             <div style={{ width: '100%', height: 320 }}>
@@ -489,7 +493,7 @@ export default function DashboardOverview({ isDarkMode }) {
               />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
         
         {/* 총 사용자 추이 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
@@ -557,14 +561,14 @@ export default function DashboardOverview({ isDarkMode }) {
               }`}
             >
               <Clock className="h-5 w-5 mr-2 text-orange-500" />
-              최근 1분
+              출금 요청
             </CardTitle>
             <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              승인​이 필요한 출금요청 ({stats.pendingWithdrawals}건)
+              승인​이 필요한 출금요청 ({withDrawLogs.length}건)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {pendingWithdrawals.map((withdrawal) => (
+            {withDrawLogs.map((withdrawal) => (
               <div
                 key={withdrawal.id}
                 className={`flex items-center justify-between p-3 ${
@@ -573,10 +577,10 @@ export default function DashboardOverview({ isDarkMode }) {
               >
                 <div>
                   <p className={`font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                    {withdrawal.user}
+                    {withdrawal.email}
                   </p>
                   <p className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    {withdrawal.amount} &bull; {withdrawal.time}
+                    {withdrawal.amount}원 &bull; {withdrawal.time.slice(0, 19).replace('T', ' ')}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
