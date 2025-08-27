@@ -16,7 +16,7 @@ import {
   ArrowDownRight
 } from "lucide-react"
 
-export const DepositManager = () => {
+const DepositManager = () => {
   const [depositAmount, setDepositAmount] = useState("")
   const [withdrawalAmount, setWithdrawalAmount] = useState("")
   const [activeTab, setActiveTab] = useState("deposit")
@@ -534,3 +534,5 @@ export const DepositManager = () => {
     </div>
   )
 }
+
+export default DepositManager
