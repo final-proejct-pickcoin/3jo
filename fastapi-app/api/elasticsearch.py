@@ -1,12 +1,69 @@
 from elasticsearch import Elasticsearch
 import time
 import asyncio
+import os
+import httpx
 
 # ES 연결 객체 생성 (환경/보안에 맞게 설정)
 es = Elasticsearch(
     hosts=["http://elasticsearch:9200"],  # docker 환경/실제 환경에 맞게 수정
     request_timeout=30
 )
+
+async def wait_for_kibana(timeout=120, interval=3):
+    """Kibana가 준비될 때까지 대기 (/api/status 200)"""
+    kibana_base = os.getenv("KIBANA_URL", "http://kibana:5601")
+    status_url = f"{kibana_base}/api/status"
+    start = asyncio.get_event_loop().time()
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        while True:
+            try:
+                r = await client.get(status_url, headers={"kbn-xsrf": "true"})
+                if r.status_code == 200:
+                    print("[kibana] ready")
+                    return True
+            except Exception as e:
+                print(f"[kibana] wait... {type(e).__name__}: {e}")
+            if asyncio.get_event_loop().time() - start > timeout:
+                raise TimeoutError("Kibana not ready after timeout")
+            await asyncio.sleep(interval)
+
+async def create_kibana_index_patterns():
+    """
+    Kibana Data View(=Index Pattern) 자동 생성
+    - auth 묶음: login/logout/register
+    - trade 묶음: buy/sell/trade/krw
+    시간 필드는 @timestamp (현재 매핑과 일치)
+    """
+    kibana_base = os.getenv("KIBANA_URL", "http://kibana:5601")
+    api_url = f"{kibana_base}/api/saved_objects/index-pattern"
+    headers = {"kbn-xsrf": "true", "Content-Type": "application/json"}
+
+    patterns = [
+        {"title": "auth-logs",  "pattern": "login-logs,logout-logs,register-logs",   "timeFieldName": "@timestamp"},
+        {"title": "trade-logs", "pattern": "buy-logs,sell-logs,trade-logs,krw-logs", "timeFieldName": "@timestamp"},
+        # {"title": "all-logs",   "pattern": "*-logs",                                 "timeFieldName": "@timestamp"},
+    ]
+
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        for p in patterns:
+            payload = {"attributes": {"title": p["pattern"], "timeFieldName": p["timeFieldName"]}}
+            try:
+                resp = await client.post(api_url, json=payload, headers=headers)
+                if resp.status_code in (200, 201):
+                    print(f"[kibana] created data view: {p['title']} ({p['pattern']})")
+                elif resp.status_code == 409:
+                    print(f"[kibana] already exists: {p['title']} ({p['pattern']})")
+                else:
+                    print(f"[kibana] failed {p['title']} - {resp.status_code}: {resp.text}")
+            except Exception as e:
+                print(f"[kibana] error {p['title']}: {e}")
+
+# 하위호환용 래퍼 (main.py에서 이 이름으로 import/호출)
+async def create_kibana_index_pattern():
+    await wait_for_kibana()
+    await create_kibana_index_patterns()
+
 
 # ES 실행될 때까지 대기
 async def wait_for_es(timeout=60, interval=1):
