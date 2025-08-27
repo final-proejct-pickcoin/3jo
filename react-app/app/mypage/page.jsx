@@ -11,10 +11,10 @@ export default function MyPage() {
       <Navigation />
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="portfolio" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          {/* <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="portfolio">내 자산</TabsTrigger>
             <TabsTrigger value="watchlist">관심코인</TabsTrigger>
-          </TabsList>
+          </TabsList> */}
           <TabsContent value="portfolio" className="space-y-6">
             <PortfolioManager />
           </TabsContent>

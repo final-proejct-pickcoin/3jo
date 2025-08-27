@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Search } from "lucide-react";
 import axios from "axios";
 import TradingChart from "./trading-chart.jsx";
+import OrderBook from "./trading-hoga.jsx";
+import { CurrencyToggle } from "@/components/currency-toggle"
+import CoinInfoPanel from "@/components/trading-coininfo"  // 이 줄 추가
 
 function StarIcon({ filled = false, size = 18, className = "" }) {
   const d = "M12 17.27 18.18 21 16.54 13.97 22 9.24 14.81 8.62 12 2 9.19 8.63 2 9.24 7.46 13.97 5.82 21 12 17.27Z";
@@ -45,7 +48,8 @@ export default function TradingInterface() {
     last_update: null
   });
 
-
+  // 호가창 표시 상태
+  const [showOrderBook, setShowOrderBook] = useState(false);
 
   // 주문 가격/수량
   const [orderPrice, setOrderPrice] = useState(0);
@@ -587,10 +591,6 @@ export default function TradingInterface() {
                       className="h-10 flex-1 border rounded px-2"
                       autoComplete="off"
                     />
-                    <svg className="h-4 w-4 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
                   </div>
                   
                   {/* 원화/보유/관심 탭 */}
@@ -617,16 +617,22 @@ export default function TradingInterface() {
                 </CardHeader>
                 <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
                   {/* 컬럼 헤더 */}
-                  <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 px-2 py-2 text-sm font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10">
-                    <div className="text-center gap-3">
+                  <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 px-2 py-2 text-sm font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10" style={{ 
+                    height: '40px', 
+                    minHeight: '40px', 
+                    maxHeight: '40px',
+                    flexShrink: 0,
+                    overflow: 'hidden'
+                  }}>
+                    <div className="text-center gap-3" style={{ lineHeight: '1', verticalAlign: 'baseline' }}>
                       {/* 관심 별 아이콘 */}
                     </div>
-                    <div className="flex items-center cursor-pointer text-left" onClick={() => handleSort('name')}>
+                    <div className="flex items-center cursor-pointer text-left" onClick={() => handleSort('name')} style={{ lineHeight: '1', verticalAlign: 'baseline' }}>
                       한글명
                       {sortKey === 'name' ? (
-                        <span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                        <span className="text-[10px] text-blue-600" style={{ lineHeight: '1', verticalAlign: 'baseline' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
                       ) : (
-                        <span className="text-[10px] text-gray-300">△▽</span>
+                        <span className="text-[10px] text-gray-300" style={{ lineHeight: '1', verticalAlign: 'baseline' }}>△▽</span>
                       )}
                     </div>
                     <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('price')}>
@@ -654,7 +660,10 @@ export default function TradingInterface() {
                       )}
                     </div>
                   </div>
-                  <div className="overflow-y-auto flex-1 min-h-0" style={{ height: combinedHeight }}>
+                  <div className="overflow-y-auto flex-1 min-h-0" style={{ 
+                    height: combinedHeight,
+                    flexShrink: 0
+                  }}>
                     {coinListLoading ? (
                       <div className="p-4 text-center text-gray-500">로딩 중...</div>
                     ) : filteredCoinList.length === 0 ? (
@@ -666,9 +675,20 @@ export default function TradingInterface() {
                           onClick={() => handleCoinSelect(coin)}
                           className={`grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-3 p-1 text-sm cursor-pointer border-b items-center
                             ${selectedCoin === coin.symbol ? 'bg-blue-50 border-blue-200' : ''}`}
+                          style={{ 
+                            height: '48px', 
+                            minHeight: '48px', 
+                            maxHeight: '48px',
+                            flexShrink: 0,
+                            overflow: 'hidden'
+                          }}
                         >
                           {/* 관심 별 아이콘 */}
-                          <div className="flex justify-center">
+                          <div className="flex justify-center items-center" style={{ 
+                            height: '100%',
+                            flexShrink: 0,
+                            overflow: 'hidden'
+                          }}>
                             <button
                               onClick={(e) => toggleFavorite(coin.symbol, e)}
                               className="p-1 hover:bg-gray-100 rounded transition-colors"
@@ -681,49 +701,72 @@ export default function TradingInterface() {
                             </button>
                           </div>
                           {/* 한글명/심볼 */}
-                          <div className="flex items-center gap-1 text-left">
-                            <div>
+                          <div className="flex items-center gap-1 text-left" style={{ 
+                            height: '100%',
+                            flexShrink: 0,
+                            overflow: 'hidden'
+                          }}>
+                            <div className="flex flex-col justify-center" style={{ width: '100%' }}>
                               <div
                                 className={`font-semibold text-sm ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                                style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}
                               >
                                 {coin.name}
                                 {realTimeData[coin.symbol + '_KRW'] && (
-                                  <span className="ml-1 text-green-500 text-[8px]">●</span>
+                                  <span className="ml-1 text-green-500 text-[8px]" style={{ lineHeight: '1', verticalAlign: 'baseline' }}>●</span>
                                 )}
                               </div>
-                              <div className="text-muted-foreground text-sm">{coin.symbol}/KRW</div>
+                              <div className="text-muted-foreground text-sm" style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>{coin.symbol}/KRW</div>
                             </div>
                           </div>
                           {/* 현재가 */}
                           <div
-                            className={`text-right font-mono font-semibold text-lg ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                            className={`text-right font-mono font-semibold text-lg flex items-center justify-end ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                            style={{ 
+                              height: '100%',
+                              flexShrink: 0,
+                              overflow: 'hidden'
+                            }}
                           >
-                            {(() => {
-                              const realtime = realTimeData[coin.symbol + '_KRW']?.closePrice;
-                              let price = typeof realtime !== 'undefined' ? Number(realtime) : coin.price;
-                              if (typeof price !== 'number' || isNaN(price)) price = 0;
-                              if (price < 10) {
-                                return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 });
-                              } else if (price < 100) {
-                                return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                              } else {
-                                return Math.floor(price).toLocaleString();
-                              }
-                            })()}
+                            <span style={{ lineHeight: '1', verticalAlign: 'baseline' }}>
+                              {(() => {
+                                const realtime = realTimeData[coin.symbol + '_KRW']?.closePrice;
+                                let price = typeof realtime !== 'undefined' ? Number(realtime) : coin.price;
+                                if (typeof price !== 'number' || isNaN(price)) price = 0;
+                                if (price < 10) {
+                                  return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 });
+                                } else if (price < 100) {
+                                  return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                } else {
+                                  return Math.floor(price).toLocaleString();
+                                }
+                              })()}
+                            </span>
                           </div>
                           {/* 전일대비 */}
-                          <div className={`text-right font-semibold ${coin.trend === 'up' ? 'text-red-600' : 'text-blue-600'}`}>
-                            <div>{coin.trend === 'up' ? '+' : ''}{coin.change !== 0 ? coin.change.toFixed(2) : '0.00'}%</div>
-                            <div className="text-sm">
+                          <div className={`text-right font-semibold flex flex-col justify-center ${coin.trend === 'up' ? 'text-red-600' : 'text-blue-600'}`} style={{ 
+                            height: '100%',
+                            flexShrink: 0,
+                            overflow: 'hidden'
+                          }}>
+                            <div style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>{coin.trend === 'up' ? '+' : ''}{coin.change !== 0 ? coin.change.toFixed(2) : '0.00'}%</div>
+                            <div className="text-sm" style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>
                               {coin.changeAmount > 0 ? '+' : ''}
                               {coin.changeAmount !== 0 ? coin.changeAmount.toLocaleString() : '0'}
                             </div>
                           </div>
                           {/* 거래대금 */}
                           <div
-                            className={`text-right text-sm ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                            className={`text-right text-sm flex items-center justify-end ${selectedCoin === coin.symbol ? 'text-black dark:text-black' : ''}`}
+                            style={{ 
+                              height: '100%',
+                              flexShrink: 0,
+                              overflow: 'hidden'
+                            }}
                           >
-                            {coin.volume !== '' ? coin.volume : '-'}
+                            <span style={{ lineHeight: '1', verticalAlign: 'baseline' }}>
+                              {coin.volume !== '' ? coin.volume : '-'}
+                            </span>
                           </div>
                         </div>
                       ))
@@ -810,54 +853,14 @@ export default function TradingInterface() {
                 
                 {/* 코인정보 내용 (아코디언) */}
                 {chartPanelExpanded && chartTab === "코인정보" && (
-                  <div className="bg-gray-100 p-4 border-t border-gray-200" style={{ height: '600px' }}>
-                    {/* 코인 정보 */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">B</span>
-                      </div>
-                      <div>
-                        <div className="text-lg font-semibold">비트코인 / BTC</div>
-                        <div className="text-sm text-gray-500">BTC/KRW</div>
-                      </div>
-                    </div>
-                    
-                    {/* 현재가 및 변동 */}
-                    <div className="mb-4">
-                      <div className="text-2xl font-bold mb-2">
-                        {currentPriceKRW.toLocaleString()} 원
-                      </div>
-                      <div className="text-blue-600 font-medium">
-                        -537,000원 (-0.34%)
-                      </div>
-                    </div>
-                    
-                    {/* 차트 영역 */}
-                    <div className="bg-white rounded" style={{ height: 'calc(100% - 120px)' }}>
-                      <TradingChart 
-                        symbol={`${selectedCoin}/KRW`}
-                        koreanName={selectedCoin === "BTC" ? "비트코인" : selectedCoin}
-                        height={500}
-                        theme="light"
-                        currentPrice={realTimeData[selectedCoin]?.close_price || 0}
-                        initialTimeframe="1h"
-                        onPriceUpdate={(price) => {
-                          // 실시간 가격 업데이트
-                          if (price > 0) {
-                            setRealTimeData(prev => ({
-                              ...prev,
-                              [selectedCoin]: {
-                                ...prev[selectedCoin],
-                                close_price: price
-                              }
-                            }));
-                          }
-                        }}
-                      />
-                    </div>
+                  <div className="p-4 " style={{ height: '900px' }}>
+                    {/* CoinInfoPanel 컴포넌트 사용 */}
+                    <CoinInfoPanel 
+                      coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]} 
+                      realTimeData={realTimeData[selectedCoin + '_KRW']}
+                    />
                   </div>
-                )}
-              </div>
+                )}            
               
               {/* 하단: 오더북/정보패널/주문 */}
               {detailView === "chart" && (
@@ -865,43 +868,6 @@ export default function TradingInterface() {
                   height: chartPanelExpanded ? 600 : 800, 
                   marginTop: chartPanelExpanded ? '170px' : '20px' 
                 }}>
-                  {/* 오더북 및 정보 패널 (1/5) */}
-                  {/* <div className="flex flex-col w-1/5 border-r border-gray-200 bg-white"> */}
-                    {/* 오더북 */}
-                    {/* <div className="flex flex-col border-b border-gray-200 bg-white">
-                      <div className="grid grid-cols-3 text-sm font-bold text-center border-b bg-gray-50 h-8 items-center">
-                        <div className="text-blue-700">매도수량</div>
-                        <div>호가</div>
-                        <div className="text-red-700">매수수량</div>
-                      </div>
-                      <div className="flex-1 p-4 text-center text-gray-400">
-                        오더북 영역
-                      </div>
-                    </div> */}
-                    
-                    {/* 정보 패널 */}
-                    {/* <div className="flex flex-col px-3 py-2 text-sm justify-between">
-                      <div>
-                        <div className="mb-2">
-                          <span className="font-semibold">거래량</span>
-                          <span className="float-right">-</span>
-                        </div>
-                        <div className="mb-2">
-                          <span className="font-semibold">거래대금</span>
-                          <span className="float-right">-</span>
-                          <div className="text-[10px] text-gray-400">(최근24시간)</div>
-                        </div>
-                        <div className="mb-2">
-                          <span className="font-semibold">24h 최고</span>
-                          <span className="float-right text-red-500">-</span>
-                        </div>
-                        <div className="mb-2">
-                          <span className="font-semibold">24h 최저</span>
-                          <span className="float-right text-blue-500">-</span>
-                        </div>
-                      </div>
-                    </div> */}
-                  {/* </div> */}
                   
                   {/* 주문 영역 (2/5) */}
                   <div className="w-2/3 flex flex-col bg-white px-6 overflow-auto" style={{
@@ -1225,7 +1191,7 @@ export default function TradingInterface() {
             </div>
           </div>
         </div>
-      
+      </div>
     </div>
   );
 }

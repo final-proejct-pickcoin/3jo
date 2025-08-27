@@ -116,10 +116,6 @@ export const MainDashboard = () => {
             <TabsContent value="mypage">
                <div className="container mx-auto px-4 py-6">
                  <Tabs defaultValue="portfolio" className="space-y-6">
-                   <TabsList className="flex justify-center w-full max-w-md mx-auto">
-                     <TabsTrigger value="portfolio" className="flex-1">내 자산</TabsTrigger>
-                     <TabsTrigger value="watchlist" className="flex-1">관심코인</TabsTrigger>
-                   </TabsList>
                   <TabsContent value="portfolio" className="space-y-6">
                     <PortfolioManager />
                   </TabsContent>
