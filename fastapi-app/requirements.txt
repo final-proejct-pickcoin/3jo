@@ -31,3 +31,5 @@ google-generativeai
 sqlalchemy
 APScheduler==3.10.4
 
+requests
+httpx>=0.24

@@ -51,6 +51,9 @@ import threading
 import time
 import os
 
+import asyncio
+from zoneinfo import ZoneInfo
+
 
 load_dotenv()
 
@@ -96,11 +99,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 templates = Jinja2Templates(directory="templates")
-
-@app.post("/debug/crawl-now")
-def debug_crawl_now(limit: int = 20):
-    saved = crawl_and_save(limit=limit)
-    return {"saved": saved}
 
 
 # --- DB Healthcheck (임시) ---
@@ -179,7 +177,7 @@ def init_search_background():
         while time.time() - start < max_wait:
             try:
                 # 내부에서 ping/헬스체크 수행 (실패 시 예외)
-                wait_for_es(timeout=interval, interval=1)
+                asyncio.run(wait_for_es(timeout=interval, interval=1))
                 print("[es] wait_for_es OK")
                 break
             except Exception as e:
@@ -200,10 +198,17 @@ def init_search_background():
         print(f"[es] not ready within {max_wait}s; skip initializing indices (app continues)")
     except Exception as e:
         print(f"[es] init_search_background failed: {type(e).__name__} - {e}")
+        
 
 
 # 1) 스케줄러 인스턴스 (서울 타임존)
-scheduler = BackgroundScheduler(timezone="Asia/Seoul")
+scheduler = BackgroundScheduler(
+    timezone="Asia/Seoul",
+    job_defaults={
+        "coalesce": True,           # 밀린 실행은 1회로 합치기
+        "misfire_grace_time": 3600  # 1시간 이내 놓친 실행 허용
+    }
+)
 
 def job_news_refresh():
     """
@@ -235,32 +240,42 @@ def job_news_refresh():
 
 # 2) 앱 시작 시 스케줄러 시작 + ES 초기화(비차단)
 @app.on_event("startup")
-def start_scheduler():
-    create_kibana_index_pattern()
+def start_scheduler():    
     try:
         # ✅ ES 초기화는 앱을 막지 않도록 "백그라운드 스레드"에서 수행
         threading.Thread(target=init_search_background, daemon=True).start()
+
+        # ✅ Kibana 데이터뷰 자동 생성 (비차단)
+        def _init_kibana():
+            try:
+                asyncio.run(create_kibana_index_pattern())
+            except Exception as e:
+                print(f"[kibana] init failed: {e}")
+        threading.Thread(target=_init_kibana, daemon=True).start()
 
         # ✅ 스케줄러 기동 (기존 로직 유지)
         if not scheduler.running:
             scheduler.start()
 
         # 🔁 주기 작업 등록 (원래 쓰던 주기 유지: 예시는 8시간)
-        scheduler.add_job(
-            job_news_refresh,
-            trigger="interval",
-            hours=8,                 # ← 필요 시 minutes=10 같은 테스트 주기로 변경 가능
-            id="news_refresh_hourly",
-            replace_existing=True,
-        )
+        if scheduler.get_job("news_refresh_hourly") is None:   # ← 중복등록 방지
+            scheduler.add_job(
+                job_news_refresh,
+                trigger="interval",
+                hours=8,                 # ← 8시간마다 실행
+                id="news_refresh_hourly",
+                replace_existing=True,
+            )
 
         # 🚀 서버 기동 직후 1회 즉시 실행 — 초기 데이터 채우기 용
-        scheduler.add_job(
-            job_news_refresh,
-            run_date=datetime.now(),
-            id="news_refresh_boot",
-            replace_existing=True
-        )
+        if scheduler.get_job("news_refresh_boot") is None:     # ← 중복등록 방지
+            scheduler.add_job(
+                job_news_refresh,
+                trigger="date",  # ← 단발성 실행을 위해 반드시 필요
+                run_date=datetime.now(ZoneInfo("Asia/Seoul")),  # ← 타임존 포함
+                id="news_refresh_boot",
+                replace_existing=True
+            )
 
         print("[scheduler] started (hourly news refresh)")
     except Exception:
