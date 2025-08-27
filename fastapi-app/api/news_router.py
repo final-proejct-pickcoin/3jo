@@ -144,9 +144,10 @@ COIN_REGEX = re.compile(
 def _first_sentence(text: str, limit=140):
     if not text:
         return ""
-    # 한/영 마침표 기준으로 1문장, 너무 길면 자름
-    s = re.split(r"(?<=[.!?]|다\.)\s+", text.strip())
-    cand = s[0] if s else text
+    t = text.strip()
+    # 첫 문장: 마침표/물음표/느낌표 또는 '다.'로 끝나는 구간을 1개 캡처
+    m = re.search(r'(.+?(?:[.!?]|다\.))(?:\s|$)', t, flags=re.S)
+    cand = m.group(1) if m else t
     return (cand[:limit] + "…") if len(cand) > limit else cand
 
 def _heuristic_summary(rows, max_bullets=5, max_sources=5):
@@ -210,7 +211,8 @@ def news_summary(limit: int = 20):
 
     # 3) LLM 준비 여부
     api_key = os.getenv("GEMINI_API_KEY")
-    llm_ready = bool(api_key and genai is not None)
+    use_llm = os.getenv("NEWS_SUMMARY_USE_LLM", "0") == "1"  # ← 추가: 환경변수 스위치
+    llm_ready = bool(use_llm and api_key and genai is not None)
 
     # 4) LLM 시도 (JSON만 반환하도록 지시 + 파서 보강)
     if llm_ready and docs:
