@@ -47,6 +47,10 @@ from google.cloud import speech # 인증 확인을 위해 speech 클라이언트
 from db.mysql import ping
 from fastapi import APIRouter
 
+import threading
+import time
+import os
+
 
 load_dotenv()
 
@@ -151,6 +155,53 @@ app.include_router(ws_router)
 app.include_router(bithumb_router)
 
 
+# Elasticsearch 초기화: 준비될 때까지 백그라운드에서 재시도 (앱 기동은 가로막지 않음)
+# 환경변수:
+#   ES_ENABLED=0        → ES 초기화 스킵 (기본 1)
+#   ES_MAX_WAIT=120     → 최대 대기 초(기본 120)
+#   ES_WAIT_INTERVAL=3  → 재시도 간격 초(기본 3)
+# ─────────────────────────────────────────────────────────────────────────────
+def init_search_background():
+    try:
+        if os.getenv("ES_ENABLED", "1") != "1":
+            print("[es] disabled by ES_ENABLED=0")
+            return
+
+        # api.elasticsearch 모듈의 헬퍼 사용 (프로젝트에 이미 있는 모듈)
+        from api.elasticsearch import create_indices_if_not_exist, wait_for_es
+
+        max_wait = int(os.getenv("ES_MAX_WAIT", "120"))
+        interval = int(os.getenv("ES_WAIT_INTERVAL", "3"))
+
+        # 1) ES가 응답할 때까지 wait_for_es를 짧게 여러 번 시도
+        print(f"[es] waiting for ES (max_wait={max_wait}s, interval={interval}s)…")
+        start = time.time()
+        while time.time() - start < max_wait:
+            try:
+                # 내부에서 ping/헬스체크 수행 (실패 시 예외)
+                wait_for_es(timeout=interval, interval=1)
+                print("[es] wait_for_es OK")
+                break
+            except Exception as e:
+                print(f"[es] wait_for_es retry: {e}")
+                time.sleep(interval)
+
+        # 2) 인덱스 생성 (여러 번 재시도)
+        deadline = time.time() + max_wait
+        while time.time() < deadline:
+            try:
+                create_indices_if_not_exist()
+                print("[es] indices ready")
+                return
+            except Exception as e:
+                print(f"[es] create_indices retry in {interval}s: {type(e).__name__} - {e}")
+                time.sleep(interval)
+
+        print(f"[es] not ready within {max_wait}s; skip initializing indices (app continues)")
+    except Exception as e:
+        print(f"[es] init_search_background failed: {type(e).__name__} - {e}")
+
+
 # 1) 스케줄러 인스턴스 (서울 타임존)
 scheduler = BackgroundScheduler(timezone="Asia/Seoul")
 
@@ -182,31 +233,38 @@ def job_news_refresh():
         print("[scheduler] ERROR in job_news_refresh")
         traceback.print_exc()
 
-# 2) 앱 시작 시 스케줄러 시작 + 잡 등록
+# 2) 앱 시작 시 스케줄러 시작 + ES 초기화(비차단)
 @app.on_event("startup")
-async def start_scheduler():
-
-    # 엘라스틱 서치 인덱스 생성
-    await wait_for_es(timeout=90,  interval=2)
-    create_indices_if_not_exist()
-
+def start_scheduler():
     try:
+        # ✅ ES 초기화는 앱을 막지 않도록 "백그라운드 스레드"에서 수행
+        threading.Thread(target=init_search_background, daemon=True).start()
+
+        # ✅ 스케줄러 기동 (기존 로직 유지)
         if not scheduler.running:
             scheduler.start()
-        # 매 3시간 주기 실행
+
+        # 🔁 주기 작업 등록 (원래 쓰던 주기 유지: 예시는 8시간)
         scheduler.add_job(
             job_news_refresh,
             trigger="interval",
-            hours = 3, 
+            hours=8,                 # ← 필요 시 minutes=10 같은 테스트 주기로 변경 가능
             id="news_refresh_hourly",
             replace_existing=True,
         )
-        # (옵션) 서버 기동 직후 1회 즉시 실행 — 초기 데이터 채우기 용
-        scheduler.add_job(job_news_refresh, run_date=datetime.now(), id="news_refresh_boot", replace_existing=True)
+
+        # 🚀 서버 기동 직후 1회 즉시 실행 — 초기 데이터 채우기 용
+        scheduler.add_job(
+            job_news_refresh,
+            run_date=datetime.now(),
+            id="news_refresh_boot",
+            replace_existing=True
+        )
+
         print("[scheduler] started (hourly news refresh)")
     except Exception:
         import traceback
-        print("[scheduler] failed to start")
+        print("[startup] failed")
         traceback.print_exc()
 
 # 3) 앱 종료 시 스케줄러 정리
