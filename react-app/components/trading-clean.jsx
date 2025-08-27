@@ -367,184 +367,6 @@ let symbolToIdCache = {};
 let cacheExpiry = 0;
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24시간
 
-/*
-// 자동 심볼-ID 매핑 캐시
-
-
-
-// 코인 상세 정보를 가져오는 함수 (빗썸 API)
-
-
-
-
-// 코인 아이콘 색상
-const getCoinIconColor = (symbol) => {
-  const colors = {
-  'BTC': 'bg-gray-400',
-  'ETH': 'bg-gray-400',
-  'XRP': 'bg-gray-400',
-  'ADA': 'bg-gray-400',
-  'SOL': 'bg-gray-400',
-  'DOGE': 'bg-gray-400'
-  };
-  return colors[symbol] || 'bg-gray-500';
-};
-
-// CoinInfoPanel 컴포넌트
-
-
-const fetchCoinMarketCapData = async (symbol) => {
-  try {
-    // CoinMarketCap API 키 없이 사용할 수 있는 공개 데이터
-    const response = await fetch(`https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${symbol}`, {
-      headers: {
-        'X-CMC_PRO_API_KEY': 'demo-key' // 실제 키가 있다면 교체
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data.data[symbol];
-    }
-    return null;
-  } catch (error) {
-    console.error('CoinMarketCap 데이터 조회 실패:', error);
-    return null;
-  }
-};
-
-// CoinCap API로 시가총액 순위와 변동률 보강
-const fetchCoinCapData = async (symbol) => {
-  const id = symbolToCoinCapId[symbol.toUpperCase()];
-  if (!id) return {};
-  try {
-    const response = await fetch(`https://api.coincap.io/v2/assets/${id}`);
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        name: data.data.name,
-        symbol: data.data.symbol,
-        market_cap_rank: parseInt(data.data.rank) || 100,
-        price_change_24h: parseFloat(data.data.changePercent24Hr) || 0,
-        market_cap: parseFloat(data.data.marketCapUsd) * 1300 || 0, // USD to KRW 환산
-        volume_24h: parseFloat(data.data.volumeUsd24Hr) * 1300 || 0,
-        current_price: parseFloat(data.data.priceUsd) * 1300 || 0,
-        circulating_supply: parseFloat(data.data.supply) || 0,
-        max_supply: parseFloat(data.data.maxSupply) || 0
-      };
-    }
-  } catch (error) {
-    console.warn('CoinCap API 오류:', error);
-  }
-  return {};
-};
-
-// ✅ CryptoCompare API 사용 (무료 제한 없음)
-const fetchSingleCoinData = async (symbol) => {
-  try {
-    // 캐시 확인
-    const cached = getCachedCoinData(symbol);
-    if (cached) {
-      console.log(`✅ ${symbol} 캐시된 데이터 사용`);
-      return cached;
-    }
-
-    console.log(`📊 ${symbol} CryptoCompare 데이터 요청 중...`);
-
-    // CryptoCompare API 호출 (무료, 제한 없음)
-    const [priceResponse, detailResponse] = await Promise.all([
-      fetch(`https://min-api.cryptocompare.com/data/price?fsym=${symbol}&tsyms=KRW,USD`),
-      fetch(`https://min-api.cryptocompare.com/data/coin/generalinfo?fsyms=${symbol}&tsym=KRW`)
-    ]);
-
-    if (!priceResponse.ok || !detailResponse.ok) {
-      console.warn(`⚠️ CryptoCompare API 오류, 폴백 데이터 사용`);
-      return createFallbackData(symbol);
-    }
-
-    const priceData = await priceResponse.json();
-    const detailData = await detailResponse.json();
-
-    console.log(`✅ ${symbol} CryptoCompare 데이터 로드 완료`);
-
-    const coinInfo = detailData.Data?.[0]?.CoinInfo || {};
-    const result = {
-      id: symbol.toLowerCase(),
-      name: coinInfo.FullName || get_korean_name(symbol),
-      symbol: symbol.toUpperCase(),
-      description: coinInfo.Description || `${get_korean_name(symbol)}은 혁신적인 블록체인 기술을 활용한 디지털 자산입니다.`,
-      
-      // 가격 정보 (CryptoCompare)
-      current_price: priceData.KRW || 0,
-      market_cap: coinInfo.TotalCoinSupply ? (priceData.KRW * coinInfo.TotalCoinSupply) : 0,
-      market_cap_rank: coinInfo.SortOrder || 100,
-      
-      // 공급량 정보
-      total_supply: coinInfo.TotalCoinSupply || 0,
-      circulating_supply: coinInfo.TotalCoinSupply || 0,
-      max_supply: coinInfo.MaxSupply || coinInfo.TotalCoinSupply || 0,
-      
-      // 점수 (기본값)
-      coingecko_score: 60,
-      developer_score: 60,
-      community_score: 60,
-      
-      // 가격 변동 (CryptoCompare 별도 API 필요하므로 기본값)
-      price_change_24h: 0,
-      price_change_7d: 0,
-      price_change_30d: 0,
-      price_change_1y: 0,
-      
-      // 24시간 고가/저가 (기본값)
-      high_24h: priceData.KRW ? priceData.KRW * 1.05 : 0,
-      low_24h: priceData.KRW ? priceData.KRW * 0.95 : 0,
-      
-      // ATH/ATL (기본값)
-      ath: priceData.KRW ? priceData.KRW * 2 : 0,
-      ath_date: '2024-01-01T00:00:00.000Z',
-      atl: priceData.KRW ? priceData.KRW * 0.5 : 0,
-      atl_date: '2023-01-01T00:00:00.000Z',
-      
-      // 거래량 (기본값)
-      total_volume: priceData.KRW ? priceData.KRW * 1000000 : 0,
-      market_cap_change_24h: 0,
-      
-      // 카테고리
-      categories: coinInfo.Technology ? [coinInfo.Technology] : ['blockchain'],
-      
-      // 링크
-      homepage: coinInfo.WebsiteUrl || '',
-      whitepaper: '',
-      twitter_screen_name: '',
-      repos_url: '',
-      
-      // 커뮤니티 (기본값)
-      facebook_likes: 10000,
-      twitter_followers: 50000,
-      reddit_subscribers: 25000,
-      telegram_channel_user_count: 15000,
-      
-      // 개발자 (기본값)
-      forks: 100,
-      stars: 500,
-      subscribers: 200,
-      total_issues: 50,
-      closed_issues: 45,
-      
-      sparkline: []
-    };
-
-    // 캐시에 저장
-    setCachedCoinData(symbol, result);
-    return result;
-    
-  } catch (error) {
-    console.error(`❌ ${symbol} CryptoCompare 데이터 조회 실패:`, error);
-    return createFallbackData(symbol);
-  }
-};
-*/
-
 // 🎯 한국어 코인명 매핑 함수
 const get_korean_name = (symbol) => {
  const korean_names = {
@@ -841,18 +663,6 @@ const processcoinDetail = (data) => {
 
   const investmentGrade = getInvestmentGrade();
 
-
-//market_buy
-  // const market_buy =async (user_id,asset_id,amount,price) => {
-  //   try {
-  //   if(user_id !== null){
-  //     await axios.post(TRADE_API + '/market-buy', {params : {user_id, asset_id, amount, price}});
-  //   }
-  //   } catch (error) {
-  //     console.error('매수 실패:', error);
-  //     toast.error('거래에 실패했습니다. 나중에 다시 시도해주세요.');
-  //   }
-  // }
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto" style={{ height: '1100px' }}>
@@ -1671,71 +1481,6 @@ async function fetchAssetId(assetSymbol) {
 
 
 
-//선택한 모인/마켓 바뀔때 자동 asset_id 세팅
-// useEffect(() => {
-//   let mounted = true;
-//   (async () => {
-//     if (!selectedCoin) { setAsset_id(null); return; }
-//     const market = activeTab === "BTC" ? "BTC" : "KRW";
-//     const id = await resolveAssetId(selectedCoin, market);
-//     if (!mounted) return;
-//     setAsset_id(id);
-//     if (id == null) {
-//       alert("[asset_id] not found", { selectedCoin, market });
-//       // 필요시 사용자 알림:
-//       // toast.error(`${selectedCoin}/${market} 의 자산 ID를 찾을 수 없습니다.`);
-//     }
-//   })();
-//   return () => { mounted = false; };
-// }, [selectedCoin, activeTab]);
-
-
-// 매수 버튼 클릭
-  // const handleBuy = async () => {
-  //   if (!selectedCoin) {
-  //     return alert("코인을 먼저 선택하세요!");
-  //   }
-
-  //   try {
-  //     const body = {
-  //       user_id: user_id,
-  //       asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
-  //       amount: orderQty,
-  //       price: orderPrice,
-  //     };
-  //     alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
-
-  //     await axios.post("http://localhost:8080/api/trade/market_buy", body);
-  //     alert(`${selectedCoin.symbol} 매수 성공!`);
-  //   } catch (err) {
-  //     alert("handleBuy:매수 실패: " + err.message);
-  //   }
-  // };
-
-//뭐하는건지 모르겠음 주석
-// useEffect(() => {
-//   let mounted = true;
-//   (async () => {
-//     if (!selectedCoin) {
-//       setAsset_id(null);
-//       return;
-//     }
-//     const market = activeTab === "BTC" ? "BTC" : "KRW";
-//     const id = await resolveAssetId(selectedCoin, market);
-//     if (!mounted) return;
-//     setAsset_id(id);
-//     if (id == null) {
-//       //toast.warning(`[자산ID 없음] ${selectedCoin}/${market} 의 자산 ID를 찾을 수 없습니다.`);
-//       alert(`[자산ID 없음] ${selectedCoin}/${market} 의 자산 ID를 찾을 수 없습니다.`);
-//     } else {
-//       alert(`[asset_id] set:${asset_id}`);
-//     }
-//   })();
-//   return () => {
-//     mounted = false;
-//   };
-// }, [selectedCoin, activeTab]);
-
 
 
 // 파일 상단(컴포넌트 바깥 OK, 안쪽도 OK) 어딘가에 추가
@@ -1802,52 +1547,7 @@ async function resolveAssetId(symbol, market) {
   };
   
   
-  // 매수 버튼 클릭
-  // const handleBuy = async () => {
-  //   if (!selectedCoin) {
-  //     return alert("코인을 먼저 선택하세요!");
-  //   }
-
-  //   try {
-  //     const body = {
-  //       user_id: user_id,
-  //       asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
-  //       amount: orderQty,
-  //       price: orderPrice,
-  //     };
-  //     alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
-
-  //     await axios.post("http://localhost:8080/api/trade/market_buy", body);
-  //     alert(`${selectedCoin.symbol} 매수 성공!`);
-  //   } catch (err) {
-  //     alert("handleBuy:매수 실패: " + err.message);
-  //   }
-  // };
-
-
-  // // 매도 버튼 클릭
-  // const handleSell = async () => {
-  //   if (!selectedCoin) {
-  //     return alert("코인을 먼저 선택하세요!");
-  //   }
-
-  //   try {
-  //     const body = {
-  //       user_id: user_id,
-  //       asset_id: asset_id,  // ✅ 클릭한 코인의 asset_id 사용
-  //       amount: orderQty,
-  //       price: orderPrice,
-  //     };
-  //     alert("handleSell:매도 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
-  //     await axios.post("http://localhost:8080/api/trade/market_sell", body);
-  //     alert(`${selectedCoin.symbol} 매도 성공!`);
-  //   } catch (err) {
-  //     alert("handleBuy:매도 실패: " + err.message);
-  //   }
-  // };
-
-
-// TradingInterface 내부 어딘가(핸들러들 가까이)
+  // TradingInterface 내부 (핸들러들 가까이)
 const api = {
   marketBuy: (body) =>
     axios.post(`${TRADE_API}/market_buy`, body, {
@@ -1894,47 +1594,6 @@ const buildOrderBody = () => {
   };
 };
 
-// const handleBuy = async () => {
-//   const body = buildOrderBody();
-//   if (!body) return;
-
-//   try {
-//     const url =
-//       orderType === "시장가"
-//         ? `${TRADE_API}/market_buy`
-//         : `${TRADE_API}/limit_buys`;
-
-//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
-
-//     toast.success(`${selectedCoin} ${orderType} 매수 주문 완료`);
-//     refreshPortfolio();
-//   } catch (err) {
-//     console.error("매수 실패:", err);
-//     toast.error("매수 주문 실패: " + (err.response?.data?.message || err.message));
-//   }
-// };
-
-
-
-// const handleSell = async () => {
-//   const body = buildOrderBody();
-//   if (!body) return;
-
-//   try {
-//     const url =
-//       orderType === "시장가"
-//         ? `${TRADE_API}/market_sell`
-//         : `${TRADE_API}/limit_sells`;
-
-//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
-
-//     toast.success(`${selectedCoin} ${orderType} 매도 주문 완료`);
-//     refreshPortfolio();
-//   } catch (err) {
-//     console.error("매도 실패:", err);
-//     toast.error("매도 주문 실패: " + (err.response?.data?.message || err.message));
-//   }
-// };
 
 //테스트로 주석
 const handleBuy = async () => {
@@ -1956,130 +1615,6 @@ const handleBuy = async () => {
   }
 };
 
-// ✅ 지정가/시장가 공용 매수 함수 (그대로 복붙해서 기존 handleBuy 대체)
-// const handleBuy = async () => {
-//   try {
-//     // --- 기본 검증 ---
-//     if (!user_id) {
-//       toast.error("로그인이 필요합니다.");
-//       return;
-//     }
-//     if (!asset_id) {
-//       toast.error("코인을 먼저 선택하세요.");
-//       return;
-//     }
-//     const qtyNum = Number(orderQty);
-//     if (!qtyNum || qtyNum <= 0) {
-//       toast.error("수량을 입력하세요.");
-//       return;
-//     }
-
-//     // --- 주문 타입별 처리 ---
-//     let url = "";
-//     let priceToSend = 0;
-
-//     if (orderType === "시장가") {
-//       // 시장가: 백엔드가 가격을 안쓰면 price를 빼도 되지만,
-//       // 네 API가 price를 받도록 설계된 경우 현재가를 넣어준다.
-//       priceToSend = Number(currentPriceKRW) || 0;
-//       url = `${TRADE_API}/market_buy`;
-//     } else {
-//       // 지정가
-//       const limitPrice = Number(orderPrice);
-//       if (!limitPrice || limitPrice <= 0) {
-//         toast.error("지정가 주문은 가격을 입력하세요.");
-//         return;
-//       }
-//       priceToSend = limitPrice;
-//       url = `${TRADE_API}/limit_buys`;
-//     }
-
-//     const body = {
-//       user_id,
-//       asset_id,
-//       amount: qtyNum,
-//       price: priceToSend,
-//     };
-
-//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
-//     alert("handleBuy:매수 body: " + body.user_id + ", " + body.asset_id + ", " + body.amount + ", " + body.price);
-//     toast.success(`${selectedCoin} ${orderType} 매수 주문 완료`);
-//     // 성공 후 포트폴리오 새로고침 (이미 구현돼 있음)
-//     refreshPortfolio();
-
-//   } catch (err) {
-//     console.error("매수 실패:", err);
-//     toast.error("매수 주문 실패: " + (err?.response?.data?.message || err.message));
-//   }
-// };
-
-// const handleBuy = async (coin) => {
-//   try {
-//     // 1) 클릭으로 넘어온 coin 우선 반영(없으면 현재 상태 사용)
-//     let symbol = selectedCoin;
-//     let assetId = asset_id;
-
-//     if (coin?.symbol) {
-//       symbol = coin.symbol;
-//       const market = activeTab === "BTC" ? "BTC" : "KRW";
-//       // try: BTC-ETH / ETH-BTC / ETH/BTC 등 변형을 모두 시도
-//       assetId = await resolveAssetId(symbol, market);
-
-//       // UI 상태도 동기화 (요청엔 위 로컬 변수 assetId 사용)
-//       setSelectedCoin(symbol);
-//       setAsset_id(assetId);
-//     }
-
-//     // 2) 기본 검증
-//     if (!user_id) {
-//       toast.error("로그인이 필요합니다.");
-//       return;
-//     }
-//     if (!assetId) {
-//       toast.error("코인을 먼저 선택하세요.");
-//       return;
-//     }
-//     const qtyNum = Number(orderQty);
-//     if (!qtyNum || qtyNum <= 0) {
-//       toast.error("수량을 입력하세요.");
-//       return;
-//     }
-
-//     // 3) 주문 타입별 URL/가격 결정
-//     let url = "";
-//     let priceToSend = 0;
-
-//     if (orderType === "시장가") {
-//       priceToSend = Number(currentPriceKRW) || 0; // 백엔드가 무시해도 안전하게 채워줌
-//       url = `${TRADE_API}/market_buy`;
-//     } else {
-//       const limitPrice = Number(orderPrice);
-//       if (!limitPrice || limitPrice <= 0) {
-//         toast.error("지정가 주문은 가격을 입력하세요.");
-//         return;
-//       }
-//       priceToSend = limitPrice;
-//       url = `${TRADE_API}/limit_buys`;
-//     }
-
-//     // 4) 요청 바디 (로컬 assetId/symbol 사용!)
-//     const body = {
-//       user_id,
-//       asset_id: assetId,
-//       amount: qtyNum,
-//       price: priceToSend,
-//     };
-
-//     await axios.post(url, body, { headers: { "Content-Type": "application/json" } });
-
-//     toast.success(`${symbol} ${orderType} 매수 주문 완료`);
-//     refreshPortfolio();
-//   } catch (err) {
-//     console.error("매수 실패:", err);
-//     toast.error("매수 주문 실패: " + (err?.response?.data?.message || err.message));
-//   }
-// };
-
 
 const handleSell = async () => {
   const body = buildOrderBody();
@@ -2099,72 +1634,6 @@ const handleSell = async () => {
     toast.error("매도 주문 실패: " + (err.response?.data?.message || err.message));
   }
 };
-
-// const handleSell = async (coin) => {
-//   try {
-//     // 1) 클릭으로 넘어온 coin 우선 적용(없으면 현재 상태 사용)
-//     let symbol = selectedCoin;
-//     let assetId = asset_id;
-
-//     if (coin?.symbol) {
-//       symbol = coin.symbol;
-//       const market = activeTab === "BTC" ? "BTC" : "KRW";
-//       assetId = await resolveAssetId(symbol, market);
-
-//       // UI 상태도 맞춰주되, 실제 요청엔 로컬 assetId/symbol 사용
-//       setSelectedCoin(symbol);
-//       setAsset_id(assetId);
-//     }
-
-//     // 2) 기본 검증
-//     if (!user_id) {
-//       toast.error("로그인이 필요합니다.");
-//       return;
-//     }
-//     if (!assetId) {
-//       toast.error("코인을 먼저 선택하세요.");
-//       return;
-//     }
-//     const qtyNum = Number(orderQty);
-//     if (!qtyNum || qtyNum <= 0) {
-//       toast.error("수량을 입력하세요.");
-//       return;
-//     }
-
-//     // 3) 주문 타입별 URL/가격 결정
-//     let priceToSend = 0;
-//     if (orderType === "시장가") {
-//       // 백엔드가 price를 무시하더라도 안전하게 현재가 전달
-//       priceToSend = Number(currentPriceKRW) || 0;
-//       await api.marketSell({
-//         user_id,
-//         asset_id: assetId,
-//         amount: qtyNum,
-//         price: priceToSend,
-//       });
-//     } else {
-//       const limitPrice = Number(orderPrice);
-//       if (!limitPrice || limitPrice <= 0) {
-//         toast.error("지정가 주문은 가격을 입력하세요.");
-//         return;
-//       }
-//       priceToSend = limitPrice;
-//       await api.limitSell({
-//         user_id,
-//         asset_id: assetId,
-//         amount: qtyNum,
-//         price: priceToSend,
-//       });
-//     }
-
-//     toast.success(`${symbol} ${orderType} 매도 주문 완료`);
-//     refreshPortfolio();
-//   } catch (err) {
-//     console.error("매도 실패:", err);
-//     toast.error("매도 주문 실패: " + (err?.response?.data?.message || err.message));
-//   }
-// };
-
 
 
 
@@ -2244,13 +1713,6 @@ const Concluded_orders = async () => {
 
     setConcluded_orders(normalizeOrders(data));
 }
-//백에서 미체결 거래내역 가져오기
-// const Unconcluded_orders = async () => {
-//   if (!user_id || !asset_id) return;
-//   const params = { user_id, asset_id };
-//   const res = await axios.get(`${TRADE_API}/asset_unconcluded_orders`, { params });
-//   setConcluded_orders(normalizeOrders(res.data));
-// }
 
 const Unconcluded_orders = async () => {
   if (!user_id || !asset_id) return;
@@ -2710,27 +2172,8 @@ useEffect(() => {
   // 예시용 잔고 (나중에 API로 바꾸면 됨)
   const [availableKrw, setAvailableKrw] = useState(1_000_000);
 
-// 종목/현재가 변할 때 주문가격 동기화
-//지정가일때 값 갱신 막기위해 주석처리
-// useEffect(() => {
-//   setOrderPrice(currentPriceKRW);
-// }, [currentPriceKRW, selectedCoin]);
 
   const formatKRW = (n) => (Number.isFinite(n) ? n.toLocaleString() : "-");
-
-  // 실시간 데이터/updatedCoinList가 바뀔 때마다 orderPrice를 강제로 덮어쓰지 않음
-
-// 현재가로 orderPrice 자동 동기화 (실시간 우선)
-// 지정가 주문시 칸 비 동기화 위해 주석처리
-// useEffect(() => {
-//   const rt = realTimeData[selectedCoin + "_KRW"]?.closePrice;
-//   const latest = rt ? parseInt(rt, 10)
-//     : (updatedCoinList.find(c => c.symbol === selectedCoin)?.price || 0);
-//   setOrderPrice(latest);
-// }, [selectedCoin, realTimeData, updatedCoinList]);
-
-  // 거래내역 서브탭 상태
-  // const [historyTab, setHistoryTab] = useState("미체결");
 
   // 총액 자동 계산
   const totalAmountKRW = useMemo(
@@ -2773,11 +2216,6 @@ useEffect(() => {
 const [orderType, setOrderType] = useState("시장가");
 const [syncOrderPrice, setSyncOrderPrice] = useState(true); // 시장가일 때만 현재가 동기화
 
-// ✅ 시장가일 때만 orderPrice를 현재가로 동기화
-// useEffect(() => {
-//   if (!syncOrderPrice) return;     // 지정가면 동기화 안 함
-//   setOrderPrice(currentPriceKRW);  // 시장가면 계속 따라감
-// }, [currentPriceKRW, syncOrderPrice]);
 useEffect(() => {
   if (orderType !== "시장가") return;     // 지정가면 건드리지 않음
   setOrderPrice(currentPriceKRW);
@@ -2787,12 +2225,6 @@ useEffect(() => {
 // match_limits 과호출 방지용
 const lastMatchCallTsRef = useRef(0);
 const MATCH_COOLDOWN_MS = 1500; // 1.5s 쿨다운
-
-// ⬇️ 종목/실시간 가격/주문유형이 바뀔 때, 시장가면 자동으로 현재가를 반영
-// useEffect(() => {
-//   if (orderType !== 'market') return;         // 지정가는 고정
-//   setOrderPrice(currentPriceKRW || 0);        // 시장가는 계속 최신가로
-// }, [orderType, currentPriceKRW, selectedCoin]);
 
 // 현재가로 orderPrice 자동 동기화 (✅ 시장가일 때만)
 useEffect(() => {
@@ -2899,19 +2331,7 @@ return (
                   filteredCoinList.map((coin, index) => (
                     <div
                       key={coin.symbol}
-                      // onClick={() => setSelectedCoin(coin.symbol)}
-                      // onClick={() => handleSelectCoin(coin)}
-                      // onClick={() => handleBuy(coin)}
                       onClick={() => asset_symbol_to_Id(coin)}
-                      // onClick={async () => {
-                      //           setSelectedCoin(coin.symbol);
-                      //           const market = activeTab === "BTC" ? "BTC" : "KRW";
-                      //           const assetSymbol = `${coin.symbol}-${market}`;  // 예) ETH-KRW
-                      //           const id = await fetchAssetId(assetSymbol);
-                      //           setAsset_id(id);
-                      //         }
-                      //       }
-
                       className={`grid grid-cols-4 gap-1 p-2 text-xs cursor-pointer border-b items-center
                         ${selectedCoin === coin.symbol ? 'bg-blue-50 border-blue-200' : ''}`}
                     >
