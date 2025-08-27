@@ -315,3 +315,37 @@ def get_user_krw(user_id: int):
         }
         for h in hits
     ]
+
+# 출금신청 로그
+def get_withdraws():
+    try:
+        # Elasticsearch 쿼리: krw-logs 인덱스에서 action:withdraw 조건, 최신 5건, 내림차순 정렬
+        query_body = {
+            "query": {
+                "term": { "action.keyword": "withdraw" }
+            },
+            "sort": [
+                { "@timestamp": { "order": "desc" } }
+            ],
+            "size": 5
+        }
+
+        resp = es.search(index="krw-logs", body=query_body)
+        hits = resp["hits"]["hits"]
+
+        # 필요한 필드만 추출 및 가공
+        results = []
+        for hit in hits:
+            source = hit["_source"]
+            results.append({
+                "id": hit["_id"],
+                "user_id": source.get("user_id"),
+                "email": source.get("email"),
+                "amount": source.get("amount"),
+                "time": source.get("@timestamp"),
+                "action": source.get("action")
+            })
+        return results
+
+    except Exception as e:
+        print("출금 신청 오류:", e)
