@@ -63,17 +63,6 @@ export const AuthProvider = ({ children }) => {
     
   }, [])
 
-  useEffect(()=>{
-    const sessionToken = sessionStorage.getItem("auth_token");
-    const localToken = localStorage.getItem("access_token");
-
-    setToken(sessionToken);
-
-    if (!sessionToken || !localToken) {
-      // window.location.reload();
-    }
-  }, [])
-
   // 일반 로그인
   const login = async (email, password) => {
     setIsLoading(true)

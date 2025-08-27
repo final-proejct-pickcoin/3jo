@@ -145,6 +145,13 @@ export default function DepositManager() {
     }
   };
   const [logs, setLogs] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + 10); // 10개씩 더 보여줌
+  };
+
+  const visibleLogs = logs.slice(0, visibleCount); // 현재 보여줄 범위
 
   useEffect(() => {
     if (user_id) loadLimits(user_id);
@@ -192,6 +199,7 @@ export default function DepositManager() {
     if (!user_id) return;
 
     deposit_logs(user_id);
+    // console.log("입출금 로그",logs)
 
   }, [user_id, logs]);
 
@@ -558,7 +566,7 @@ export default function DepositManager() {
                 <div className="space-y-4">
                   {/* 아직 API 없으니 비움 또는 더미 */}
                   {/* 더미가 필요하면 여기에 map으로 렌더 */}
-                  {logs.map( (log, idx) => (
+                  {visibleLogs.map( (log, idx) => (
                     <div key={idx} className="flex justify-between">
                       <span>{log.action === "deposit" ? "입금" : "출금"}</span>
                       <span>{Number(log.amount).toLocaleString()} 원</span>
@@ -566,6 +574,11 @@ export default function DepositManager() {
                     </div>
                   ))}
                 </div>
+                {visibleCount < logs.length && (
+                  <div className="flex justify-center mt-4">
+                    <Button onClick={handleLoadMore}>더보기</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
