@@ -50,7 +50,7 @@ export default VirtualCryptoPlatform
 
 // TradingChart 컴포넌트를 동적 임포트 (SSR 비활성화)
 const TradingChart = dynamic(()=> import('@/components/trading-chart.jsx').then(
-  mod => mod.TradingChart), {
+  mod => mod.default), {
   ssr: false, loading: () => 
   <div className="h-[670px] flex items-center justify-center">
     차트 로딩 중...
@@ -60,7 +60,7 @@ const TradingChart = dynamic(()=> import('@/components/trading-chart.jsx').then(
 // TradingInterface도 동적 임포트
 import { Suspense } from 'react';
 
-const TradingInterface = dynamic(() => import('@/components/trading-clean'), {   
+const TradingInterface = dynamic(() => import('@/components/trading-clean.jsx'), {   
   ssr: false,
   loading: () => <div>인터페이스 로딩 중...</div>
 });

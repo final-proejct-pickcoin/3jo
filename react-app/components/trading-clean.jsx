@@ -17,82 +17,115 @@ function StarIcon({ filled = false, size = 18, className = "" }) {
   const d = "M12 17.27 18.18 21 16.54 13.97 22 9.24 14.81 8.62 12 2 9.19 8.63 2 9.24 7.46 13.97 5.82 21 12 17.27Z";
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className={className} aria-hidden="true">
-      {filled ? <path d={d} fill="currentColor" /> : <path d={d} fill="none" stroke="currentColor" strokeWidth="1.6" />}
+      {filled ? (
+        <path d={d} fill="currentColor" />
+      ) : (
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="1.6" />
+      )}
     </svg>
   );
 }
 
-// ======================= 메인 컴포넌트 =======================
+/* ---------------------- 메인 단일 파일 앱 ---------------------- */
 export default function TradingInterface() {
-  // 사용자 id
+  // 사용자 id 추출
   const [user_id, setUserId] = useState(null);
 
-  // 상세/차트 등
+  // 화면 전환 상태 (목록/상세) - 바로 상세 화면으로 시작
   const [view, setView] = useState("detail");
+  
+  // 시세/코인정보 탭 상태
   const [detailView, setDetailView] = useState("chart");
 
-  // 코인 목록/검색/선택
+  // 코인 목록 관련 상태
   const [coinList, setCoinList] = useState([]);
   const [coinListLoading, setCoinListLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCoin, setSelectedCoin] = useState("BTC");
 
-  // 실시간/WS
+  // 실시간 데이터 관련 상태
   const [realTimeData, setRealTimeData] = useState({});
   const [wsConnected, setWsConnected] = useState(false);
-  const [wsStats, setWsStats] = useState({ total_symbols: 0, active_subscriptions: 0, last_update: null });
+  const [wsStats, setWsStats] = useState({
+    total_symbols: 0,
+    active_subscriptions: 0,
+    last_update: null
+  });
 
-  // 호가창
+  // 호가창 상태
   const [orderbook, setOrderbook] = useState({ bids: [], asks: [], timestamp: null });
   const [tickSize, setTickSize] = useState(1);
 
-  // 주문 가격/수량/유형
+  // 주문 가격/수량
   const [orderPrice, setOrderPrice] = useState(0);
   const [orderQty, setOrderQty] = useState(0);
   const [orderType, setOrderType] = useState("시장가"); // "시장가" | "지정가"
   const [orderPriceInput, setOrderPriceInput] = useState(""); // 문자열(지정가 입력창 표시용)
 
-
-
-  // 탭
+  // 주문 탭 상태
   const [orderTab, setOrderTab] = useState("거래");
+  
+  // 거래 서브탭 상태
   const [tradeSubTab, setTradeSubTab] = useState("매수");
+  
+  // 거래내역 서브탭 상태
   const [historyTab, setHistoryTab] = useState("체결");
+
+  // 호가창 & 거래정보 아코디언 상태
+  const [expandedSections, setExpandedSections] = useState({
+    호가: false,
+    거래정보: false
+  });
+
+  // 주문창 아코디언 상태
+  const [orderPanelExpanded, setOrderPanelExpanded] = useState(false);
+
+  // 차트 탭팬 아코디언 상태
+  const [chartPanelExpanded, setChartPanelExpanded] = useState(false);
+
+  // 차트 & 코인정보 탭팬 상태
   const [chartTab, setChartTab] = useState("차트");
+
+  // 원화/보유/관심 탭 상태
   const [tab, setTab] = useState("won");
 
-  // 아코디언/레이아웃
-  const [expandedSections, setExpandedSections] = useState({ 호가: false, 거래정보: false });
-  const [orderPanelExpanded, setOrderPanelExpanded] = useState(false);
-  const [chartPanelExpanded, setChartPanelExpanded] = useState(false);
-  const mainPanelRef = useRef(null);
-  const [combinedHeight, setCombinedHeight] = useState(600);
-
-  // 즐겨찾기
+  // 관심 코인 상태
   const [favoriteCoins, setFavoriteCoins] = useState(new Set(["BTC", "ETH"]));
 
-  // 자산 ID
+  // 코인 id(asset_id) 가져오기
   const [asset_id, setAsset_id] = useState(null);
 
-  // 체결/미체결 리스트 “더보기”용 개수
+  // Responsive height
+  const mainPanelRef = useRef(null);
+  const [combinedHeight, setCombinedHeight] = useState(600);
+    // 체결/미체결 리스트 “더보기”용 개수
 const [historyShowCount, setHistoryShowCount] = useState(10);
 
-
-  // ======================= 공용 함수들 =======================
+  // 관심 코인 토글 함수
   const toggleFavorite = (symbol, e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // 코인 선택 이벤트 방지
     setFavoriteCoins(prev => {
-      const s = new Set(prev);
-      s.has(symbol) ? s.delete(symbol) : s.add(symbol);
-      return s;
+      const newSet = new Set(prev);
+      if (newSet.has(symbol)) {
+        newSet.delete(symbol);
+      } else {
+        newSet.add(symbol);
+      }
+      return newSet;
     });
   };
 
+  // 호가창 & 거래정보 아코디언 토글 함수
   const toggleSection = (section) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
-  // ======================= 사용자 ID 가져오기(캐시 + 백엔드) =======================
+
+
+  // ======== 사용자 ID 가져오기 ========
   useEffect(() => {
     const cached = sessionStorage.getItem("cached_user_id");
     if (cached && user_id == null) setUserId(Number(cached));
@@ -147,8 +180,9 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         const n = Number(arr[0]);
         return Number.isFinite(n) ? n : null;
       }
-    } catch {
-      // offline
+    } catch (err) {
+      console.log("API 서버 연결 실패 - asset_id 가져오기 실패");
+      return null;
     }
     return null;
   }
@@ -180,15 +214,23 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     };
   }, []);
 
-  // ======================= WebSocket(로컬 프록시) =======================
+  // 빗썸 WebSocket 연결
   useEffect(() => {
-    let ws, reconnectTimeout, heartbeatInterval;
-    const connect = () => {
+    console.log('🚀 빗썸 실시간 데이터 연결 시작...');
+    let ws;
+    let reconnectTimeout;
+    let heartbeatInterval;
+
+    const connectWebSocket = () => {
       const wsUrl = 'ws://localhost:8000/api/realtime';
+      console.log(`🔌 연결 시도: ${wsUrl}`);
+
       try {
         ws = new WebSocket(wsUrl);
         ws.onopen = () => {
           setWsConnected(true);
+          console.log('✅ 빗썸 실시간 WebSocket 연결 성공');
+          
           heartbeatInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
           }, 30000);
@@ -196,16 +238,23 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            
             if (data.type === 'ticker' && data.content) {
               const c = data.content;
-              if (c.tickType && c.tickType !== '24H') return;
-              const symbol = c.symbol;
+              const content = data.content;
+              
+              if (content.tickType && content.tickType !== '24H') return;
+              const symbol = content.symbol;
               if (!symbol) return;
-              const closePrice = parseFloat(c.closePrice);
-              const chgRate = parseFloat(c.chgRate);
-              const value = parseFloat(c.value || 0);
-              if (!Number.isFinite(closePrice) || !Number.isFinite(value) || value <= 0) return;
-
+        
+              const closePrice = parseFloat(content.closePrice);
+              const chgRate = parseFloat(content.chgRate);
+              const value = parseFloat(content.value || 0);
+        
+              if (isNaN(closePrice) || isNaN(value) || value <= 0) {
+                return;
+              }
+        
               setRealTimeData(prev => {
                 const prevPrice = prev[symbol]?.closePrice ?? closePrice;
                 return {
@@ -222,27 +271,38 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
                   }
                 };
               });
-            } else if (data.type === 'orderbook' && data.content) {
+            } else if (data.type === 'orderbook' && data.content) {  // 이 부분 추가
+              // 호가 데이터 처리
               const { symbol, bids, asks } = data.content;
-              if (symbol === selectedCoin + '_KRW') setOrderbook({ bids, asks, timestamp: Date.now() });
+              if (symbol === selectedCoin + '_KRW') {
+                setOrderbook({ bids, asks, timestamp: Date.now() });
+              }
             }
           } catch {}
         };
         ws.onclose = () => {
           setWsConnected(false);
-          if (heartbeatInterval) clearInterval(heartbeatInterval);
-          reconnectTimeout = setTimeout(connect, 3000);
+          console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
+          
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+          }
+          
+          reconnectTimeout = setTimeout(() => {
+            console.log('🔄 WebSocket 재연결 시도...');
+            connectWebSocket();
+          }, 3000);
         };
         ws.onerror = () => {
           setWsConnected(false);
-          reconnectTimeout = setTimeout(connect, 3000);
+          reconnectTimeout = setTimeout(connectWebSocket, 3000);
         };
       } catch {
         setWsConnected(false);
-        reconnectTimeout = setTimeout(connect, 3000);
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
       }
     };
-    connect();
+    connectWebSocket();
     return () => {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (heartbeatInterval) clearInterval(heartbeatInterval);
@@ -250,49 +310,60 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     };
   }, [selectedCoin]);
 
-  // WS 통계
+  // WebSocket 통계 가져오기
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/websocket/stats');
-        if (res.ok) {
-          const data = await res.json();
+        const response = await fetch('http://localhost:8000/api/websocket/stats');
+        if (response.ok) {
+          const data = await response.json();
           setWsStats(data.subscription_stats || data || {});
         }
-      } catch {}
+      } catch (error) {
+        // 오류 로그 제거
+      }
     };
     if (wsConnected) {
       fetchStats();
-      const i = setInterval(fetchStats, 30000);
-      return () => clearInterval(i);
+      const interval = setInterval(fetchStats, 30000);
+      return () => clearInterval(interval);
     }
   }, [wsConnected]);
 
-  // ======================= 코인 목록(HTTP 프록시) =======================
+  // 코인 목록 가져오기
   useEffect(() => {
     const fetchCoins = async () => {
       try {
         setCoinListLoading(true);
-        const response = await fetch('http://localhost:8000/api/coins-with-marketcap');
+        console.log(`🔄 원화 마켓 코인 목록 요청...`);
+        const apiUrl = 'http://localhost:8000/api/coins';
+        const response = await fetch(apiUrl);
         const data = await response.json();
-        if (data.status === 'success' && Array.isArray(data.data)) {
-          const mapped = data.data.map(coin => ({
-            symbol: coin.symbol,
-            name: coin.korean_name || coin.symbol,
-            englishName: coin.english_name || coin.symbol,
-            price: coin.current_price || 0,
-            change: coin.change_rate || 0,
-            changeAmount: coin.change_amount || 0,
-            volume: coin.volume || 0,
-            trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
-            marketWarning: coin.market_warning || 'NONE',
-            marketCap: coin.market_cap || coin.market_cap_rank || 0,
-            marketCapRank: coin.market_cap_rank || 0
-          }));
-          setCoinList(mapped);
+        
+        if (data.status === 'success' && data.data && Array.isArray(data.data)) {
+          console.log(`✅ 원화 마켓 ${data.data.length}개 코인 로드 성공`);
+                     const mappedCoins = data.data.map(coin => ({
+             symbol: coin.symbol,
+             name: coin.korean_name || coin.symbol,
+             englishName: coin.english_name || coin.symbol,
+             price: coin.current_price || 0,
+             change: coin.change_rate || 0,
+             changeAmount: coin.change_amount || 0,
+             volume: coin.volume || 0,
+             trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
+             marketWarning: coin.market_warning || 'NONE',
+             marketCap: coin.market_cap || 0,
+             marketCapRank: coin.market_cap_rank || 0,
+             // 추가 정보들
+             circulatingSupply: coin.circulating_supply || 0,
+             high24h: coin.high_24h || 0,
+             low24h: coin.low_24h || 0,
+             unitsTraded: coin.units_traded || 0
+           }));
+          setCoinList(mappedCoins);
         }
       } catch (e) {
-        console.error("코인 목록 실패:", e);
+        console.error(`❌ 원화 마켓 조회 실패:`, e);
       } finally {
         setCoinListLoading(false);
       }
@@ -300,18 +371,19 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     fetchCoins();
   }, []);
 
-  // 실시간으로 업데이트된 목록
+  // 실시간 데이터로 코인 목록 업데이트
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
-      const r = realTimeData[coin.symbol + '_KRW'];
-      if (r && Number.isFinite(r.closePrice)) {
-        const millionValue = Math.round(Number(r.value) / 1_000_000);
+      const realtimeInfo = realTimeData[coin.symbol + '_KRW'];
+      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
+        const millionValue = Math.round(parseFloat(realtimeInfo.value) / 1000000);
+        const formattedVolume = millionValue.toLocaleString() + ' 백만';
         return {
           ...coin,
-          price: parseInt(r.closePrice),
-          change: Number(r.chgRate),
-          changeAmount: parseInt(r.chgAmt),
-          trend: Number(r.chgRate) > 0 ? 'up' : 'down',
+          price: parseInt(realtimeInfo.closePrice),
+          change: Number(realtimeInfo.chgRate),
+          changeAmount: parseInt(realtimeInfo.chgAmt),
+          trend: Number(realtimeInfo.chgRate) > 0 ? 'up' : 'down',
           volume: millionValue.toLocaleString() + ' 백만'
         };
       }
@@ -326,15 +398,17 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     });
   }, [coinList, realTimeData]);
 
-  // 정렬
+  // 정렬 상태
   const [sortKey, setSortKey] = useState('volume');
   const [sortOrder, setSortOrder] = useState('desc');
+
+  // 정렬 핸들러
   const handleSort = (key) => {
     if (sortKey === key) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortOrder('desc'); }
   };
 
-  // 필터/정렬 적용된 목록
+  // 필터링된 코인 목록
   const filteredCoinList = useMemo(() => {
     let filtered = updatedCoinList;
     if (searchTerm.trim()) {
@@ -344,11 +418,29 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         (c.symbol && c.symbol.toLowerCase().includes(lower))
       );
     }
+
     const sorted = [...filtered].sort((a, b) => {
-      let av = a[sortKey], bv = b[sortKey];
+      let aValue = a[sortKey];
+      let bValue = b[sortKey];
+      
       if (sortKey === 'volume') {
-        av = typeof av === 'string' ? parseFloat(av.replace(/[^\d.]/g, '')) : av;
-        bv = typeof bv === 'string' ? parseFloat(bv.replace(/[^\d.]/g, '')) : bv;
+        aValue = typeof aValue === 'string' ? parseFloat(aValue.replace(/[^\d.]/g, '')) : aValue;
+        bValue = typeof bValue === 'string' ? parseFloat(bValue.replace(/[^\d.]/g, '')) : bValue;
+      }
+      
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
+      
+      if (sortOrder === 'asc') {
+        if (aValue < bValue) return -1;
+        if (aValue > bValue) return 1;
+        return 0;
+      } else {
+        if (aValue > bValue) return -1;
+        if (aValue < bValue) return 1;
+        return 0;
       }
       if (typeof av === 'string') av = av.toLowerCase();
       if (typeof bv === 'string') bv = bv.toLowerCase();
@@ -360,7 +452,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     return sorted;
   }, [searchTerm, updatedCoinList, sortKey, sortOrder]);
 
-  // 현재가(정수 KRW)
+  // 현재가 계산
   const currentPriceKRW = useMemo(() => {
     const rt = realTimeData[selectedCoin + "_KRW"];
     if (rt?.closePrice) return parseInt(rt.closePrice, 10);

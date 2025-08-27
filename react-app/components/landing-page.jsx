@@ -115,7 +115,7 @@ export const LandingPage = () => {
         </section>
 
         {/* 오른쪽: 카드형 로그인/회원가입 */}
-        <section className="flex-1 flex items-center justify-center relative min-h-[700px] bg-[#f7f5f2]" style={{backgroundImage:"url('/login-bg.jpg')", backgroundSize:'cover', backgroundPosition:'center'}}>
+        <section className="flex-1 flex items-center justify-center relative min-h-[700px] bg-[#f7f5f2]" style={{backgroundImage:"url('/banner1.png')", backdropFilter:'blur(30px)', backgroundSize:'cover', backgroundPosition:'center'}}>
           <div className="w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 p-10 z-10 relative">
             <div className="flex mb-6 border-b border-gray-200">
               <button

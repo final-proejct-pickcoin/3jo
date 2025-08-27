@@ -188,7 +188,7 @@ const getCoinIconColor = (symbol) => {
 };
 
 // 🎯 업비트 스타일 CoinInfoPanel 컴포넌트
-const CoinInfoPanel = ({ coin, realTimeData }) => {
+const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
   const [coinDetail, setCoinDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -272,11 +272,12 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
     if (!coinDetail) return '분석중';
     
     const volume24h = coinDetail.total_volume;
-    const marketCap = coinDetail.market_cap;
+    // props로 받은 marketCap을 우선 사용, 없으면 coinDetail에서 가져오기
+    const marketCapValue = marketCap && marketCap > 0 ? marketCap : coinDetail.market_cap;
     
-    if (!volume24h || !marketCap) return '데이터 부족';
+    if (!volume24h || !marketCapValue) return '데이터 부족';
     
-    const ratio = volume24h / marketCap;
+    const ratio = volume24h / marketCapValue;
     
     if (ratio > 0.1) return '매우 활발';
     if (ratio > 0.05) return '활발';
@@ -603,7 +604,8 @@ const CoinInfoPanel = ({ coin, realTimeData }) => {
                     <div className="flex justify-between items-center">
                       <span className="text-purple-700 font-medium">시가총액</span>
                       <span className="text-lg font-bold text-purple-900">
-                        {coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
+                        {marketCap && marketCap > 0 ? formatLargeNumber(marketCap) + '원' : 
+                         coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
                       </span>
                     </div>
                   </div>
