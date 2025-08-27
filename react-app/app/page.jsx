@@ -49,7 +49,7 @@ const VirtualCryptoPlatform = () => (
 export default VirtualCryptoPlatform
 
 // TradingChart 컴포넌트를 동적 임포트 (SSR 비활성화)
-const TradingChart = dynamic(()=> import('@/components/trading-chart').then(
+const TradingChart = dynamic(()=> import('@/components/trading-chart.jsx').then(
   mod => mod.TradingChart), {
   ssr: false, loading: () => 
   <div className="h-[670px] flex items-center justify-center">
