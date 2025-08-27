@@ -397,7 +397,12 @@ export const CommunityHub = () => {
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
   const [popularKeywords, setPopularKeywords] = useState([])
-  const { stats } = useWebSocket()
+  const [stats, setStats] = useState({
+    activeUsers: 0,
+    postsToday: 0,
+    onlineNow: 0,
+    totalPosts: 0
+  });
   
   //페이지네이션 상태
   const [page, setPage] = useState(1)
