@@ -651,6 +651,12 @@ const loadMore = () => {
                   onChange={(e) => setReplyMessage(e.target.value)}
                   rows={3}
                   className={isDarkMode ? "bg-gray-700 border-gray-600 text-gray-200" : ""}
+                  onKeyDown={(e) => {
+                    if(e.key === "Enter" && !e.shiftKey){
+                      e.preventDefault();
+                      handleSendReply();
+                    }
+                  }}
                 />
                 <div className="flex justify-end">
                   <Button onClick={handleSendReply} disabled={!replyMessage.trim()}>
