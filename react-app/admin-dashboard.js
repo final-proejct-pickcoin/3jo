@@ -176,7 +176,7 @@ export default function Component() {
   return matchesSearch && matchesStatus;
   });
 
-  const filteredLogs = logs.filter((log) => {
+  const filteredLogs = (Array.isArray(logs) ? logs : []).filter((log) => {
     const logLevel = log.level.trim().toLowerCase();
     const filter = logLevelFilter.toLowerCase();
     const matchesLevel = filter === "all" || logLevel === filter;

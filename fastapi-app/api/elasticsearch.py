@@ -214,7 +214,7 @@ def fetch_logs_from_es(index: str = "login-logs", size: int = 50):
         "query": {"match_all": {}},
         "size": size
     }
-    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs,buy-logs,sell-logs, krw-logs", body=body)
+    res = es.search(index="login-logs,register-logs,trade-logs,logout-logs,buy-logs,sell-logs,krw-logs", body=body)
     logs = []
     for hit in res["hits"]["hits"]:
         source = hit["_source"]
