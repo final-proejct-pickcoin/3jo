@@ -1188,7 +1188,8 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                        message_count += 1
                        
                        if message_count <= 10:  # 처음 10개 메시지 로그
-                           print(f"📊 메시지 {message_count}: {bithumb_data.get('type')}")
+                        #    print(f"📊 메시지 {message_count}: {bithumb_data.get('type')}")
+                        pass
                        
                        if bithumb_data.get("type") == "ticker":
                            content = bithumb_data.get("content", {})
@@ -1199,7 +1200,8 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                                continue
                            
                            if message_count <= 5:  # 처음 5개 데이터 상세 로그
-                               print(f"💰 실시간 데이터: {symbol} = {close_price}원")
+                            #    print(f"💰 실시간 데이터: {symbol} = {close_price}원")
+                            pass
                            
                            # 클라이언트에 전송
                            formatted_data = {
