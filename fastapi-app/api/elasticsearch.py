@@ -251,7 +251,7 @@ def get_trading_volume_trend(interval="hour"):
                     }
                 }
             }
-    res = es.search(index="trade-logs", body=body)
+    res = es.search(index="buy-logs,sell-logs", body=body)
     result = []
     for bucket in res["aggregations"]["by_date"]["buckets"]:
         result.append({

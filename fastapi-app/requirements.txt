@@ -1,35 +1,73 @@
-fastapi==0.110.2         # 최신 버전은 확인 후 쓰세요
-uvicorn[standard]==0.29.0 # ASGI 서버
-jinja2
-PyJWT
-passlib[bcrypt]
-python-multipart
-pymysql
-cryptography
-python-dotenv
-redis
+# ===== 웹 프레임워크 & ASGI =====
+fastapi==0.110.2            # 메인 웹 프레임워크         # 최신 버전은 확인 후 쓰세요
+uvicorn[standard]==0.29.0   # ASGI 서버 (프로덕션용)
+jinja2                      # 템플릿 엔진 (templates/ 폴더 렌더링)
+python-multipart            # 폼 데이터 처리 (파일 업로드 등)
+
+# ===== 인증 & 보안 =====
+PyJWT                       # JWT 토큰 생성/검증 (api/auth.py)
+passlib[bcrypt]             # 비밀번호 해싱 (bcrypt 알고리즘)
+cryptography                # 암호화 라이브러리 (JWT 의존성)
+
+# ===== 데이터베이스 =====
+sqlalchemy                  # ORM (DB 모델 정의)
+pymysql                     # MySQL 드라이버 (db/mysql.py)
+redis                       # Redis 클라이언트 (캐싱, 실시간 데이터)
+
+# ===== HTTP 클라이언트 =====
+requests                    # 동기 HTTP 요청 (빗썸 API 등)
+aiohttp                     # 비동기 HTTP 요청
+httpx>=0.24                 # 모던 비동기 HTTP 클라이언트
+# httpx
+
+# ===== WebSocket =====
+websockets                  # WebSocket 서버 (채팅, 실시간 데이터)
+websocket-client            # WebSocket 클라이언트
+broadcaster                 # WebSocket 브로드캐스팅 (멀티 인스턴스 환경용)
+
+# ===== 스케줄링 =====
+APScheduler==3.10.4         # 백그라운드 작업 스케줄링 (뉴스 크롤링)
+pytz                        # 타임존 처리 (scheduler 설정)
+
+# ===== 검색 엔진 =====
+elasticsearch==7.17.12      # Elasticsearch 클라이언트
+
+# ===== Google Cloud & AI =====
+google-cloud-speech         # 구글 음성 인식
+google-generativeai         # Gemini AI (챗봇 응답)
+# google-auth==2.25.2
+# google-auth-oauthlib==1.1.0
+
+# ===== 뉴스 크롤링 =====
+bs4                         # BeautifulSoup (HTML 파싱)
+lxml                        # XML/HTML 파서 (bs4 성능 향상)
+selenium                    # 웹 드라이버 (동적 페이지 크롤링)
+webdriver_manager           # 웹드라이버 자동 관리
+
+# ===== 거래소 API =====
+pybithumb                   # 빗썸 API 클라이언트
+
+# ===== ML & 데이터 사이언스 (필요시 추가) =====
+pandas                      # 데이터 처리 (ml/ 폴더에서 사용)
+numpy                       # 수치 연산
+torch                       # PyTorch (LSTM 모델)
+scikit-learn                # 머신러닝 유틸리티
+joblib                      # 모델 직렬화
+
+# ===== 유틸리티 =====
+python-dotenv               # .env 파일 로드
+pydantic==2.5.0             # 데이터 검증 (API 모델)
+typing-extensions==4.8.0    # 타입 힌트 확장
+python-logstash             # Logstash 로깅 (모니터링용)
+
+# ===== 개발 & 테스트 =====
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+
+# ===== 기타 =====
+# python-dateutil==2.8.2
+# pytz==2023.3.post1
+# tzdata==2023.3
+
 # bcrypt>=4.0.0
 # passlib>=1.7.4
-pybithumb
-websocket-client
-selenium
-bs4
-webdriver_manager
-lxml
-python-logstash
-aiohttp
-httpx
-
-websockets
-broadcaster
-elasticsearch==7.17.12
-
-# Google cloud API_0806_feature_l
-google-cloud-speech
-google-generativeai
-
-sqlalchemy
-APScheduler==3.10.4
-
-requests
-httpx>=0.24

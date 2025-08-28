@@ -32,6 +32,10 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime
 from collections import defaultdict
 
+from .ai_coin_connect import redis_client
+import redis
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+
 # 라우터 생성
 router = APIRouter(prefix="/api", tags=["bithumb"])
 
