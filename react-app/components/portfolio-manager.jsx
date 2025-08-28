@@ -124,7 +124,7 @@ export const PortfolioManager = () => {
     deposit_logs(user_id);
     // console.log("입출금 로그",logs)
 
-  }, [user_id, logs]); //
+  }, [user_id]); //, logs
 
   useEffect(() => {
     // 캐시 우선
