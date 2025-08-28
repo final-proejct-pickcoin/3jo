@@ -26,6 +26,7 @@ from api.admin_user import router as admin_user_router
 from api.admin import router as admin_router
 from api.inquiry import router as inq_router
 from api.chat import router as ws_router
+from api.proxy_router import router as proxy_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
@@ -53,6 +54,7 @@ import os
 
 import asyncio
 from zoneinfo import ZoneInfo
+
 
 
 load_dotenv()
@@ -148,6 +150,8 @@ app.include_router(inq_router)
 # 채팅 웹소켓 라우터
 app.include_router(ws_router)
 
+# CoinGecko 프록시 라우터
+app.include_router(proxy_router)
 
 # 빗썸 API 라우터
 app.include_router(bithumb_router)

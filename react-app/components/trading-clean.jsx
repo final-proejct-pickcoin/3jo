@@ -280,7 +280,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
             }
           } catch {}
         };
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           setWsConnected(false);
           console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
           
@@ -332,59 +332,65 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
 
   // 코인 목록 가져오기
   useEffect(() => {
-    const fetchCoins = async () => {
-      try {
-        setCoinListLoading(true);
-        console.log(`🔄 원화 마켓 코인 목록 요청...`);
-        const apiUrl = 'http://localhost:8000/api/coins';
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        if (data.status === 'success' && data.data && Array.isArray(data.data)) {
-          console.log(`✅ 원화 마켓 ${data.data.length}개 코인 로드 성공`);
-                     const mappedCoins = data.data.map(coin => ({
-             symbol: coin.symbol,
-             name: coin.korean_name || coin.symbol,
-             englishName: coin.english_name || coin.symbol,
-             price: coin.current_price || 0,
-             change: coin.change_rate || 0,
-             changeAmount: coin.change_amount || 0,
-             volume: coin.volume || 0,
-             trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
-             marketWarning: coin.market_warning || 'NONE',
-             marketCap: coin.market_cap || 0,
-             marketCapRank: coin.market_cap_rank || 0,
-             // 추가 정보들
-             circulatingSupply: coin.circulating_supply || 0,
-             high24h: coin.high_24h || 0,
-             low24h: coin.low_24h || 0,
-             unitsTraded: coin.units_traded || 0
-           }));
-          setCoinList(mappedCoins);
-        }
-      } catch (e) {
-        console.error(`❌ 원화 마켓 조회 실패:`, e);
-      } finally {
-        setCoinListLoading(false);
+  const fetchCoins = async () => {
+    try {
+      setCoinListLoading(true);
+      console.log(`🔄 원화 마켓 코인 목록 요청...`);
+      const apiUrl = 'http://localhost:8000/api/coins';
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      if (data?.status === 'success' && Array.isArray(data?.data)) {
+        console.log(`✅ 원화 마켓 ${data.data.length}개 코인 로드 성공`);
+        const mappedCoins = data.data.map(coin => ({
+          symbol: coin.symbol,
+          name: coin.korean_name || coin.symbol,
+          englishName: coin.english_name || coin.symbol,
+          price: Number(coin.current_price) || 0,
+          change: Number(coin.change_rate) || 0,
+          changeAmount: Number(coin.change_amount) || 0,
+          volume: Number(coin.volume) || 0,
+          trend: (Number(coin.change_rate) || 0) > 0 ? 'up' : 'down',
+          marketWarning: coin.market_warning || 'NONE',
+          marketCap: Number(coin.market_cap) || 0,
+          marketCapRank: Number(coin.market_cap_rank) || 0,
+          // 추가 정보들
+          circulatingSupply: Number(coin.circulating_supply) || 0,
+          high24h: Number(coin.high_24h) || 0,
+          low24h: Number(coin.low_24h) || 0,
+          unitsTraded: Number(coin.units_traded) || 0
+        }));
+        setCoinList(mappedCoins);
+      } else {
+        // ✅ 실패/빈 배열도 명확히 처리
+        setCoinList([]);
       }
-    };
-    fetchCoins();
-  }, []);
+    } catch (e) {
+      console.error('❌ 원화 마켓 조회 실패:', e);
+      setCoinList([]); // 네트워크 에러도 비우기
+    } finally {
+      setCoinListLoading(false); // 무조건 로딩 종료
+    }
+  };
+
+  fetchCoins();
+}, []);
 
   // 실시간 데이터로 코인 목록 업데이트
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
-      const realtimeInfo = realTimeData[coin.symbol + '_KRW'];
-      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
-        const millionValue = Math.round(parseFloat(realtimeInfo.value) / 1000000);
-        const formattedVolume = millionValue.toLocaleString() + ' 백만';
+      const rt = realTimeData[coin.symbol + '_KRW'];
+      if (rt && !Number.isNaN(Number(rt.closePrice))) {
+        const millionValue = Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
+        const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
         return {
           ...coin,
-          price: parseInt(realtimeInfo.closePrice),
-          change: Number(realtimeInfo.chgRate),
-          changeAmount: parseInt(realtimeInfo.chgAmt),
-          trend: Number(realtimeInfo.chgRate) > 0 ? 'up' : 'down',
-          volume: millionValue.toLocaleString() + ' 백만'
+          price: Math.floor(Number(rt.closePrice)) || 0,
+          change: Number(rt.chgRate) || 0,
+          changeAmount: Math.floor(Number(rt.chgAmt)) || 0,
+          trend: Number(rt.chgRate) > 0 ? 'up' : Number(rt.chgRate) < 0 ? 'down' : 'same',
+          // 실시간 없으면 REST 값으로 안전하게 폴백
+          volume: formattedVolume || (Number(coin.volume) ? `${Math.round(Number(coin.volume)/1_000_000).toLocaleString()} 백만` : '')
         };
       }
       return {
@@ -393,7 +399,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         change: coin.change || 0,
         changeAmount: coin.changeAmount || 0,
         trend: coin.change > 0 ? 'up' : coin.change < 0 ? 'down' : 'same',
-        volume: coin.volume ? `${Math.round(coin.volume / 1_000_000).toLocaleString()} 백만` : ''
+        volume: Number(coin.volume) ? `${Math.round(Number(coin.volume) / 1_000_000).toLocaleString()} 백만` : ''
       };
     });
   }, [coinList, realTimeData]);
@@ -810,7 +816,7 @@ useEffect(() => {
                       koreanName={selectedCoin === "BTC" ? "비트코인" : selectedCoin}
                       height={650}
                       theme="light"
-                      currentPrice={realTimeData[selectedCoin]?.close_price || 0}
+                      currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice || 0}
                       initialTimeframe="1h"
                       onPriceUpdate={(price) => {
                         if (price > 0) {
@@ -1163,7 +1169,10 @@ useEffect(() => {
                             currentPriceKRW={currentPriceKRW}
                             onPriceSelect={(price) => {
                               // 호가 클릭 시: 지정가면 입력값으로 세팅, 시장가면 무시
-                              if (orderType === "지정가") setOrderPrice(price);
+                              if (orderType === "지정가") {
+                                setOrderPrice(price);
+                                setOrderPriceInput(String(price));
+                              }
                             }}
                           />
                         </div>

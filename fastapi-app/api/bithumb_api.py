@@ -372,20 +372,18 @@ async def get_coingecko_market_cap(symbol: str):
 
 # ===== 빗썸 API 함수들 =====
 async def get_bithumb_coin_data(symbol: str):
-    """빗썸에서 특정 코인 데이터 조회"""
+    """빗썸에서 특정 코인 데이터 조회 (실패 시에도 fallback 보장)"""
     try:
         url = f"https://api.bithumb.com/public/ticker/{symbol}_KRW"
         timeout = aiohttp.ClientTimeout(total=10)
-        
+
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
                     if data.get("status") == "0000":
                         ticker_data = data.get("data", {})
-                        
                         current_price = float(ticker_data.get("closing_price", 0))
-                        
                         return {
                             "status": "success",
                             "data": {
@@ -399,14 +397,16 @@ async def get_bithumb_coin_data(symbol: str):
                                 "units_traded": float(ticker_data.get("units_traded_24H", 0)),
                                 "prev_closing_price": float(ticker_data.get("prev_closing_price", 0)),
                                 "timestamp": ticker_data.get("date"),
-                                "tick_size": get_bithumb_tick_size(symbol, current_price)
+                                "tick_size": get_bithumb_tick_size(symbol, current_price),
+                                "market_warning": "NONE",
                             }
                         }
-                        
     except Exception as e:
         print(f"❌ 빗썸 API 실패 ({symbol}): {e}")
-    
-    return None
+
+    # ✅ 여기까지 내려오면 실패 → fallback 리턴
+    fb = generate_fallback_coin_data(symbol)
+    return {"status": "success", "data": fb}
 
 def generate_fallback_coin_data(symbol: str):
     """폴백 코인 데이터 생성"""
