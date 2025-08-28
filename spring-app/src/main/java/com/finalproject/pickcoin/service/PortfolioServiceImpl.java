@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,50 +60,60 @@ public class PortfolioServiceImpl implements PortfolioService {
 
         return out;
     }
-    @Override
-    public List<Map<String, Object>> getHoldings(long userId) {
-        // 1) 보유 + 현재가(+평단) 로딩 (키 이름: assetId/symbol/assetName/market/amount/avgPrice/nowPrice)
-        List<Map<String,Object>> rows = portfolioRepository.holdings(userId);
 
-        // 2) 총 평가금액(코인 부분) 먼저 계산
-        BigDecimal coinTotal = BigDecimal.ZERO;
-        for (Map<String,Object> r : rows) {
-            BigDecimal amt  = toBD(r.get("amount"));
-            BigDecimal now  = toBD(r.get("nowPrice"));
-            coinTotal = coinTotal.add( amt.multiply(now) );
-        }
+@Override
+public List<Map<String, Object>> getHoldings(long userId) {
+    // 1) 보유 로드
+    List<Map<String,Object>> rows = portfolioRepository.holdings(userId);
+    if (rows.isEmpty()) return rows;
 
-        // 3)衍生값 계산해서 같은 Map에 키 추가
-        for (Map<String,Object> r : rows) {
-            BigDecimal amt   = toBD(r.get("amount"));
-            BigDecimal avg   = toBD(r.get("avgPrice"));   // 없으면 0
-            BigDecimal now   = toBD(r.get("nowPrice"));   // 없으면 0
+    // 2) 자산ID 수집
+    var assetIds = rows.stream()
+        .map(r -> ((Number) r.get("assetId")).longValue())
+        .collect(java.util.stream.Collectors.toSet());
 
-            BigDecimal mv    = amt.multiply(now);         // 평가금액
-            BigDecimal pnl   = amt.multiply(now.subtract(avg)); // 미실현손익(평단 없으면 0)
-            BigDecimal pnlPct = (avg.signum()==0)
-                    ? BigDecimal.ZERO
-                    : now.divide(avg, 8, RoundingMode.HALF_UP).subtract(BigDecimal.ONE)
-                        .multiply(BigDecimal.valueOf(100));
+    // 3) 체결 이력 로드 → 이동평균(평단) 계산
+    var fills  = portfolioRepository.fillsForAvg(userId, assetIds);
+    var avgMap = computeAvgByAsset(fills); // BUY=평단 갱신, SELL=수량만 감소
 
-            BigDecimal weightPct = (coinTotal.signum()==0)
-                    ? BigDecimal.ZERO
-                    : mv.multiply(BigDecimal.valueOf(100))
-                        .divide(coinTotal, 4, RoundingMode.HALF_UP);
-
-            r.put("marketValue", mv);
-            r.put("pnlAmount",   pnl);
-            r.put("pnlPct",      pnlPct.setScale(2, RoundingMode.HALF_UP));
-            r.put("weightPct",   weightPct.setScale(2, RoundingMode.HALF_UP));
-        }
-
-        // 4) 비중 내림차순
-        rows.sort((a,b) -> Double.compare(
-            toBD(b.get("weightPct")).doubleValue(),
-            toBD(a.get("weightPct")).doubleValue()
-        ));
-        return rows;
+    // 4) avgPrice 주입 (nowPrice는 프론트 실시간 사용이라 0)
+    for (var r : rows) {
+        long aid = ((Number) r.get("assetId")).longValue();
+        r.put("avgPrice", avgMap.getOrDefault(aid, BigDecimal.ZERO));
+        if (r.get("nowPrice") == null) r.put("nowPrice", BigDecimal.ZERO);
     }
+
+    return rows; // ✅ 반드시 반환
+}
+
+/** 이동평균법: BUY=평단 갱신, SELL=수량 감소(평단 유지) */
+private static Map<Long, BigDecimal> computeAvgByAsset(List<Map<String,Object>> fills) {
+    Map<Long, BigDecimal> avg = new HashMap<>();
+    Map<Long, BigDecimal> qty = new HashMap<>();
+
+    for (Map<String,Object> f : fills) {
+        long aid = ((Number) f.get("assetId")).longValue();
+        int  side= ((Number) f.get("side")).intValue(); // 0 buy, 1 sell
+        BigDecimal q = toBD(f.get("qty"));
+        BigDecimal p = toBD(f.get("price"));
+
+        BigDecimal cq = qty.getOrDefault(aid, BigDecimal.ZERO);
+        BigDecimal ca = avg.getOrDefault(aid, BigDecimal.ZERO);
+
+        if (side == 0) { // BUY
+            BigDecimal newQty = cq.add(q);
+            BigDecimal denom  = newQty.signum()==0 ? BigDecimal.ONE : newQty;
+            BigDecimal newAvg = (cq.multiply(ca).add(q.multiply(p)))
+                                .divide(denom, 8, RoundingMode.HALF_UP);
+            qty.put(aid, newQty);
+            avg.put(aid, newAvg);
+        } else {         // SELL
+            qty.put(aid, cq.subtract(q).max(BigDecimal.ZERO)); // avg 유지
+        }
+    }
+    return avg;
+}
+
 
     private static BigDecimal toBD(Object o){
         if (o == null) return BigDecimal.ZERO;

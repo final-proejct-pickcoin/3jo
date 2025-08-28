@@ -11,6 +11,6 @@ public interface PortfolioService {
     //현재 보유 자산
     List<Map<String,Object>> getHoldings(long userId);
     //거래 내역
-    List<Map<String,Object>> getTrades(long userId, Long assetId, int limit, int offset);
+    List<Map<String,Object>> getTrades(long userId, Long assetId, int limit, int offset);    
 
 }

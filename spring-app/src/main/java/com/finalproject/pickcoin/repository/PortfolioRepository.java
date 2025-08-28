@@ -23,6 +23,14 @@ public interface PortfolioRepository {
     @org.apache.ibatis.annotations.Param("assetId") Long assetId, // null이면 전체
     @org.apache.ibatis.annotations.Param("limit")   int limit,
     @org.apache.ibatis.annotations.Param("offset")  int offset
-);
+    );
+
+   // ✅ 평단 계산용 체결 이력(대상 자산만)
+    List<Map<String,Object>> fillsForAvg(
+        @Param("userId") long userId,
+        @Param("assetIds") Collection<Long> assetIds
+    );    
+
+    
 }
 

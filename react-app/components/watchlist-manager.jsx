@@ -13,7 +13,7 @@ import { Bell, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = "http://localhost:8080/api/mypage";
-//const default_user_id = 12; // 추후 JWT로 대체
+
 
 
 //=====================
