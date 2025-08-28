@@ -766,9 +766,15 @@ useEffect(() => {
 
                         <div className={`text-right font-semibold flex flex-col justify-center ${coin.trend === 'up' ? 'text-red-600' : 'text-blue-600'}`}
                           style={{ height: '100%', flexShrink: 0, overflow: 'hidden' }}>
-                          <div style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>{coin.trend === 'up' ? '+' : ''}{coin.change !== 0 ? coin.change.toFixed(2) : '0.00'}%</div>
+                          {/* 전일대비(%) */}
+                          <div style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>
+                            {coin.change > 0 ? '+' : coin.change < 0 ? '' : ''}
+                            {typeof coin.change === 'number' ? coin.change.toFixed(2) : '0.00'}%
+                          </div>
+                          {/* 전일대비(금액) */}
                           <div className="text-sm" style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>
-                            {coin.changeAmount > 0 ? '+' : ''}{coin.changeAmount !== 0 ? coin.changeAmount.toLocaleString() : '0'}
+                            {coin.changeAmount > 0 ? '+' : coin.changeAmount < 0 ? '' : ''}
+                            {typeof coin.changeAmount === 'number' ? Math.abs(coin.changeAmount).toLocaleString() : '0'}
                           </div>
                         </div>
 
