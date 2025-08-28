@@ -34,7 +34,7 @@ function TradingChart({
   const [chartType, setChartType] = useState("candlestick");
   const [crosshair, setCrosshair] = useState(null);
   const [ready, setReady] = useState(false);
-  const [chartApi, setChartApi] = useState(null);
+
   const [showIndicators, setShowIndicators] = useState(false);
   const [drawingMode, setDrawingMode] = useState(null);
   const [volumeProfile, setVolumeProfile] = useState(false);
@@ -53,6 +53,8 @@ function TradingChart({
   const indicatorRefs = useRef({});
   const priceLineRef = useRef(null);
   const didInitialScroll = useRef(false);
+  const drawingPoints = useRef({ start: null }); // 드로잉 도구용 포인트 저장
+  const drawingLines = useRef([]); // 그려진 선들 저장
 
   // Memoized palette
   const palette = useMemo(() => {
@@ -145,9 +147,9 @@ function TradingChart({
       } catch {}
     }
          fetchBithumb();
-     const interval = setInterval(fetchBithumb, 500); // 0.5초마다 업데이트
+    const interval = setInterval(fetchBithumb, 2000); // 2초마다 업데이트 (성능 개선)
      return () => { ignore = true; clearInterval(interval); };
-  }, [symbol]);
+  }, [symbol, onPriceUpdate]);
 
   useEffect(() => {
     let ignore = false;
@@ -175,66 +177,38 @@ function TradingChart({
     return () => { ignore = true; clearInterval(interval); };
   }, [symbol, timeframe]);
 
-  // Memoized candles
+  // Memoized candles - 성능 최적화
   const candles = useMemo(() => {
-    // 봉 간격(ms)
-    const msMap = { "1m": 60_000, "5m": 300_000, "15m": 900_000, "1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000, "1w": 604_800_000 };
-    const ms = msMap[timeframe] || 3_600_000;
-    const getSeoulNow = () => {
-      const now = new Date();
-      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-      return utc + (9 * 60 * 60 * 1000);
-    };
     if (bithumbCandles.length > 0 && !isLoadingCandles) {
-      // 오직 실제 bithumbCandles 데이터만 반환 (가짜 캔들 추가 X)
+      // 오직 실제 bithumbCandles 데이터만 반환
       return bithumbCandles;
     }
-    // 고정 시드 더미 데이터 (Math.random() X)
-    console.log('⚠️ 빗썸 데이터 없음, 고정 더미 데이터 사용');
-    const seed = symbol + timeframe;
-    let seedValue = 0;
-    for (let i = 0; i < seed.length; i++) seedValue += seed.charCodeAt(i);
-    const seededRandom = (index) => {
-      const x = Math.sin(seedValue + index) * 10000;
-      return x - Math.floor(x);
-    };
+    
+    // 간단한 더미 데이터 (50개로 줄임, 복잡한 계산 제거)
+    console.log('⚠️ 빗썸 데이터 없음, 간단한 더미 데이터 사용');
     const out = [];
     let base = (currentPrice || 163800000) * 0.99;
     const now = Date.now();
-    for (let i = 100; i >= 0; i--) {
-      const candleTime = Math.floor((now - i * ms) / ms) * ms;
-      const t = Math.floor(candleTime / 1000);
-      const trend = Math.sin(i * 0.02) * 0.0008;
-      const volatility = 0.001 + seededRandom(i * 3) * 0.002;
-      const priceMove = (seededRandom(i * 5) - 0.5) * volatility;
-      base = base * (1 + trend + priceMove);
-      const spread = base * (0.002 + seededRandom(i * 7) * 0.003);
-      const o = base + (seededRandom(i * 11) - 0.5) * spread * 0.3;
-      const c = base + (seededRandom(i * 13) - 0.5) * spread * 0.8;
-      const h = Math.max(o, c) + seededRandom(i * 17) * spread * 0.3;
-      const l = Math.min(o, c) - seededRandom(i * 19) * spread * 0.3;
-      const v = 100 + seededRandom(i * 23) * 500;
-      out.push({ time: t, open: Math.round(Math.max(l, o)), high: Math.round(Math.max(h, o, c)), low: Math.round(Math.min(l, o, c)), close: Math.round(Math.max(l, c)), volume: Math.round(v) });
-    }
-    // 더미 데이터도 마지막에 현재 시각 캔들 추가 (이상한 끝 캔들 방지)
-    const last = out[out.length - 1];
-    const now2 = getSeoulNow();
-    const lastCandleEnd = (last.time * 1000) + ms;
-    if (now2 > lastCandleEnd) {
-      const nextTime = Math.floor(now2 / 1000);
-      // 마지막 캔들이 너무 극단적이지 않도록 조정
-      const reasonableClose = Math.max(last.close * 0.995, last.close * 1.005); // ±0.5% 범위
+    const ms = 3600000; // 1시간 고정
+    
+    for (let i = 50; i >= 0; i--) { // 100개에서 50개로 줄임
+      const t = Math.floor((now - i * ms) / 1000);
+      const change = (Math.sin(i * 0.1) * 0.01); // 단순화된 변동
+      const price = base * (1 + change);
+      const spread = price * 0.002;
+      
       out.push({ 
-        time: nextTime, 
-        open: last.close, 
-        high: Math.max(last.close, reasonableClose), 
-        low: Math.min(last.close, reasonableClose), 
-        close: reasonableClose, 
-        volume: Math.max(50, last.volume * 0.8) // 적절한 거래량
+        time: t, 
+        open: Math.round(price), 
+        high: Math.round(price + spread), 
+        low: Math.round(price - spread), 
+        close: Math.round(price), 
+        volume: 100 + (i % 10) * 50 // 단순한 거래량
       });
     }
+    
     return out.sort((a, b) => a.time - b.time);
-  }, [bithumbCandles, isLoadingCandles, symbol, timeframe, currentPrice]);
+  }, [bithumbCandles, isLoadingCandles, currentPrice]);
 
   // ✅ 최초 스크롤 제어 useEffect들을 candles 선언 이후에 배치
   useEffect(() => {
@@ -442,7 +416,7 @@ function TradingChart({
     return result;
   }, []);
 
-  // 차트 생성 메인 useEffect
+  // 차트 생성 메인 useEffect - 성능 최적화
   useEffect(() => {
     let mounted = true;
     
@@ -471,7 +445,7 @@ function TradingChart({
         chartRef.current = null;
       }
 
-      // 차트 생성
+      // 차트 생성 - 성능 최적화 옵션
       const chart = LW.createChart(containerRef.current, {
         width: containerRef.current.clientWidth || 900,
         height: Math.max(500, height - (showIndicators ? 200 : 120)),
@@ -499,8 +473,8 @@ function TradingChart({
           borderColor: palette.axis, 
           timeVisible: true, 
           secondsVisible: ["1m", "5m"].includes(timeframe),
-          rightOffset: 2, // 마지막 캔들 오른쪽에 2칸 여백
-          barSpacing: 7,   // 캔들 크기 더 작게
+          rightOffset: 2,
+          barSpacing: 7,
           minBarSpacing: 6,
           fixLeftEdge: false,
           fixRightEdge: false,
@@ -513,10 +487,12 @@ function TradingChart({
         },
         handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
         handleScale: { axisPressedMouseMove: true, pinch: true, mouseWheel: true },
+        // 성능 최적화 옵션 추가
+        watermark: { visible: false },
+        leftPriceScale: { visible: false },
       });
 
       chartRef.current = chart;
-      setChartApi(LW);
 
 
       // 메인 시리즈 생성
@@ -830,7 +806,14 @@ function TradingChart({
       });
 
 
+      // 차트가 완전히 준비되었는지 확인
+      if (chart && chart.timeScale && chart.priceScale) {
       setReady(true);
+        console.log('✅ 차트 초기화 완료 - 드로잉 도구 사용 가능');
+      } else {
+        console.warn('⚠️ 차트 초기화 실패 - 스케일이 준비되지 않음');
+        setReady(false);
+      }
 
       // 차트를 오른쪽 끝으로 스크롤
       if (chart && !didInitialScroll.current) {
@@ -874,14 +857,21 @@ function TradingChart({
     if (!ready || !priceSeriesRef.current || bithumbCandles.length === 0) return;
     // 1초마다 현재가로 마지막 캔들 update
     const interval = setInterval(() => {
+      try {
       const lastCandle = bithumbCandles[bithumbCandles.length - 1];
-      if (!lastCandle) return;
+        if (!lastCandle || !lastCandle.time || !lastCandle.open || !lastCandle.close) return;
       
       // 현재가 반영 (currentPrice가 있으면 사용)
       let price = currentPrice;
-      if (!price || price === 0) {
+        if (!price || price === 0 || isNaN(price)) {
         price = lastCandle.close;
       }
+        
+        // 모든 값이 유효한지 확인
+        if (isNaN(price) || isNaN(lastCandle.open) || isNaN(lastCandle.high) || isNaN(lastCandle.low)) {
+          console.warn('유효하지 않은 캔들 데이터:', { lastCandle, price });
+          return;
+        }
       
       // 가격이 너무 극단적이지 않도록 조정
       const prevClose = lastCandle.close;
@@ -889,21 +879,39 @@ function TradingChart({
       if (Math.abs(price - prevClose) > maxChange) {
         price = prevClose + (price > prevClose ? maxChange : -maxChange);
       }
+        
+        // 최종 유효성 검사
+        if (price <= 0 || isNaN(price)) {
+          console.warn('유효하지 않은 업데이트 가격:', price);
+          return;
+        }
       
       // 캔들 타입별로 update
       if (["candlestick", "heikin-ashi"].includes(chartType)) {
-        priceSeriesRef.current.update({
+          const updateData = {
           time: lastCandle.time,
-          open: lastCandle.open,
-          high: Math.max(lastCandle.high, price), // 실시간 가격 반영
-          low: Math.min(lastCandle.low, price),   // 실시간 가격 반영
-          close: price
-        });
+            open: Math.max(0, lastCandle.open),
+            high: Math.max(0, Math.max(lastCandle.high, price)),
+            low: Math.max(0, Math.min(lastCandle.low, price)),
+            close: Math.max(0, price)
+          };
+          
+          // 모든 값이 유효한지 다시 한번 확인
+          if (Object.values(updateData).every(val => val > 0 && !isNaN(val))) {
+            priceSeriesRef.current.update(updateData);
+          }
       } else {
-        priceSeriesRef.current.update({
+          const updateData = {
           time: lastCandle.time,
-          value: price
-        });
+            value: Math.max(0, price)
+          };
+          
+          if (updateData.value > 0 && !isNaN(updateData.value)) {
+            priceSeriesRef.current.update(updateData);
+          }
+        }
+      } catch (error) {
+        console.error('캔들 업데이트 실패:', error);
       }
     }, 1000);
     return () => clearInterval(interval);
@@ -911,12 +919,12 @@ function TradingChart({
 
   // 실시간 현재가 라인 업데이트
   useEffect(() => {
-    if (!ready || !priceLineRef.current || !priceInfo.displayPrice) return;
+    if (!ready || !priceLineRef.current) return;
     
     const interval = setInterval(() => {
       try {
         // 현재가 라인을 실시간으로 업데이트
-        if (priceLineRef.current && priceInfo.displayPrice > 0) {
+        if (priceLineRef.current && priceInfo.displayPrice && priceInfo.displayPrice > 0 && !isNaN(priceInfo.displayPrice)) {
           priceLineRef.current.applyOptions({
             price: priceInfo.displayPrice
           });
@@ -932,7 +940,347 @@ function TradingChart({
   // 드로잉 모드 토글 함수
   const toggleDrawingMode = (mode) => {
     setDrawingMode(prev => prev === mode ? null : mode);
+    // 모드 변경 시 이전 포인트 초기화
+    drawingPoints.current.start = null;
   };
+
+  // 드로잉 도구 초기화 함수
+  const clearAllDrawings = useCallback(() => {
+    if (drawingLines.current.length > 0) {
+      drawingLines.current.forEach(line => {
+        try {
+          if (line.line && typeof line.line.remove === 'function') {
+            line.line.remove();
+          } else if (line.line && typeof line.line.dispose === 'function') {
+            line.line.dispose();
+          }
+        } catch (error) {
+          console.log('선 제거 실패:', error);
+        }
+      });
+      drawingLines.current = [];
+      console.log('✅ 모든 드로잉 도구 제거 완료');
+    }
+  }, []);
+
+  // 수평선 그리기 함수
+  const drawHorizontalLine = useCallback((price) => {
+    if (!chartRef.current || !priceSeriesRef.current) return;
+    
+    try {
+      // 기존 수평선 제거
+      const existingLine = drawingLines.current.find(line => line.type === 'horizontal');
+      if (existingLine && existingLine.line && typeof existingLine.line.remove === 'function') {
+        try {
+          existingLine.line.remove();
+        } catch (e) {
+          console.log('기존 수평선 제거 실패:', e);
+        }
+        drawingLines.current = drawingLines.current.filter(line => line.type !== 'horizontal');
+      }
+      
+      // 새로운 수평선 생성
+      try {
+        // 가격이 유효한지 확인
+        if (price <= 0 || isNaN(price)) {
+          console.warn('유효하지 않은 가격:', price);
+          return;
+        }
+        
+        const horizontalLine = priceSeriesRef.current.createPriceLine({
+          price: price,
+          color: '#FF6B35', // 진한 주황색
+          lineWidth: 3, // 더 두껍게
+          lineStyle: 1, // 실선
+          axisLabelVisible: true,
+          title: `수평선 ${price.toLocaleString()}`,
+        });
+        
+        // 선 저장
+        drawingLines.current.push({
+          type: 'horizontal',
+          line: horizontalLine,
+          price: price
+        });
+        
+        console.log('✅ 수평선 그리기 완료:', { price, formattedPrice: price.toLocaleString() });
+      } catch (e) {
+        console.error('수평선 생성 실패:', e);
+      }
+    } catch (error) {
+      console.error('수평선 그리기 실패:', error);
+    }
+  }, []);
+
+  // 수직선 그리기 함수
+  const drawVerticalLine = useCallback((time) => {
+    if (!chartRef.current || !priceSeriesRef.current) return;
+    
+    try {
+      // 기존 수직선 제거
+      const existingLine = drawingLines.current.find(line => line.type === 'vertical');
+      if (existingLine && existingLine.line && typeof existingLine.line.remove === 'function') {
+        try {
+          existingLine.line.remove();
+        } catch (e) {
+          console.log('기존 수직선 제거 실패:', e);
+        }
+        drawingLines.current = drawingLines.current.filter(line => line.type !== 'vertical');
+      }
+      
+      // 새로운 수직선 생성
+      try {
+        // 현재 차트의 가격 범위를 정확하게 가져오기
+        let minPrice = 0, maxPrice = 0;
+        
+        if (candles && candles.length > 0) {
+          // 캔들 데이터에서 실제 가격 범위 추출
+          minPrice = Math.min(...candles.map(c => c.low));
+          maxPrice = Math.max(...candles.map(c => c.high));
+        } else {
+          // 차트의 현재 가시 영역에서 가격 범위 가져오기
+          try {
+            const priceScale = chartRef.current.priceScale('right');
+            const visibleRange = priceScale.getVisibleRange();
+            if (visibleRange && visibleRange.from !== undefined && visibleRange.to !== undefined) {
+              minPrice = visibleRange.from;
+              maxPrice = visibleRange.to;
+            } else {
+              // 기본값 사용
+              minPrice = 150000000;
+              maxPrice = 160000000;
+            }
+          } catch (e) {
+            minPrice = 150000000;
+            maxPrice = 160000000;
+          }
+        }
+        
+        // 수직선을 위한 마커 시리즈 생성
+        const markerSeries = chartRef.current.addLineSeries({
+          color: '#8B5CF6', // 진한 보라색
+          lineWidth: 3, // 더 두껍게
+          lineStyle: 1,
+          crosshairMarkerVisible: false,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        });
+        
+        // 수직선을 위한 데이터 포인트 (같은 시간에 여러 가격으로 수직선 효과)
+        const lineData = [];
+        const priceStep = (maxPrice - minPrice) / 50; // 더 조밀하게
+        
+        for (let i = 0; i <= 50; i++) {
+          const price = minPrice + (priceStep * i);
+          lineData.push({ time: time, value: price });
+        }
+        
+        markerSeries.setData(lineData);
+        
+        // 선 저장
+        drawingLines.current.push({
+          type: 'vertical',
+          line: markerSeries,
+          time: time
+        });
+        
+        console.log('✅ 수직선 그리기 완료:', { time, minPrice, maxPrice });
+      } catch (e) {
+        console.error('수직선 시리즈 생성 실패:', e);
+      }
+    } catch (error) {
+      console.error('수직선 그리기 실패:', error);
+    }
+  }, [candles]);
+
+  // 추세선 그리기 함수
+  const drawTrendline = useCallback((startPoint, endPoint) => {
+    if (!chartRef.current || !priceSeriesRef.current) return;
+    
+    try {
+      // 기존 추세선 제거
+      const existingLine = drawingLines.current.find(line => line.type === 'trendline');
+      if (existingLine && existingLine.line && typeof existingLine.line.remove === 'function') {
+        try {
+          existingLine.line.remove();
+        } catch (e) {
+          console.log('기존 추세선 제거 실패:', e);
+        }
+        drawingLines.current = drawingLines.current.filter(line => line.type !== 'trendline');
+      }
+      
+      // 새로운 추세선 생성
+      try {
+        // 포인트 데이터 유효성 검사
+        if (!startPoint || !endPoint || 
+            !startPoint.time || !endPoint.time || 
+            !startPoint.price || !endPoint.price ||
+            isNaN(startPoint.price) || isNaN(endPoint.price) ||
+            startPoint.price <= 0 || endPoint.price <= 0) {
+          console.warn('유효하지 않은 추세선 포인트:', { startPoint, endPoint });
+          return;
+        }
+        
+        const trendlineSeries = chartRef.current.addLineSeries({
+          color: '#10B981', // 진한 초록색
+          lineWidth: 3, // 더 두껍게
+          lineStyle: 1,
+          crosshairMarkerVisible: false,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        });
+        
+        // 추세선 데이터 설정 (더 부드러운 선을 위해 중간점 추가)
+        const timeDiff = endPoint.time - startPoint.time;
+        const priceDiff = endPoint.price - startPoint.price;
+        const steps = Math.max(2, Math.floor(Math.abs(timeDiff) / 60)); // 1분마다 점 추가
+        
+        const trendlineData = [];
+        for (let i = 0; i <= steps; i++) {
+          const progress = i / steps;
+          const time = startPoint.time + (timeDiff * progress);
+          const price = startPoint.price + (priceDiff * progress);
+          trendlineData.push({ time: Math.floor(time), value: price });
+        }
+        
+        trendlineSeries.setData(trendlineData);
+        
+        // 선 저장
+        drawingLines.current.push({
+          type: 'trendline',
+          line: trendlineSeries,
+          start: startPoint,
+          end: endPoint
+        });
+        
+        console.log('✅ 추세선 그리기 완료:', { 
+          start: startPoint, 
+          end: endPoint, 
+          points: trendlineData.length,
+          timeDiff: timeDiff,
+          priceDiff: priceDiff
+        });
+      } catch (e) {
+        console.error('추세선 생성 실패:', e);
+      }
+    } catch (error) {
+      console.error('추세선 그리기 실패:', error);
+    }
+  }, []);
+
+  // 드로잉 도구 사용을 위한 차트 클릭 핸들러
+  const handleChartClick = useCallback((event) => {
+    if (!drawingMode || !chartRef.current || !ready) {
+      console.log('드로잉 도구 사용 불가:', { 
+        drawingMode, 
+        hasChart: !!chartRef.current, 
+        ready 
+      });
+      return;
+    }
+    
+    try {
+      // 차트가 완전히 로드될 때까지 대기
+      if (!chartRef.current.timeScale || !chartRef.current.priceScale) {
+        console.log('차트 인스턴스가 아직 준비되지 않았습니다.');
+        return;
+      }
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      
+      // 차트 좌표로 변환
+      const timeScale = chartRef.current.timeScale();
+      const priceScale = chartRef.current.priceScale('right');
+      
+      if (timeScale && priceScale && 
+          typeof timeScale.coordinateToTime === 'function') {
+        
+        const time = timeScale.coordinateToTime(x);
+        
+        // 정확한 가격 좌표 변환
+        let price = null;
+        
+        // 방법 1: coordinateToPrice 메서드 사용 (가장 정확함)
+        if (typeof priceScale.coordinateToPrice === 'function') {
+          price = priceScale.coordinateToPrice(y);
+        }
+        // 방법 2: getVisibleRange를 사용한 정확한 계산
+        else {
+          try {
+            const visibleRange = priceScale.getVisibleRange();
+            if (visibleRange && visibleRange.from !== undefined && visibleRange.to !== undefined) {
+              const { from, to } = visibleRange;
+              const containerHeight = containerRef.current.clientHeight;
+              const priceRange = to - from;
+              
+              // Y 좌표를 가격으로 변환 (Y축은 위에서 아래로 증가)
+              const normalizedY = y / containerHeight;
+              price = to - (normalizedY * priceRange);
+            }
+          } catch (e) {
+            console.log('getVisibleRange 실패, 대체 방법 사용');
+          }
+        }
+        
+        // 방법 3: 캔들 데이터 기반 추정 (fallback)
+        if (price === null || isNaN(price)) {
+          if (candles && candles.length > 0) {
+            const lastCandle = candles[candles.length - 1];
+            const containerHeight = containerRef.current.clientHeight;
+            const priceRange = lastCandle.high - lastCandle.low;
+            const pixelsPerPrice = containerHeight / priceRange;
+            price = lastCandle.high - (y / pixelsPerPrice);
+          }
+        }
+        
+        if (time && price !== null && !isNaN(price) && price > 0) {
+          console.log(`${drawingMode} 도구 사용:`, { time, price, x, y });
+          
+          // 실제 드로잉 로직 구현
+          switch (drawingMode) {
+            case 'trendline':
+              // 추세선 그리기 - 두 점이 필요하므로 첫 번째 클릭 시점 저장
+              if (!drawingPoints.current.start) {
+                drawingPoints.current.start = { time, price };
+                console.log('📏 추세선 시작점:', { time, price });
+              } else {
+                // 두 번째 클릭 시 추세선 그리기
+                const endPoint = { time, price };
+                drawTrendline(drawingPoints.current.start, endPoint);
+                drawingPoints.current.start = null; // 리셋
+                console.log('📏 추세선 완성:', { start: drawingPoints.current.start, end: endPoint });
+              }
+              break;
+            case 'horizontal':
+              // 수평선 그리기
+              drawHorizontalLine(price);
+              console.log('➖ 수평선 그리기:', { time, price });
+              break;
+            case 'vertical':
+              // 수직선 그리기
+              drawVerticalLine(time);
+              console.log('📐 수직선 그리기:', { time, price });
+              break;
+            default:
+              break;
+          }
+        } else {
+          console.log('좌표 변환 실패:', { time, price, x, y });
+        }
+      } else {
+        console.log('차트 스케일 상태:', { 
+          hasTimeScale: !!timeScale, 
+          hasPriceScale: !!priceScale,
+          timeScaleType: typeof timeScale?.coordinateToTime,
+          priceScaleType: typeof priceScale?.coordinateToPrice
+        });
+      }
+    } catch (error) {
+      console.error('드로잉 도구 사용 중 오류 발생:', error);
+    }
+  }, [drawingMode, ready, candles]);
 
   const toggleIndicator = (key) => {
     setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
@@ -1152,11 +1500,12 @@ const indicatorGroups = {
              </button>
            </div>
            {/* 드로잉 도구 */}
-           <div style={{ display: "flex", gap: 4 }}>
+             {/* <div style={{ display: "flex", gap: 4 }}>
              {drawingTools.slice(0, 3).map(tool => (
                <button
                  key={tool.key}
                  onClick={() => toggleDrawingMode(tool.key)}
+                   disabled={!ready}
                  style={{
                    padding: "6px 8px",
                    borderRadius: 6,
@@ -1164,14 +1513,33 @@ const indicatorGroups = {
                    background: drawingMode === tool.key ? palette.accent : (theme === "dark" ? "#4A5568" : "#E2E8F0"),
                    color: drawingMode === tool.key ? "#fff" : (theme === "dark" ? "#E2E8F0" : "#4A5568"),
                    fontSize: 11,
-                   cursor: "pointer",
-                   title: tool.label
+                     cursor: ready ? "pointer" : "not-allowed",
+                     opacity: ready ? 1 : 0.5,
+                     title: ready ? tool.label : "차트 로딩 중..."
                  }}
                >
                  {tool.icon}
                </button>
-             ))}
-           </div>
+               ))} */}
+               {/* 드로잉 도구 초기화 버튼 */}
+               {/* <button
+                 onClick={clearAllDrawings}
+                 disabled={!ready || drawingLines.current.length === 0}
+                 style={{
+                   padding: "6px 8px",
+                   borderRadius: 6,
+                   border: "none",
+                   background: theme === "dark" ? "#EF4444" : "#FEE2E2",
+                   color: theme === "dark" ? "#FEE2E2" : "#DC2626",
+                   fontSize: 11,
+                   cursor: (ready && drawingLines.current.length > 0) ? "pointer" : "not-allowed",
+                   opacity: (ready && drawingLines.current.length > 0) ? 1 : 0.5,
+                   title: "모든 드로잉 도구 제거"
+                 }}
+               >
+                 🗑️
+               </button> */}
+             {/* </div> */}
          </div>
        </div>
      </div>
@@ -1274,7 +1642,9 @@ const indicatorGroups = {
          background: palette.bg,
          position: "relative",
          minHeight: 500, // ✅ 최소 높이 보장
+         cursor: drawingMode ? 'crosshair' : 'default', // 드로잉 모드일 때 크로스헤어 커서
        }}
+       onClick={handleChartClick} // 차트 클릭 이벤트 추가
      >
        {/* 로딩 오버레이 */}
        {(!ready || isLoadingCandles) && (

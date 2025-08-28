@@ -546,33 +546,33 @@ const pagedTrades = useMemo(() => {
             {/* 내 계좌 정보 */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">내 계좌 정보</CardTitle>
+                <CardTitle className="text-xl font-semibold dark:text-gray-100">내 계좌 정보</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* 보유 원화 */}
-                  <div className="text-center p-6 bg-blue-50 rounded-lg">
-                    <div className="text-3xl font-bold text-blue-600 mb-2">
+                  <div className="text-center p-6 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                       {formatKRW(krw)}
                     </div>
-                    <div className="text-sm text-gray-600">보유 원화</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">보유 원화</div>
                   </div>
 
                   {/* 일일 한도 */}
-                  <div className="text-center p-6 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-semibold text-gray-900 mb-2">
+                  <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                       ₩1,200,000 / ₩50,000,000
                     </div>
-                    <div className="text-sm text-gray-600 mb-2">일일 한도</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">일일 한도</div>
                     <Progress value={24} className="h-2" />
                   </div>
 
                   {/* 월간 한도 */}
-                  <div className="text-center p-6 bg-gray-50 rounded-lg">
-                    <div className="text-lg font-semibold text-gray-900 mb-2">
+                  <div className="text-center p-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                       ₩8,500,000 / ₩200,000,000
                     </div>
-                    <div className="text-sm text-gray-600 mb-2">월간 한도</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">월간 한도</div>
                     <Progress value={4.25} className="h-2" />
                   </div>
                 </div>
@@ -582,17 +582,17 @@ const pagedTrades = useMemo(() => {
             {/* 원화 입출금 */}
             <Card id="krw-deposit-section">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">원화 입출금</CardTitle>
-                <p className="text-gray-600">한국 원화 입금 및 출금 서비스</p>
+                <CardTitle className="text-xl font-semibold dark:text-gray-100">원화 입출금</CardTitle>
+                <p className="text-gray-600 dark:text-gray-400">한국 원화 입금 및 출금 서비스</p>
               </CardHeader>
               <CardContent>
                 {/* 입출금 탭 */}
-                <div className="flex border-b border-gray-200 mb-6">
+                <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
                   <button
                     className={`px-6 py-3 text-lg font-medium transition-colors ${
                       activeTab === "deposit" 
-                        ? "border-b-2 border-blue-500 text-blue-600" 
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400" 
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     }`}
                     onClick={() => setActiveTab("deposit")}
                   >
@@ -601,8 +601,8 @@ const pagedTrades = useMemo(() => {
                   <button
                     className={`px-6 py-3 text-lg font-medium transition-colors ${
                       activeTab === "withdrawal" 
-                        ? "border-b-2 border-blue-500 text-blue-600" 
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400" 
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     }`}
                     onClick={() => setActiveTab("withdrawal")}
                   >
@@ -613,17 +613,17 @@ const pagedTrades = useMemo(() => {
                 {activeTab === "deposit" && (
                   <div className="space-y-6">
                     {/* 입금 전용 계좌 */}
-                    <div className="bg-gray-50 p-6 rounded-lg">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">입금 전용 계좌</h3>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">입금 전용 계좌</h3>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-600">은행:</span>
-                          <span className="font-medium">KB국민은행</span>
+                          <span className="text-gray-600 dark:text-gray-400">은행:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">KB국민은행</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-600">계좌번호:</span>
+                          <span className="text-gray-600 dark:text-gray-400">계좌번호:</span>
                           <div className="flex items-center space-x-2">
-                            <span className="font-medium">123-456-789012</span>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">123-456-789012</span>
                             <Button 
                               size="sm" 
                               variant="outline" 
@@ -634,34 +634,34 @@ const pagedTrades = useMemo(() => {
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-gray-600">예금주:</span>
-                          <span className="font-medium">예금주: (주)픽코인</span>
+                          <span className="text-gray-600 dark:text-gray-400">예금주:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">예금주: (주)픽코인</span>
                         </div>
                       </div>
                     </div>
 
                     {/* 입금 예정 금액 */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         입금 예정 금액
                       </label>
                       <div className="relative">
                         <Input
                           type="text"
                           placeholder="입금할 금액을 입력하세요"
-                          className="h-12 text-lg pr-12"
+                          className="h-12 text-lg pr-12 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
                           value={depositAmount}
                           onChange={(e) => setDepositAmount(e.target.value)}
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <span className="text-gray-500 text-lg">원</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-lg">원</span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         최소 입금액: ₩10,000 / 최대 입금액: ₩50,000,000
                       </p>
-                        <p className="text-sm mt-2">
-                          예상 보유 원화: <b>{formatKRW(krw + toNumber(depositAmount))}</b>
+                        <p className="text-sm mt-2 text-gray-700 dark:text-gray-300">
+                          예상 보유 원화: <b className="text-gray-900 dark:text-gray-100">{formatKRW(krw + toNumber(depositAmount))}</b>
                         </p>
                     </div>
 
@@ -675,10 +675,10 @@ const pagedTrades = useMemo(() => {
                     </div>
 
                     {/* 입금 안내사항 */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
                       <div className="flex items-start space-x-2">
-                        <div className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0">ℹ</div>
-                        <div className="text-sm text-blue-800">
+                        <div className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0">ℹ</div>
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
                           <h4 className="font-semibold mb-2">입금 안내사항</h4>
                           <ul className="space-y-1 text-xs">
                             <li>• 위 계좌로 입금하시면 실시간으로 반영됩니다.</li>
@@ -697,10 +697,10 @@ const pagedTrades = useMemo(() => {
                   <div className="space-y-6">
                     {/* 출금 계좌 선택 */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         출금 계좌 선택
                       </label>
-                      <select className="w-full h-12 text-lg border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <select className="w-full h-12 text-lg border border-gray-300 dark:border-gray-600 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100">
                         <option value="">계좌를 선택해주세요</option>
                         <option value="account1">KB국민은행 - 123-456-789012 (픽코인 출금 전용)</option>
                         <option value="account2">신한은행 - 987-654-321098 (픽코인 출금 전용)</option>
@@ -710,26 +710,26 @@ const pagedTrades = useMemo(() => {
 
                     {/* 출금 금액 입력 */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         출금 금액
                       </label>
                       <div className="relative">
                         <Input
                           type="text"
                           placeholder="출금할 금액을 입력하세요"
-                          className="h-12 text-lg pr-12"
+                          className="h-12 text-lg pr-12 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
                           value={withdrawAmount}
                           onChange={(e) => setWithdrawAmount(e.target.value)}
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <span className="text-gray-500 text-lg">원</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-lg">원</span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         최소 출금액: ₩10,000 / 최대 출금액: ₩50,000,000
                       </p>
-                      <span className="text-sm font-medium">예상 보유 원화:</span>
-                      <span className="text-sm font-bold">{formatKRW(afterWithdraw)}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">예상 보유 원화:</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{formatKRW(afterWithdraw)}</span>
                     </div>
 
                     {/* 출금 요청 버튼 */}
@@ -743,10 +743,10 @@ const pagedTrades = useMemo(() => {
                     </div>
 
                     {/* 출금 안내사항 */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
                       <div className="flex items-start space-x-2">
-                        <div className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0">ℹ</div>
-                        <div className="text-sm text-blue-800">
+                        <div className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0">ℹ</div>
+                        <div className="text-sm text-blue-800 dark:text-blue-200">
                           <h4 className="font-semibold mb-2">출금 안내사항</h4>
                           <ul className="space-y-1 text-xs">
                             <li>• 위 계좌로 출금하시면 실시간으로 반영됩니다.</li>
@@ -767,12 +767,12 @@ const pagedTrades = useMemo(() => {
             <Card id="krw-history-section">
               <CardHeader>
                 <CardTitle 
-                  className="text-xl font-semibold cursor-pointer hover:text-blue-600 transition-colors"
+                  className="text-xl font-semibold cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors dark:text-gray-100"
                   onClick={() => setActiveTab("")}
                 >
                   원화 입출금 내역
                 </CardTitle>
-                <p className="text-gray-600">최근 원화 입금 및 출금 내역</p>
+                <p className="text-gray-600 dark:text-gray-400">최근 원화 입금 및 출금 내역</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -782,45 +782,45 @@ const pagedTrades = useMemo(() => {
                     return (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between p-4 border rounded-lg ${
-                          isDeposit ? "bg-green-50" : "bg-red-50"
+                        className={`flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg ${
+                          isDeposit ? "bg-green-50 dark:bg-green-900/30" : "bg-red-50 dark:bg-red-900/30"
                         }`}
                       >
                         <div className="flex items-center space-x-3">
                           <div
                             className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              isDeposit ? "bg-green-100" : "bg-red-100"
+                              isDeposit ? "bg-green-100 dark:bg-green-800" : "bg-red-100 dark:bg-red-800"
                             }`}
                           >
                             <span
-                              className={`${isDeposit ? "text-green-600" : "text-red-600"} text-lg`}
+                              className={`${isDeposit ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"} text-lg`}
                             >
                               {isDeposit ? "↑" : "↓"}
                             </span>
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900">
+                            <div className="font-medium text-gray-900 dark:text-gray-100">
                               {isDeposit ? "입금" : "출금"}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
                               {log.timestamp.toLocaleString().slice(0, 19).replace('T', ' ')}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-semibold text-gray-900">
+                          <div className="font-semibold text-gray-900 dark:text-gray-100">
                             ₩{Number(log.amount).toLocaleString()}
                           </div>
                           { !isDeposit && log.fee && (
-                            <div className="text-sm text-gray-500">수수료: ₩{Number(log.fee).toLocaleString()}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">수수료: ₩{Number(log.fee).toLocaleString()}</div>
                           )}
                           <div
                             className={`text-sm font-medium px-2 py-1 rounded-full inline-block ${
                               log.status === "완료"
-                                ? "bg-green-50 text-green-600"
+                                ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
                                 : log.status === "처리중"
-                                ? "bg-blue-50 text-blue-600"
-                                : "bg-gray-50 text-gray-600"
+                                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                             }`}
                           >
                           </div>
@@ -1258,8 +1258,8 @@ const pagedTrades = useMemo(() => {
         return (
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl font-semibold">회원정보</CardTitle>
-              <p className="text-gray-600">개인정보 및 계정 설정</p>
+              <CardTitle className="text-xl font-semibold dark:text-gray-100">회원정보</CardTitle>
+              <p className="text-gray-600 dark:text-gray-400">개인정보 및 계정 설정</p>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center justify-center py-8">
@@ -1272,7 +1272,7 @@ const pagedTrades = useMemo(() => {
                          className="object-cover"
                        />
                      ) : null}
-                     <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-4xl flex items-center justify-center min-h-[144px] min-w-[144px]">
+                     <AvatarFallback className="bg-gray-400 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-white text-4xl flex items-center justify-center min-h-[144px] min-w-[144px]">
                        <span className="font-bold text-white text-5xl">{editNickname?.charAt(0).toUpperCase() || "U"}</span>
                      </AvatarFallback>
                    </Avatar>
@@ -1280,11 +1280,11 @@ const pagedTrades = useMemo(() => {
                 
                   <form className="w-full max-w-md flex flex-col gap-4">
                                          <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진</label>
+                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">프로필 사진</label>
                        <input
                          type="file"
                          accept="image/*"
-                         className="border rounded px-3 py-2 text-sm w-full"
+                         className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm w-full dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
                          onChange={e => {
                            const file = e.target.files?.[0]
                            if (file) {
@@ -1301,9 +1301,9 @@ const pagedTrades = useMemo(() => {
                      </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">닉네임</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">닉네임</label>
                       <input
-                        className="border rounded px-3 py-2 text-sm w-full"
+                        className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm w-full dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
                         value={editNickname}
                         onChange={e => setEditNickname(e.target.value)}
                         placeholder="닉네임 입력"
@@ -1311,9 +1311,9 @@ const pagedTrades = useMemo(() => {
                     </div>
                     
                                          <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">현재 비밀번호</label>
+                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">현재 비밀번호</label>
                        <input
-                         className="border rounded px-3 py-2 text-sm w-full"
+                         className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm w-full dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
                          type="password"
                          placeholder="현재 비밀번호 입력"
                          value={currentPassword}
@@ -1322,9 +1322,9 @@ const pagedTrades = useMemo(() => {
                      </div>
                      
                      <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호</label>
+                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">새 비밀번호</label>
                        <input
-                         className="border rounded px-3 py-2 text-sm w-full"
+                         className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm w-full dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
                          type="password"
                          placeholder="새 비밀번호 입력"
                          value={newPassword}
@@ -1333,9 +1333,9 @@ const pagedTrades = useMemo(() => {
                      </div>
                      
                      <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 확인</label>
+                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">새 비밀번호 확인</label>
                        <input
-                         className="border rounded px-3 py-2 text-sm w-full"
+                         className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm w-full dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
                          type="password"
                          placeholder="새 비밀번호 재입력"
                          value={confirmPassword}
@@ -1347,7 +1347,7 @@ const pagedTrades = useMemo(() => {
                                                <Button 
                           className="w-full" 
                           variant="default" 
-                          type="button" 
+                          type="button"
                                                      onClick={() => {
                              // 비밀번호 변경 로직
                              if (newPassword !== confirmPassword) {
@@ -1388,14 +1388,14 @@ const pagedTrades = useMemo(() => {
   }
 
   return (
-    <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
-      <div className="flex min-h-screen bg-gray-50">
+    <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* 좌측 사이드바 */}
-        <div className="w-64 bg-white border-r border-gray-200 p-6">
+        <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6">
           <div className="mb-8">
             <button 
               className={`block w-full text-left text-2xl font-bold mb-6 transition-colors ${
-                activeSection.startsWith("krw") || activeSection.startsWith("crypto") ? "text-blue-600" : "text-gray-900"
+                activeSection.startsWith("krw") || activeSection.startsWith("crypto") ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-gray-100"
               }`}
               onClick={() => setActiveSection("krw-account")}
             >
@@ -1493,7 +1493,7 @@ const pagedTrades = useMemo(() => {
             <div className="mb-6">
               <button 
                 className={`block w-full text-left text-lg font-semibold mb-3 transition-colors ${
-                  activeSection.startsWith("krw") ? "text-blue-600" : "text-gray-700"
+                  activeSection.startsWith("krw") ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
                 }`}
                 onClick={() => setActiveSection("krw-account")}
               >
@@ -1502,7 +1502,7 @@ const pagedTrades = useMemo(() => {
               <div className="space-y-2 ml-4">
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                    activeSubSection === "krw-account" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSubSection === "krw-account" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
@@ -1514,7 +1514,7 @@ const pagedTrades = useMemo(() => {
                 </button>
                 <button 
                   className={`block w-full text-left text-md text-bold py-2 px-3 rounded-lg transition-colors ${
-                    activeSection === "krw-account" && activeTab === "deposit" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSection === "krw-account" && activeTab === "deposit" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
@@ -1533,7 +1533,7 @@ const pagedTrades = useMemo(() => {
                 </button>
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                    activeSection === "krw-account" && activeTab === "history" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSection === "krw-account" && activeTab === "history" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
@@ -1557,7 +1557,7 @@ const pagedTrades = useMemo(() => {
             <div className="mb-6">
                              <button 
                  className={`block w-full text-left text-lg font-semibold mb-3 transition-colors ${
-                   activeSection.startsWith("crypto") ? "text-blue-600" : "text-gray-700"
+                   activeSection.startsWith("crypto") ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
                  }`}
                  onClick={() => {
                    setActiveSection("crypto-holdings")
@@ -1570,7 +1570,7 @@ const pagedTrades = useMemo(() => {
               <div className="space-y-2 ml-4">
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                  activeSection === "crypto-holdings" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                  activeSection === "crypto-holdings" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("crypto-holdings")
@@ -1582,7 +1582,7 @@ const pagedTrades = useMemo(() => {
                  </button>
                                  <button 
                    className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                     activeSection === "crypto-history" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                     activeSection === "crypto-history" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                    }`}
                    onClick={() => {
                      setActiveSection("crypto-history")
@@ -1594,7 +1594,7 @@ const pagedTrades = useMemo(() => {
                  </button>
                                  <button 
                    className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                     activeSection === "crypto-analysis" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                     activeSection === "crypto-analysis" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                    }`}
                    onClick={() => {
                      setActiveSection("crypto-analysis")
@@ -1611,7 +1611,7 @@ const pagedTrades = useMemo(() => {
             <div>
               <button 
                 className={`block w-full text-left text-2xl font-bold mb-6 transition-colors ${
-                  activeSection === "profile" ? "text-blue-600" : "text-gray-700"
+                  activeSection === "profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
                 }`}
                 onClick={() => {
                   setActiveSection("profile")
@@ -1626,7 +1626,7 @@ const pagedTrades = useMemo(() => {
         </div>
 
         {/* 메인 콘텐츠 영역 */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 bg-white dark:bg-gray-900">
           {renderContent()}
         </div>
       </div>

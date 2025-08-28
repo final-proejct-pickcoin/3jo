@@ -311,7 +311,7 @@ export const MarketAnalysis = () => {
         <div className="inline-flex items-center gap-2 bg-muted/50 rounded px-3 py-1">
           <span className="text-xs font-medium">통화:</span>
           <button
-            className={`px-2 py-1 rounded text-xs font-semibold ${currency === "KRW" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
+            className={`px-2 py-1 bg-white rounded text-xs font-semibold ${currency === "KRW" ? "bg-primary text-black" : "bg-muted text-muted-foreground"}`}
             onClick={() => setCurrency("KRW")}
           >
             KRW

@@ -65,12 +65,12 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">   
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">   
       {/* 호가 헤더 */}
-      <div className="grid grid-cols-3 text-xs font-bold text-center border-b bg-gray-50 h-8 items-center mb-2">
-        <div className="text-blue-700">매도수량</div>
-        <div>호가</div>
-        <div className="text-red-700">매수수량</div>
+      <div className="grid grid-cols-3 text-xs font-bold text-center border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 h-8 items-center mb-2">
+        <div className="text-blue-700 dark:text-blue-400">매도수량</div>
+        <div className="text-gray-900 dark:text-gray-100">호가</div>
+        <div className="text-red-700 dark:text-red-400">매수수량</div>
       </div>
       
       {/* 호가 목록 */}
@@ -113,17 +113,17 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
               askQty = formatQuantity(baseQty, askPrice);
             }
             rows.push(
-              <div
-                key={"ask-" + i}
-                className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 cursor-pointer"
-                onClick={() => onPriceSelect(askPrice)}
-              >
-                <div className="text-blue-700 bg-blue-100 text-left pl-2 font-mono rounded-l">{askQty}</div>
-                <div className="text-center font-bold font-mono text-blue-600 bg-blue-100">
-                  {formatPrice(askPrice)}
-                </div>
-                <div className="bg-white"></div>
-              </div>
+                               <div
+                   key={"ask-" + i}
+                   className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                   onClick={() => onPriceSelect(askPrice)}
+                 >
+                   <div className="text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 text-left pl-2 font-mono rounded-l">{askQty}</div>
+                   <div className="text-center font-bold font-mono text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900">
+                     {formatPrice(askPrice)}
+                   </div>
+                   <div className="bg-white dark:bg-gray-800"></div>
+                 </div>
             );
           }
           
@@ -155,21 +155,21 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
               bidQty = formatQuantity(baseQty, bidPrice);
             }
             const isCurrent = i === 0;
-            rows.push(
-              <div
-                key={"bid-" + i}
-                className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 cursor-pointer"
-                onClick={() => onPriceSelect(bidPrice)}
-              >
-                <div className={isCurrent ? "bg-red-100" : "bg-red-100"}></div>
-                <div className={`text-center font-bold font-mono cursor-pointer ${
-                  isCurrent ? 'text-red-600 bg-red-100' : 'text-red-600 bg-red-100'
-                }`}>
-                  {formatPrice(bidPrice)}
-                </div>
-                <div className="text-red-600 bg-red-100 text-right pr-2 font-mono rounded-r">{bidQty}</div>
-              </div>
-            );
+                         rows.push(
+               <div
+                 key={"bid-" + i}
+                 className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                 onClick={() => onPriceSelect(bidPrice)}
+               >
+                 <div className={isCurrent ? "bg-red-100 dark:bg-red-900" : "bg-red-100 dark:bg-red-900"}></div>
+                 <div className={`text-center font-bold font-mono cursor-pointer ${
+                   isCurrent ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900' : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900'
+                 }`}>
+                   {formatPrice(bidPrice)}
+                 </div>
+                 <div className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900 text-right pr-2 font-mono rounded-r">{bidQty}</div>
+               </div>
+             );
           }
           return rows;
         })()}

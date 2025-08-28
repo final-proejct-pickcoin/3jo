@@ -313,28 +313,28 @@ function TradingInterface() {
   return (
     <div className="w-full p-0 space-y-4">
       {/* 연결 상태 */}
-      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
-        <span className={`text-xs font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
+      <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-3 rounded-lg mb-4">
+        <span className={`text-xs font-semibold ${wsConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
           {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
         </span>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           코인: {coinList.length}개 | {new Date().toLocaleTimeString()}
         </div>
       </div>
 
       <div className="flex flex-row gap-4" style={{ height: 'calc(100vh - 100px)' }}>
-        {/* 탭 + 코인목록 */}
-        <div className="flex flex-row">
-          <div className="flex flex-col py-4 px-2 gap-2 bg-gray-50 border-r">
-            <button
-              className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-50 text-blue-600' : 'text-gray-500'}`}
-              onClick={() => setView('chart')}
-            >차트</button>
-            <button
-              className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-50 text-blue-600' : 'text-gray-500'}`}
-              onClick={() => setView('info')}
-            >정보</button>
-          </div>
+                 {/* 탭 + 코인목록 */}
+         <div className="flex flex-row">
+           <div className="flex flex-col py-4 px-2 gap-2 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+             <button
+               className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+               onClick={() => setView('chart')}
+             >차트</button>
+             <button
+               className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+               onClick={() => setView('info')}
+             >정보</button>
+           </div>
 
           <div className="w-[420px]">
             <CoinListPanel
