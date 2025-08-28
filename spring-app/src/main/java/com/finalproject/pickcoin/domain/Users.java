@@ -56,4 +56,13 @@ public class Users {
     private String provider;
     @Column(name = "provider_id") // 고유번호
     private String providerId;
+
+    @Column(nullable = true, unique = true, length = 50)
+    private String phone;
+
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
+    @Column(name = "kakao_id", unique = true)
+    private String kakaoId;
 }

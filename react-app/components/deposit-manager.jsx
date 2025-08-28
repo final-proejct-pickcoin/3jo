@@ -1,475 +1,539 @@
-"use client"
+"use client";
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-// import Navigation from "@/components/dashboard/navigation"
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  Copy,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Shield,
-  Info,
-  ExternalLink,
-  Wallet,
-  Building2,
-  CreditCard,
+import { Progress } from "@/components/ui/progress"
+import { 
+  Copy, 
+  Info, 
+  AlertTriangle,
+  Bank,
   User,
-  Phone,
+  CreditCard,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react"
 
+const DepositManager = () => {
+  const [depositAmount, setDepositAmount] = useState("")
+  const [withdrawalAmount, setWithdrawalAmount] = useState("")
+  const [activeTab, setActiveTab] = useState("deposit")
+  const [amountError, setAmountError] = useState("")
+  const [withdrawalAmountError, setWithdrawalAmountError] = useState("")
+  const [selectedWithdrawalAccount, setSelectedWithdrawalAccount] = useState("")
 
-// 아래 import들은 현재 프로젝트에 파일이 없으므로 주석 처리합니다.
-// import { useTheme } from "@/hooks/use-theme"
-// import { getThemeClasses } from "@/lib/theme-config"
-// import Header from "@/components/dashboard/header"
-// import Navigation from "@/components/dashboard/navigation"
-
-// Navigation은 아래처럼 사용 가능합니다.
-import { Navigation } from "@/components/navigation"
-
-// Header가 필요하다면, 프로젝트 내 다른 Header 컴포넌트를 찾아 대체하거나 직접 구현하세요.
-
-// 테마 관련 기능이 필요하다면, 직접 useTheme 훅을 구현하거나 기본 스타일만 사용하세요.
-// 예시:
-// const theme = "light"; // 또는 useState로 관리
-// const themeClasses = theme === "dark" ? "bg-dark text-white" : "bg-light text-black";
-
-// 사용자 계좌 정보
-const userAccount = {
-  balance: 5420000,
-  dailyLimit: 50000000,
-  monthlyLimit: 200000000,
-  usedDaily: 1200000,
-  usedMonthly: 8500000,
-}
-
-// 지원 은행 목록
-const supportedBanks = [
-  { code: "KB", name: "KB국민은행", fee: 1000 },
-  { code: "SH", name: "신한은행", fee: 1000 },
-  { code: "WR", name: "우리은행", fee: 1000 },
-  { code: "HN", name: "하나은행", fee: 1000 },
-  { code: "NH", name: "농협은행", fee: 1000 },
-  { code: "IBK", name: "기업은행", fee: 1000 },
-  { code: "KEB", name: "외환은행", fee: 1000 },
-  { code: "SC", name: "SC제일은행", fee: 1000 },
-  { code: "CT", name: "씨티은행", fee: 1000 },
-  { code: "KK", name: "카카오뱅크", fee: 500 },
-  { code: "TO", name: "토스뱅크", fee: 500 },
-]
-
-// 거래 내역
-const recentTransactions = [
-  {
-    id: 1,
-    type: "deposit",
-    amount: 1000000,
-    status: "completed",
-    time: "2024-01-15 14:32:15",
-    bank: "KB국민은행",
-    reference: "DEP240115001",
-    fee: 0,
-  },
-  {
-    id: 2,
-    type: "withdraw",
-    amount: 500000,
-    status: "pending",
-    time: "2024-01-15 13:45:22",
-    bank: "신한은행",
-    reference: "WTH240115002",
-    fee: 1000,
-  },
-  {
-    id: 3,
-    type: "deposit",
-    amount: 2000000,
-    status: "completed",
-    time: "2024-01-15 12:18:45",
-    bank: "우리은행",
-    reference: "DEP240115003",
-    fee: 0,
-  },
-  {
-    id: 4,
-    type: "withdraw",
-    amount: 300000,
-    status: "failed",
-    time: "2024-01-15 11:30:12",
-    bank: "하나은행",
-    reference: "WTH240115004",
-    fee: 1000,
-  },
-]
-
-export default function DepositManager() {
-  // 테마 관련 훅과 변수 제거 (프로젝트에 없음)
-
-
-    // 사용자 계좌 정보 상태
-    const [depositAmount, setDepositAmount] = useState("") // 입금 금액
-    const [withdrawAmount, setWithdrawAmount] = useState("") // 출금 금액
-    const [selectedBank, setSelectedBank] = useState("") // 선택된 은행
-    const [accountNumber, setAccountNumber] = useState("") // 계좌번호
-    const [accountHolder, setAccountHolder] = useState("") // 예금주
-
-  const userAccount = {
+  // 계좌 정보
+  const accountInfo = {
     balance: 5420000,
-    dailyLimit: 50000000,
-    monthlyLimit: 200000000,
-    usedDaily: 1200000,
-    usedMonthly: 8500000,
+    dailyLimit: 1200000,
+    dailyLimitMax: 50000000,
+    monthlyLimit: 8500000,
+    monthlyLimitMax: 200000000
   }
 
-  const supportedBanks = [
-    { code: "KB", name: "KB국민은행", fee: 1000 },
-    { code: "SH", name: "신한은행", fee: 1000 },
-    { code: "WR", name: "우리은행", fee: 1000 },
-    { code: "HN", name: "하나은행", fee: 1000 },
-    { code: "NH", name: "농협은행", fee: 1000 },
-    { code: "IBK", name: "기업은행", fee: 1000 },
-    { code: "KEB", name: "외환은행", fee: 1000 },
-    { code: "SC", name: "SC제일은행", fee: 1000 },
-    { code: "CT", name: "씨티은행", fee: 1000 },
-    { code: "KK", name: "카카오뱅크", fee: 500 },
-    { code: "TO", name: "토스뱅크", fee: 500 },
+  // 입금 전용 계좌 정보
+  const depositAccount = {
+    bank: "KB국민은행",
+    accountHolder: "PickCoin 입금 전용",
+    accountNumber: "123-456-789012",
+    companyName: "예금주: (주)픽코인"
+  }
+
+  // 출금 전용 계좌 정보
+  const withdrawalAccounts = [
+    {
+      id: "account1",
+      bank: "KB국민은행",
+      accountHolder: "픽코인 출금 전용",
+      accountNumber: "123-456-789012",
+      companyName: "예금주: (주)픽코인"
+    },
+    {
+      id: "account2",
+      bank: "신한은행",
+      accountHolder: "픽코인 출금 전용",
+      accountNumber: "987-654-321098",
+      companyName: "예금주: (주)픽코인"
+    },
+    {
+      id: "account3",
+      bank: "우리은행",
+      accountHolder: "픽코인 출금 전용",
+      accountNumber: "112-233-445566",
+      companyName: "예금주: (주)픽코인"
+    }
   ]
 
-  const recentTransactions = [
-    { id: 1, type: "deposit", amount: 1000000, status: "completed", time: "2024-01-15 14:32:15", bank: "KB국민은행", reference: "DEP240115001", fee: 0 },
-    { id: 2, type: "withdraw", amount: 500000, status: "pending", time: "2024-01-15 13:45:22", bank: "신한은행", reference: "WTH240115002", fee: 1000 },
-    { id: 3, type: "deposit", amount: 2000000, status: "completed", time: "2024-01-15 12:18:45", bank: "우리은행", reference: "DEP240115003", fee: 0 },
-    { id: 4, type: "withdraw", amount: 300000, status: "failed", time: "2024-01-15 11:30:12", bank: "하나은행", reference: "WTH240115004", fee: 1000 },
+  // 거래 내역
+  const transactions = [
+    {
+      type: "deposit",
+      bank: "KB국민은행",
+      date: "2024-01-15 14:32:15",
+      reference: "DEP240115001",
+      amount: 1000000,
+      fee: 0,
+      status: "완료"
+    },
+    {
+      type: "withdrawal",
+      bank: "신한은행",
+      date: "2024-01-15 13:45:22",
+      reference: "WTH240115002",
+      amount: 500000,
+      fee: 1000,
+      status: "완료"
+    },
+    {
+      type: "deposit",
+      bank: "우리은행",
+      date: "2024-01-15 12:18:45",
+      reference: "DEP240115003",
+      amount: 2000000,
+      fee: 0,
+      status: "완료"
+    },
+    {
+      type: "withdrawal",
+      bank: "하나은행",
+      date: "2024-01-15 11:30:12",
+      reference: "WTH240115004",
+      amount: 300000,
+      fee: 1000,
+      status: "실패"
+    }
   ]
 
-  const formatKRW = (amount) => `₩${amount.toLocaleString()}`
+  const formatKRW = (num) => {
+    return `₩${num.toLocaleString()}`
+  }
 
-  const getStatusIcon = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
-      case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "pending":
-        return <Clock className="h-4 w-4 text-yellow-500" />
-      case "failed":
-        return <AlertCircle className="h-4 w-4 text-red-500" />
+      case "완료":
+        return "text-green-600"
+      case "처리중":
+        return "text-blue-600"
+      case "실패":
+        return "text-red-600"
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />
+        return "text-gray-600"
     }
   }
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      completed: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      failed: "bg-red-100 text-red-800",
+  const getStatusBg = (status) => {
+    switch (status) {
+      case "완료":
+        return "bg-green-50"
+      case "처리중":
+        return "bg-blue-50"
+      case "실패":
+        return "bg-red-50"
+      default:
+        return "bg-gray-50"
     }
-
-    const labels = {
-      completed: "완료",
-      pending: "처리중",
-      failed: "실패",
-    }
-
-    return <Badge className={`${variants[status]} border-0`}>{labels[status]}</Badge>
   }
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
+  const copyAccountNumber = () => {
+    navigator.clipboard.writeText(depositAccount.accountNumber)
+    // 여기에 복사 완료 알림을 추가할 수 있습니다
   }
 
-  const selectedBankData = supportedBanks.find((bank) => bank.code === selectedBank)
+  const formatInputNumber = (value) => {
+    // 숫자가 아닌 문자 제거
+    const numericValue = value.replace(/[^\d]/g, '')
+    // 천 단위로 쉼표 추가
+    if (numericValue) {
+      return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    }
+    return ''
+  }
 
+  const handleDepositAmountChange = (e) => {
+    const formattedValue = formatInputNumber(e.target.value)
+    setDepositAmount(formattedValue)
+    
+    // 유효성 검사
+    validateDepositAmount(formattedValue)
+  }
+
+  const validateDepositAmount = (amount) => {
+    // 쉼표 제거하여 숫자만 추출
+    const numericAmount = amount.replace(/,/g, '')
+    
+    if (!numericAmount) {
+      setAmountError("")
+      return
+    }
+    
+    const amountNumber = parseInt(numericAmount)
+    
+    if (amountNumber < 10000) {
+      setAmountError("최소 입금액은 ₩10,000입니다.")
+    } else if (amountNumber > 50000000) {
+      setAmountError("최대 입금액은 ₩50,000,000입니다.")
+    } else {
+      setAmountError("")
+    }
+  }
+
+  const validateWithdrawalAmount = (amount) => {
+    // 쉼표 제거하여 숫자만 추출
+    const numericAmount = amount.replace(/,/g, '')
+    
+    if (!numericAmount) {
+      setWithdrawalAmountError("")
+      return
+    }
+    
+    const amountNumber = parseInt(numericAmount)
+    
+    if (amountNumber < 10000) {
+      setWithdrawalAmountError("최소 출금액은 ₩10,000입니다.")
+    } else if (amountNumber > 50000000) {
+      setWithdrawalAmountError("최대 출금액은 ₩50,000,000입니다.")
+    } else if (amountNumber > accountInfo.balance) {
+      setWithdrawalAmountError("보유 원화보다 많은 금액을 출금할 수 없습니다.")
+    } else {
+      setWithdrawalAmountError("")
+    }
+  }
+
+  // ===================== 렌더 =====================
   return (
-  <div className="min-h-screen bg-background">
-    <Navigation />
-        
-        <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-            <h1 className="text-3xl font-bold">원화 입출금</h1>
-            <p className="text-muted-foreground mt-2">한국 원화(KRW) 입금 및 출금을 안전하게 관리하세요</p>
-        </div>
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          {/* Left Panel - Account Info */}
-          <div className="xl:col-span-1">
-            <Card className="border mb-6">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Wallet className="h-5 w-5" />내 계좌 정보
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg border">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">보유 원화</p>
-                    <p className="text-2xl font-bold">{formatKRW(userAccount.balance)}</p>
-                  </div>
-                </div>
+    <div className="space-y-8">
+      {/* 내 계좌 정보 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold">내 계좌 정보</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 보유 원화 */}
+            <div className="text-center p-6 bg-blue-50 rounded-lg">
+              <div className="text-3xl font-bold text-blue-600 mb-2">
+                {formatKRW(accountInfo.balance)}
+              </div>
+              <div className="text-sm text-gray-600">보유 원화</div>
+            </div>
+
+            {/* 일일 한도 */}
+            <div className="text-center p-6 bg-gray-50 rounded-lg">
+              <div className="text-lg font-semibold text-gray-900 mb-2">
+                {formatKRW(accountInfo.dailyLimit)} / {formatKRW(accountInfo.dailyLimitMax)}
+              </div>
+              <div className="text-sm text-gray-600 mb-2">일일 한도</div>
+              <Progress 
+                value={(accountInfo.dailyLimit / accountInfo.dailyLimitMax) * 100} 
+                className="h-2"
+              />
+            </div>
+
+            {/* 월간 한도 */}
+            <div className="text-center p-6 bg-gray-50 rounded-lg">
+              <div className="text-lg font-semibold text-gray-900 mb-2">
+                {formatKRW(accountInfo.monthlyLimit)} / {formatKRW(accountInfo.monthlyLimitMax)}
+              </div>
+              <div className="text-sm text-gray-600 mb-2">월간 한도</div>
+              <Progress 
+                value={(accountInfo.monthlyLimit / accountInfo.monthlyLimitMax) * 100} 
+                className="h-2"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 원화 입출금 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold">원화 입출금</CardTitle>
+          <p className="text-gray-600">한국 원화 입금 및 출금 서비스</p>
+        </CardHeader>
+        <CardContent>
+          {/* 입출금 탭 */}
+          <div className="flex border-b border-gray-200 mb-6">
+            <button
+              className={`px-6 py-3 text-lg font-medium transition-colors ${
+                activeTab === "deposit" 
+                  ? "border-b-2 border-blue-500 text-blue-600" 
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab("deposit")}
+            >
+              입금
+            </button>
+            <button
+              className={`px-6 py-3 text-lg font-medium transition-colors ${
+                activeTab === "withdrawal" 
+                  ? "border-b-2 border-blue-500 text-blue-600" 
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab("withdrawal")}
+            >
+              출금
+            </button>
+          </div>
+
+          {activeTab === "deposit" && (
+            <div className="space-y-6">
+              {/* 입금 전용 계좌 */}
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">입금 전용 계좌</h3>
                 <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-muted-foreground">일일 한도</span>
-                      <span className="text-sm">{formatKRW(userAccount.usedDaily)} / {formatKRW(userAccount.dailyLimit)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(userAccount.usedDaily / userAccount.dailyLimit) * 100}%` }}></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">은행:</span>
+                    <span className="font-medium">{depositAccount.bank}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">계좌번호:</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">{depositAccount.accountNumber}</span>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={copyAccountNumber}
+                        className="h-8 px-3"
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        계좌번호 복사
+                      </Button>
                     </div>
                   </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-muted-foreground">월간 한도</span>
-                      <span className="text-sm">{formatKRW(userAccount.usedMonthly)} / {formatKRW(userAccount.monthlyLimit)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-500 h-2 rounded-full" style={{ width: `${(userAccount.usedMonthly / userAccount.monthlyLimit) * 100}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg">빠른 메뉴</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
-                  <User className="h-4 w-4 mr-2" />계좌 인증
-                </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
-                  <Phone className="h-4 w-4 mr-2" />본인 인증
-                </Button>
-                <Button variant="outline" className="w-full justify-start bg-transparent" size="sm">
-                  <CreditCard className="h-4 w-4 mr-2" />한도 증액
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-          {/* Right Panel - Deposit/Withdraw Forms */}
-          <div className="xl:col-span-3">
-            <Card className="border">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl">원화 입출금</CardTitle>
-                    <CardDescription className="text-muted-foreground">한국 원화 입금 및 출금 서비스</CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm">실시간 계좌이체</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">예금주:</span>
+                    <span className="font-medium">{depositAccount.companyName}</span>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="deposit" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="deposit" className="flex items-center gap-2">
-                      <ArrowDownLeft className="h-4 w-4" />입금
-                    </TabsTrigger>
-                    <TabsTrigger value="withdraw" className="flex items-center gap-2">
-                      <ArrowUpRight className="h-4 w-4" />출금
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="deposit" className="space-y-6">
-                    {/* Deposit Account Information */}
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">입금 전용 계좌</label>
-                        <div className="p-4 rounded-lg border bg-background">
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-semibold">KB국민은행</p>
-                                <p className="text-sm text-muted-foreground">PickCoin 입금 전용</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-mono text-lg">123-456-789012</p>
-                                <p className="text-sm text-muted-foreground">예금주: (주)픽코인</p>
-                              </div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm" onClick={() => copyToClipboard("123456789012")} className="flex-1">
-                                <Copy className="h-4 w-4 mr-2" />계좌번호 복사
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Expected Deposit Amount */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">입금 예정 금액</label>
-                        <Input type="number" placeholder="입금할 금액을 입력하세요" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} />
-                        <p className="text-sm text-muted-foreground mt-1">최소 입금액: ₩10,000 / 최대 입금액: ₩50,000,000</p>
-                      </div>
-                    </div>
-                    {/* Deposit Instructions */}
-                    <div className="p-4 rounded-lg border bg-blue-50">
-                      <div className="flex items-start space-x-3">
-                        <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-blue-900">입금 안내사항</h4>
-                          <ul className="text-sm text-blue-800 space-y-1">
-                            <li>• 위 계좌로 입금하시면 실시간으로 반영됩니다</li>
-                            <li>• 입금자명은 반드시 본인 명의로 입금해주세요</li>
-                            <li>• 최소 입금액: ₩10,000</li>
-                            <li>• 입금 수수료: 무료 (단, 은행 이체 수수료는 고객 부담)</li>
-                            <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Security Notice */}
-                    <div className="p-4 rounded-lg border border-red-200 bg-red-50">
-                      <div className="flex items-start space-x-3">
-                        <Shield className="h-5 w-5 text-red-500 mt-0.5" />
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-red-900">보안 주의사항</h4>
-                          <ul className="text-sm text-red-800 space-y-1">
-                            <li>• 타인 명의로 입금 시 출금이 제한될 수 있습니다</li>
-                            <li>• 입금 전용 계좌는 입금만 가능하며, 다른 용도로 사용하지 마세요</li>
-                            <li>• 의심스러운 거래 발견 시 즉시 고객센터로 연락해주세요</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="withdraw" className="space-y-6">
-                    {/* Bank Selection */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium">출금 은행 선택</label>
-                      <Select value={selectedBank} onValueChange={setSelectedBank}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="은행을 선택하세요" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {supportedBanks.map((bank) => (
-                            <SelectItem key={bank.code} value={bank.code}>
-                              <div className="flex items-center justify-between w-full">
-                                <span>{bank.name}</span>
-                                <span className="text-xs text-gray-500 ml-2">수수료: ₩{bank.fee.toLocaleString()}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {/* Account Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium">계좌번호</label>
-                        <Input placeholder="계좌번호를 입력하세요" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium">예금주명</label>
-                        <Input placeholder="예금주명을 입력하세요" value={accountHolder} onChange={(e) => setAccountHolder(e.target.value)} />
-                      </div>
-                    </div>
-                    {/* Withdrawal Amount */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium">출금 금액</label>
-                      <div className="space-y-3">
-                        <Input type="number" placeholder="출금할 금액을 입력하세요" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => setWithdrawAmount((userAccount.balance * 0.25).toString())}>25%</Button>
-                          <Button variant="outline" size="sm" onClick={() => setWithdrawAmount((userAccount.balance * 0.5).toString())}>50%</Button>
-                          <Button variant="outline" size="sm" onClick={() => setWithdrawAmount((userAccount.balance * 0.75).toString())}>75%</Button>
-                          <Button variant="outline" size="sm" onClick={() => setWithdrawAmount(userAccount.balance.toString())}>전체</Button>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Withdrawal Summary */}
-                    <div className="p-4 rounded-lg border bg-background">
-                      <h4 className="font-medium mb-3">출금 요약</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">보유 원화:</span>
-                          <span className="text-sm font-medium">{formatKRW(userAccount.balance)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">출금 금액:</span>
-                          <span className="text-sm font-medium">{formatKRW(Number.parseInt(withdrawAmount) || 0)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">출금 수수료:</span>
-                          <span className="text-sm font-medium">{formatKRW(selectedBankData?.fee || 0)}</span>
-                        </div>
-                        <div className="border-t pt-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm font-medium">실제 출금액:</span>
-                            <span className="text-sm font-bold">{formatKRW(Math.max(0, (Number.parseInt(withdrawAmount) || 0) - (selectedBankData?.fee || 0)))}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Withdrawal Button */}
-                    <Button className="w-full" size="lg" disabled={!selectedBank || !accountNumber || !accountHolder || !withdrawAmount}>원화 출금 신청</Button>
-                    {/* Withdrawal Notice */}
-                    <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50">
-                      <div className="flex items-start space-x-3">
-                        <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-yellow-900">출금 주의사항</h4>
-                          <ul className="text-sm text-yellow-800 space-y-1">
-                            <li>• 최소 출금액: ₩10,000</li>
-                            <li>• 출금 계좌는 반드시 본인 명의 계좌여야 합니다</li>
-                            <li>• 출금 처리 시간: 평일 09:00~15:30 (실시간), 그 외 시간대는 다음 영업일 처리</li>
-                            <li>• 출금 신청 후 취소는 처리 전에만 가능합니다</li>
-                            <li>• 일일 출금 한도: ₩50,000,000</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-            {/* Transaction History */}
-            <Card className="border mt-6">
-              <CardHeader>
-                <CardTitle>원화 거래 내역</CardTitle>
-                <CardDescription className="text-muted-foreground">최근 원화 입금 및 출금 내역</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentTransactions.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted transition-colors">
-                      <div className="flex items-center space-x-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${tx.type === "deposit" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>
-                          {tx.type === "deposit" ? <ArrowDownLeft className="h-6 w-6" /> : <ArrowUpRight className="h-6 w-6" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2 mb-1">
-                            <p className="font-semibold">{tx.type === "deposit" ? "원화 입금" : "원화 출금"}</p>
-                            <Badge variant="outline" className="text-xs">{tx.bank}</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{tx.time}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <code className="text-xs text-muted-foreground font-mono">{tx.reference}</code>
-                            <Button variant="ghost" size="sm" className="h-4 w-4 p-0"><ExternalLink className="h-3 w-3" /></Button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className="font-bold text-lg">{formatKRW(tx.amount)}</p>
-                          {tx.fee > 0 && <p className="text-xs text-muted-foreground">수수료: {formatKRW(tx.fee)}</p>}
-                        </div>
-                        <div className="flex flex-col items-center space-y-1">{getStatusIcon(tx.status)}{getStatusBadge(tx.status)}</div>
-                      </div>
-                    </div>
+              </div>
+
+              {/* 입금 예정 금액 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  입금 예정 금액
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={depositAmount}
+                    onChange={handleDepositAmountChange}
+                    placeholder="입금할 금액을 입력하세요"
+                    className="h-12 text-lg pr-12"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-gray-500 text-lg">원</span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  최소 입금액: ₩10,000 / 최대 입금액: ₩50,000,000
+                </p>
+                {amountError && (
+                  <p className="text-sm text-red-600 mt-2">{amountError}</p>
+                )}
+                
+                {/* 입금 버튼 */}
+                <div className="mt-4">
+                  <Button 
+                    className="w-full h-12 text-lg font-semibold"
+                    disabled={!depositAmount || amountError}
+                    onClick={() => {
+                      // 입금 처리 로직
+                      alert(`₩${depositAmount} 입금이 요청되었습니다.`)
+                    }}
+                  >
+                    입금 요청
+                  </Button>
+                </div>
+              </div>
+
+              {/* 입금 안내사항 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <h4 className="font-semibold mb-2">입금 안내사항</h4>
+                    <ul className="space-y-1 text-xs">
+                      <li>• 위 계좌로 입금하시면 실시간으로 반영됩니다.</li>
+                      <li>• 입금자명은 반드시 본인 명의로 입금해주세요.</li>
+                      <li>• 최소 입금액: ₩10,000</li>
+                      <li>• 입금 수수료: 무료 (단, 은행 이체 수수료는 고객 부담)</li>
+                      <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* 보안 주의사항 */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    <h4 className="font-semibold mb-2">보안 주의사항</h4>
+                    <ul className="space-y-1 text-xs">
+                      <li>• 타인 명의로 입금 시 출금이 제한될 수 있습니다.</li>
+                      <li>• 입금 전용 계좌는 입금만 가능하며, 다른 용도로 사용하지 마세요.</li>
+                      <li>• 의심스러운 거래 발견 시 즉시 고객센터로 연락해주세요.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "withdrawal" && (
+            <div className="space-y-6">
+              {/* 출금 계좌 선택 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  출금 계좌 선택
+                </label>
+                <select
+                  className="w-full h-12 text-lg border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedWithdrawalAccount}
+                  onChange={(e) => setSelectedWithdrawalAccount(e.target.value)}
+                >
+                  <option value="">계좌를 선택해주세요</option>
+                  {withdrawalAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.bank} - {account.accountNumber} ({account.accountHolder})
+                    </option>
                   ))}
+                </select>
+              </div>
+
+              {/* 출금 금액 입력 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  출금 금액
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={withdrawalAmount}
+                    onChange={(e) => {
+                      const formattedValue = formatInputNumber(e.target.value);
+                      setWithdrawalAmount(formattedValue);
+                      validateWithdrawalAmount(formattedValue);
+                    }}
+                    placeholder="출금할 금액을 입력하세요"
+                    className="h-12 text-lg pr-12"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-gray-500 text-lg">원</span>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+                <p className="text-sm text-gray-500 mt-2">
+                  최소 출금액: ₩10,000 / 최대 출금액: ₩50,000,000
+                </p>
+                {withdrawalAmountError && (
+                  <p className="text-sm text-red-600 mt-2">{withdrawalAmountError}</p>
+                )}
+              </div>
+
+              {/* 출금 요청 버튼 */}
+              <div className="mt-4">
+                <Button 
+                  className="w-full h-12 text-lg font-semibold"
+                  disabled={!selectedWithdrawalAccount || !withdrawalAmount || withdrawalAmountError}
+                  onClick={() => {
+                    // 출금 처리 로직
+                    alert(`₩${withdrawalAmount} 출금이 요청되었습니다.`)
+                  }}
+                >
+                  출금 요청
+                </Button>
+              </div>
+
+              {/* 출금 안내사항 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <h4 className="font-semibold mb-2">출금 안내사항</h4>
+                    <ul className="space-y-1 text-xs">
+                      <li>• 위 계좌로 출금하시면 실시간으로 반영됩니다.</li>
+                      <li>• 출금자명은 반드시 본인 명의로 출금해주세요.</li>
+                      <li>• 최소 출금액: ₩10,000</li>
+                      <li>• 출금 수수료: 무료 (단, 은행 이체 수수료는 고객 부담)</li>
+                      <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* 보안 주의사항 */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-red-800">
+                    <h4 className="font-semibold mb-2">보안 주의사항</h4>
+                    <ul className="space-y-1 text-xs">
+                      <li>• 타인 명의로 출금 시 출금이 제한될 수 있습니다.</li>
+                      <li>• 출금 전용 계좌는 출금만 가능하며, 다른 용도로 사용하지 마세요.</li>
+                      <li>• 의심스러운 거래 발견 시 즉시 고객센터로 연락해주세요.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 원화 거래 내역 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold">원화 거래 내역</CardTitle>
+          <p className="text-gray-600">최근 원화 입금 및 출금 내역</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {transactions.map((tx, index) => (
+              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    tx.type === "deposit" ? "bg-green-100" : "bg-red-100"
+                  }`}>
+                    {tx.type === "deposit" ? (
+                      <ArrowUpRight className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <ArrowDownRight className="w-5 h-5 text-red-600" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      {tx.type === "deposit" ? "입금" : "출금"} - {tx.bank}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {tx.date} • {tx.reference}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <div className="font-semibold text-gray-900">
+                    {formatKRW(tx.amount)}
+                  </div>
+                  {tx.fee > 0 && (
+                    <div className="text-sm text-gray-500">
+                      수수료: {formatKRW(tx.fee)}
+                    </div>
+                  )}
+                  <div className={`text-sm font-medium px-2 py-1 rounded-full inline-block ${
+                    getStatusBg(tx.status)
+                  } ${getStatusColor(tx.status)}`}>
+                    {tx.status}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }
+
+export default DepositManager

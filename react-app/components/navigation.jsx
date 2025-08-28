@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Settings, LogOut, User, Zap, Wifi, WifiOff, Briefcase } from "lucide-react"
+import { Bell, LogOut, User, Zap, Wifi, WifiOff, Briefcase, Info } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useAuth } from "@/components/auth-provider"
 import { useWebSocket } from "@/components/websocket-provider"
@@ -40,7 +40,7 @@ export const Navigation = () => {
   const [editEmail, setEditEmail] = useState(user?.email || "")
   const [avatar, setAvatar] = useState(user?.avatar || "/placeholder-user.jpg")
   const [editAvatar, setEditAvatar] = useState(avatar)
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
+
   const [avatarGradient, setAvatarGradient] = useState(getRandomGradient())
   const handleProfileDialogChange = (open) => {
     setShowProfileDialog(open)
@@ -107,14 +107,7 @@ export const Navigation = () => {
                     <User className="mr-2 h-4 w-4" />
                     <span>프로필</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/portfolio")}> 
-                    <Briefcase className="mr-2 h-4 w-4" />
-                    <span>마이페이지</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => setShowSettingsDialog(true)}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>설정</span>
-                  </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
@@ -151,7 +144,7 @@ export const Navigation = () => {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-gray-400" />
+                  <Info className="h-5 w-5 text-gray-400" />
                   <span className="font-medium text-gray-800">시스템 공지</span>
                 </div>
                 <label className="inline-flex items-center cursor-pointer">
@@ -184,75 +177,9 @@ export const Navigation = () => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* 환경설정 다이얼로그 */}
-      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent className="max-w-md p-8 rounded-xl shadow-2xl bg-white/95 backdrop-blur-lg border border-gray-100">
-          <DialogHeader className="flex flex-col items-center gap-1 mb-2">
-            <Settings className="h-8 w-8 text-primary mb-2" />
-            <DialogTitle className="text-lg font-semibold text-gray-900">거래소 환경설정</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500 text-center">
-              사용자들이 가장 많이 원하는 핵심 거래소 기능만 제공합니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 mt-2">
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-800">빠른 거래 모드</span>
-              <label className="inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="accent-primary w-5 h-5" />
-                <span className="ml-2 text-sm text-gray-900">활성화</span>
-              </label>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-900">슬리피지 허용(%)</span>
-              <input type="number" min="0" max="10" step="0.1" defaultValue="0.5" className="border rounded px-2 py-1 w-20 text-sm text-gray-900 " />
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-800">2단계 인증(2FA)</span>
-              <label className="inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="accent-primary w-5 h-5" />
-                <span className="ml-2 text-sm text-gray-900">활성화</span>
-              </label>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-800">로그인 알림</span>
-              <label className="inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="accent-primary w-5 h-5" />
-                <span className="ml-2 text-sm text-gray-900">수신</span>
-              </label>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-800">거래 수수료 표시</span>
-              <select className="border rounded px-2 py-1 text-sm text-gray-900">
-                <option value="always" className="text-gray-900">항상 표시</option>
-                <option value="onTrade" className="text-gray-900">거래 시 표시</option>
-                <option value="never" className="text-gray-900">표시 안함</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-800">기본 통화</span>
-              <select className="border rounded px-2 py-1 text-sm text-gray-900">
-                <option value="KRW" className="text-gray-900">KRW</option>
-                <option value="USD" className="text-gray-900">USD</option>
-                <option value="BTC" className="text-gray-900">BTC</option>
-                <option value="ETH" className="text-gray-900">ETH</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/60 border border-gray-100">
-              <span className="font-medium text-gray-800">언어 설정</span>
-              <select className="border rounded px-2 py-1 text-sm text-gray-900">
-                <option value="ko" className="text-gray-900">한국어</option>
-                <option value="en" className="text-gray-900">English</option>
-                <option value="ja" className="text-gray-900">日本語</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-6">
-            <Button className="flex-1" variant="default" onClick={() => setShowSettingsDialog(false)}>
-              닫기
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
+
+
       {/* 프로필 다이얼로그 */}
       <Dialog open={showProfileDialog} onOpenChange={handleProfileDialogChange}>
         <DialogContent className="max-w-sm p-7 rounded-xl shadow-2xl bg-white/90 backdrop-blur-lg border border-gray-100 flex flex-col items-center">
@@ -262,12 +189,12 @@ export const Navigation = () => {
           </DialogHeader>
           <div className="flex flex-col items-center justify-center mb-3">
             <div className="mt-8" />
-            <Avatar className="h-28 w-28">
+            <Avatar className="h-36 w-36">
               {isEditingProfile || avatar ? (
                 <AvatarImage
                   src={isEditingProfile ? editAvatar : avatar}
                   alt={editNickname || user?.nickname}
-                  className="object-cover border border-gray-300"
+                  className="object-cover"
                 />
               ) : null}
               <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-3xl flex items-center justify-center min-h-[112px] min-w-[112px]">
@@ -327,10 +254,7 @@ export const Navigation = () => {
                 <Badge variant="secondary">거래 등급: <span className="font-bold ml-1">{user?.tier || "일반"}</span></Badge>
                 <Badge variant="outline">잔고: <span className="font-bold ml-1">{user?.balance ? `$${user.balance}` : "비공개"}</span></Badge>
               </div>
-              <div className="flex gap-2 w-full">
-                <Button className="flex-1" variant="default" onClick={() => setIsEditingProfile(true)}>프로필 수정</Button>
-                <Button className="flex-1" variant="outline" onClick={() => setShowProfileDialog(false)}>닫기</Button>
-              </div>
+
             </>
           )}
         </DialogContent>

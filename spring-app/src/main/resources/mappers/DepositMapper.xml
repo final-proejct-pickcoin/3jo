@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.finalproject.pickcoin.repository.DepositRepository">
+
+    <!-- KRW asset_id 조회 (심볼 고정) -->
+    <select id="krw_asset_id" resultType="long">
+    SELECT asset_id
+    FROM asset
+    WHERE symbol = 'KRW'
+    LIMIT 1
+    </select>
+
+    <!-- 지갑 없으면 0으로 생성: 유니크키( user_id, asset_id ) 있을 때 -->
+    <insert id="ensure_wallet">
+    INSERT INTO wallet (user_id, asset_id, amount)
+    VALUES (#{param1}, #{param2}, 0)
+    ON DUPLICATE KEY UPDATE user_id = user_id
+    </insert>
+
+
+
+    <!-- 동시성 잠금 -->
+    <select id="select_wallet_for_update" resultType="map">
+    SELECT amount
+    FROM wallet
+    WHERE user_id = #{param1} AND asset_id = #{param2}
+    FOR UPDATE
+    </select>
+
+    <!-- 잔액 증감(+입금 / -출금) -->
+    <update id="add_wallet_amount">
+    UPDATE wallet
+    SET amount = amount + #{param3},
+        updated_at = NOW(6)
+    WHERE user_id = #{param1} AND asset_id = #{param2}
+    </update>
+
+    <!-- KRW 잔액 (없으면 null) -->
+    <select id="krw_balance" resultType="java.math.BigDecimal">
+    SELECT w.amount
+    FROM wallet w
+    JOIN asset a ON a.asset_id = w.asset_id
+    WHERE w.user_id = #{param1} AND a.symbol = 'KRW'
+    LIMIT 1
+    </select>
+</mapper>

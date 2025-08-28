@@ -29,15 +29,47 @@ from api.chat import router as ws_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
+from api.elasticsearch import create_indices_if_not_exist, wait_for_es, create_kibana_index_pattern
+
+# // [news schedule] 크롤링 주기 설정
+from apscheduler.schedulers.background import BackgroundScheduler
+from service.news_service import crawl_and_save
+from datetime import datetime
+from repository.news_repository import delete_news_older_than, trim_news_by_count
+from fastapi.responses import JSONResponse
+
 # --- 음성 AI 관련 모듈 추가  Google Cloud 관련 모듈 추가 ---
 import google.generativeai as genai
 from api.voice_router import router as voice_ai_router
 from google.cloud import speech # 인증 확인을 위해 speech 클라이언트 임포트
 # ---------------------------------
 
+from db.mysql import ping
+from fastapi import APIRouter
+
+import threading
+import time
+import os
+
+import asyncio
+from zoneinfo import ZoneInfo
+
 
 load_dotenv()
 
+app = FastAPI()
+
+@app.get("/api/ping")
+def ping():
+    return {"pong": True}
+
+
+
+# 테스트용: 수동으로 한 번 크롤링해서 DB에 저장
+@app.post("/debug/crawl-now")
+def debug_crawl_now(limit: int = 20):
+    saved = crawl_and_save(limit=limit)
+    return {"saved": saved}
 
 
 # --- Gemini API 설정 추가 ---
@@ -65,8 +97,17 @@ host = 'mysql'
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-app = FastAPI()
+
 templates = Jinja2Templates(directory="templates")
+
+
+# --- DB Healthcheck (임시) ---
+health = APIRouter()
+
+@health.get("/health/db")
+def health_db():
+    """DB 연결 상태 확인용"""
+    return {"db_ok": ping()}
 
 # CORS 설정
 origins = [
@@ -86,6 +127,9 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# DB Health 라우터 등록
+app.include_router(health)
+
 # 뉴스 크롤링 라우터
 app.include_router(news_router)
 
@@ -104,8 +148,150 @@ app.include_router(inq_router)
 # 채팅 웹소켓 라우터
 app.include_router(ws_router)
 
+
 # 빗썸 API 라우터
 app.include_router(bithumb_router)
+
+
+# Elasticsearch 초기화: 준비될 때까지 백그라운드에서 재시도 (앱 기동은 가로막지 않음)
+# 환경변수:
+#   ES_ENABLED=0        → ES 초기화 스킵 (기본 1)
+#   ES_MAX_WAIT=120     → 최대 대기 초(기본 120)
+#   ES_WAIT_INTERVAL=3  → 재시도 간격 초(기본 3)
+# ─────────────────────────────────────────────────────────────────────────────
+def init_search_background():
+    try:
+        if os.getenv("ES_ENABLED", "1") != "1":
+            print("[es] disabled by ES_ENABLED=0")
+            return
+
+        # api.elasticsearch 모듈의 헬퍼 사용 (프로젝트에 이미 있는 모듈)
+        from api.elasticsearch import create_indices_if_not_exist, wait_for_es
+
+        max_wait = int(os.getenv("ES_MAX_WAIT", "120"))
+        interval = int(os.getenv("ES_WAIT_INTERVAL", "3"))
+
+        # 1) ES가 응답할 때까지 wait_for_es를 짧게 여러 번 시도
+        print(f"[es] waiting for ES (max_wait={max_wait}s, interval={interval}s)…")
+        start = time.time()
+        while time.time() - start < max_wait:
+            try:
+                # 내부에서 ping/헬스체크 수행 (실패 시 예외)
+                asyncio.run(wait_for_es(timeout=interval, interval=1))
+                print("[es] wait_for_es OK")
+                break
+            except Exception as e:
+                print(f"[es] wait_for_es retry: {e}")
+                time.sleep(interval)
+
+        # 2) 인덱스 생성 (여러 번 재시도)
+        deadline = time.time() + max_wait
+        while time.time() < deadline:
+            try:
+                create_indices_if_not_exist()
+                print("[es] indices ready")
+                return
+            except Exception as e:
+                print(f"[es] create_indices retry in {interval}s: {type(e).__name__} - {e}")
+                time.sleep(interval)
+
+        print(f"[es] not ready within {max_wait}s; skip initializing indices (app continues)")
+    except Exception as e:
+        print(f"[es] init_search_background failed: {type(e).__name__} - {e}")
+        
+
+
+# 1) 스케줄러 인스턴스 (서울 타임존)
+scheduler = BackgroundScheduler(
+    timezone="Asia/Seoul",
+    job_defaults={
+        "coalesce": True,           # 밀린 실행은 1회로 합치기
+        "misfire_grace_time": 3600  # 1시간 이내 놓친 실행 허용
+    }
+)
+
+def job_news_refresh():
+    """
+    1시간마다 실행될 실제 작업 함수.
+    내부에서 크롤링하고 save_news()로 업서트까지 수행.
+    """
+    try:
+        print(f"[scheduler] news refresh start {datetime.now()}")
+        from service.news_service import crawl_and_save
+        from repository.news_repository import delete_news_older_than, trim_news_by_count
+
+        saved = crawl_and_save(limit=20) or 0
+        print(f"[scheduler] news refresh saved {saved} rows")
+
+        # ✅ 저장이 1건 이상일 때만 정리 수행 (테이블이 잠깐 비는 현상 방지)
+        if saved > 0:
+            deleted_by_days = delete_news_older_than(days=2)
+            print(f"[scheduler] cleanup(days) deleted {deleted_by_days} rows")
+
+            deleted_by_cap = trim_news_by_count(max_rows=300)
+            print(f"[scheduler] cleanup(cap) deleted {deleted_by_cap} rows")
+        else:
+            print("[scheduler] skip cleanup (no new rows)")
+
+    except Exception:
+        import traceback
+        print("[scheduler] ERROR in job_news_refresh")
+        traceback.print_exc()
+
+# 2) 앱 시작 시 스케줄러 시작 + ES 초기화(비차단)
+@app.on_event("startup")
+def start_scheduler():    
+    try:
+        # ✅ ES 초기화는 앱을 막지 않도록 "백그라운드 스레드"에서 수행
+        threading.Thread(target=init_search_background, daemon=True).start()
+
+        # ✅ Kibana 데이터뷰 자동 생성 (비차단)
+        def _init_kibana():
+            try:
+                asyncio.run(create_kibana_index_pattern())
+            except Exception as e:
+                print(f"[kibana] init failed: {e}")
+        threading.Thread(target=_init_kibana, daemon=True).start()
+
+        # ✅ 스케줄러 기동 (기존 로직 유지)
+        if not scheduler.running:
+            scheduler.start()
+
+        # 🔁 주기 작업 등록 (원래 쓰던 주기 유지: 예시는 8시간)
+        if scheduler.get_job("news_refresh_hourly") is None:   # ← 중복등록 방지
+            scheduler.add_job(
+                job_news_refresh,
+                trigger="interval",
+                hours=8,                 # ← 8시간마다 실행
+                id="news_refresh_hourly",
+                replace_existing=True,
+            )
+
+        # 🚀 서버 기동 직후 1회 즉시 실행 — 초기 데이터 채우기 용
+        if scheduler.get_job("news_refresh_boot") is None:     # ← 중복등록 방지
+            scheduler.add_job(
+                job_news_refresh,
+                trigger="date",  # ← 단발성 실행을 위해 반드시 필요
+                run_date=datetime.now(ZoneInfo("Asia/Seoul")),  # ← 타임존 포함
+                id="news_refresh_boot",
+                replace_existing=True
+            )
+
+        print("[scheduler] started (hourly news refresh)")
+    except Exception:
+        import traceback
+        print("[startup] failed")
+        traceback.print_exc()
+
+# 3) 앱 종료 시 스케줄러 정리
+@app.on_event("shutdown")
+def stop_scheduler():
+    try:
+        scheduler.shutdown(wait=False)
+        print("[scheduler] stopped")
+    except Exception:
+        pass
+
 
 @app.websocket("/ws/realtime")
 async def websocket_endpoint(websocket: WebSocket):
@@ -246,3 +432,31 @@ async def test_voice_price(symbol: str):
         "has_data": result is not None,
         "closing_price": result.get('closing_price') if result else None
     }
+
+
+
+# --- 스케줄러 헬스체크 (무한 로딩 방지 버전) ---
+@app.get("/api/debug/scheduler")
+def scheduler_status():
+    try:
+        # 안전하게 상태 읽기
+        state = getattr(scheduler, "state", None)
+        running = bool(getattr(scheduler, "running", False))
+
+        jobs_info = []
+        for j in scheduler.get_jobs():
+            nrt = None
+            try:
+                nrt = j.next_run_time.isoformat() if j.next_run_time else None
+            except Exception:
+                nrt = str(j.next_run_time)
+            jobs_info.append({"id": j.id, "next_run_time": nrt})
+
+        return {
+            "running": running,
+            "state": state,
+            "jobs": jobs_info
+        }
+    except Exception as e:
+        # 어떤 에러여도 즉시 JSON 500 반환 -> 무한로딩 방지
+        return JSONResponse({"error": str(e)}, status_code=500)

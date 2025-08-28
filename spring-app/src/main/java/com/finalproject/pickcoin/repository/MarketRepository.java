@@ -17,4 +17,6 @@ public interface MarketRepository {
 
     void delete_bookmark(int user_id, int asset_id);
 
+    List<Market_item> get_assets_id(String asset_symbol);
+
 }

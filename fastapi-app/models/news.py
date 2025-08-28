@@ -7,3 +7,4 @@ class NewsItem(BaseModel):
     link: str
     published_at: Optional[str] = None 
     source: Optional[str] = None
+    content: Optional[str] = None

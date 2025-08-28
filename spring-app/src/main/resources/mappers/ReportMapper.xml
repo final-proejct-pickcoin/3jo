@@ -64,4 +64,55 @@
     WHERE report_id = #{report_id}
   </update>
 
+   <!-- 8-22: 상태별 카운트 -->
+  <select id="countByStatus" resultType="int">
+    SELECT COUNT(*) FROM report
+    WHERE status = #{status, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+  </select>
+
+  <!-- 8-22: 최근 신고건 (status 없으면 전체) -->
+  <select id="findRecent" resultMap="ReportMap">
+    SELECT *
+    FROM report
+    <where>
+      <if test="status != null">
+        status = #{status, typeHandler=org.apache.ibatis.type.EnumTypeHandler}
+      </if>
+    </where>
+    ORDER BY created_at DESC
+    LIMIT #{limit}
+  </select>
+
+  <!-- ===== 종(알림) 기능 ===== -->
+  <!-- 배지 숫자 -->
+  <select id="countUnread" resultType="int">
+    SELECT COUNT(*) FROM report WHERE admin_seen = 0
+  </select>
+
+  <!-- 드롭다운 목록 -->
+  <select id="findUnread" resultMap="ReportMap">
+    SELECT *
+    FROM report
+    WHERE admin_seen = 0
+    ORDER BY created_at DESC
+    LIMIT #{limit}
+  </select>
+
+  <!-- 모두 읽음 -->
+  <update id="markAllRead">
+    UPDATE report
+    SET admin_seen = 1,
+        admin_seen_at = NOW(6)
+    WHERE admin_seen = 0
+  </update>
+
+  <!-- 개별 읽음 -->
+  <update id="markOneRead">
+    UPDATE report
+    SET admin_seen = 1,
+        admin_seen_at = NOW(6)
+    WHERE report_id = #{report_id}
+      AND admin_seen = 0
+  </update>
+
 </mapper>
