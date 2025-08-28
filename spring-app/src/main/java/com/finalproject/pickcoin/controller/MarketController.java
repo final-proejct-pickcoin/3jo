@@ -2,10 +2,7 @@ package com.finalproject.pickcoin.controller;
 
 import java.util.List;
 
-import org.hibernate.mapping.Map;
-//import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,4 +45,9 @@ public class MarketController {
         marketService.delete_bookmark(user_id, asset_id);
     }
     
+    
+    @GetMapping("/asset-id")
+    public List<Market_item> get_assets_id(@RequestParam("asset_symbol") String asset_symbol) {
+        return marketService.get_assets_id(asset_symbol);
+    }
 }

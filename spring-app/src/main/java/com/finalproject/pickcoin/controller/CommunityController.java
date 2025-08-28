@@ -1,7 +1,12 @@
 package com.finalproject.pickcoin.controller;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -9,8 +14,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.finalproject.pickcoin.domain.Community;
+import com.finalproject.pickcoin.domain.KeywordCount;
 import com.finalproject.pickcoin.service.CommunityLikeService;
 import com.finalproject.pickcoin.service.CommunityService;
+import com.finalproject.pickcoin.service.StatsService;
+
 
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
@@ -23,6 +31,12 @@ public class CommunityController {
     @Autowired
     private CommunityLikeService communityLikeService;
 
+    @Autowired
+     private StatsService statsService;
+
+    Logger logger = LoggerFactory.getLogger(CommunityController.class);
+
+
     // 전체조회
     @GetMapping("/findAll")
     public List<Community> findAll() {
@@ -31,14 +45,29 @@ public class CommunityController {
 
     // 단건 조회
     @GetMapping("/{id}")
-    public Community findById(@PathVariable("id") Integer id) {
+    public Community findById(@PathVariable("id") Integer id) {        
         return communityService.findById(id);
     }
 
     // 등록
     @PostMapping("/insert")
-    public Community insert(@RequestBody Community community) {
+    public Community insert(@RequestBody Community community) throws IOException {
+
+        try{
+            MDC.put("event_type", "community");
+            logger.info("[커뮤니티 작성] content={}, user={}", community.getContent(), community.getUser_id());
+        }finally{
+            MDC.remove("event_type");
+        }
+
+        // elastic 인덱스에 추가
+        communityService.indexPostToElasticsearch(community);
+        
         communityService.insert(community);
+
+        // ✅ 등록 후 최신 통계 WebSocket으로 push
+        Map<String, Object> stats = statsService.getCommunityStats();
+StatsController.StatsWebSocket.broadcast(stats);
         return community;
     }
 
@@ -53,6 +82,13 @@ public class CommunityController {
 
         if (!existing.getUser_id().equals(community.getUser_id())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인만 수정할 수 있습니다.");
+        }
+
+        try{
+            MDC.put("event_type", "community");
+            logger.info("[커뮤니티 수정] content={}, user={}", community.getContent(), community.getUser_id());
+        }finally{
+            MDC.remove("event_type");
         }
 
         community.setPost_id(id);
@@ -73,7 +109,18 @@ public class CommunityController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인만 삭제할 수 있습니다.");
         }
 
+        try{
+            MDC.put("event_type", "community");
+            logger.info("[커뮤니티 작성] cummunity_id", id);
+        }finally{
+            MDC.remove("event_type");
+        }
+
         communityService.delete(id);
+
+        // ✅ 삭제 후 최신 통계 WebSocket으로 push
+        Map<String, Object> stats = statsService.getCommunityStats();
+        StatsController.StatsWebSocket.broadcast(stats);
         return ResponseEntity.ok().build();
     }
 
@@ -97,4 +144,18 @@ public class CommunityController {
         List<Integer> likedPostIds = communityLikeService.getLikePostIdByUser(userId);
         return ResponseEntity.ok(likedPostIds);
     }
+
+    // 인기 키워드 조회
+    @GetMapping("/popular-keword")
+    public ResponseEntity<List<KeywordCount>> getPopularKeyword() {
+        try{
+            List<KeywordCount> popularKeyword = communityService.getPopularKeword();
+            System.out.println("인기키워드:"+popularKeyword.toString());
+            return ResponseEntity.ok(popularKeyword);
+        }catch (IOException e){
+            logger.info(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
 }

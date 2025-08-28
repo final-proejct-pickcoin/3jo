@@ -34,15 +34,12 @@ public class MypageController {
     public List<Market_item> get_unbookmarked(@RequestParam("user_id") Long user_id) {
         return mypageService.find_unbookmarked_only(user_id);
     }
-    //토큰에서 이메일값 찾아 user_id를 가져오는 API
+    //토큰에서 이메일값 찾아 user_id 가져오기
     @GetMapping("/user-id")
     public Map<String, Object> getUserIdByEmail(@RequestParam("email") String email) {
         Integer uid = mypageService.getUserIdByEmail(email); // null일 수 있음
         return Map.of("user_id", uid);
     }
-    // public Integer getUserIdByEmail(String email){
-    //     return mypageService.getUserIdByEmail(email);
-    // }
 
     @PostMapping("/bookmarks")
     public void add_bookmark(@RequestParam("user_id") int user_id,

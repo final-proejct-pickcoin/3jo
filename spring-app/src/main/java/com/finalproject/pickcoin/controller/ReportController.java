@@ -1,7 +1,11 @@
 package com.finalproject.pickcoin.controller;
 
 import java.util.List;
+import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,10 +32,19 @@ import lombok.RequiredArgsConstructor;
 public class ReportController {
     private final ReportService reportService;
 
+    Logger logger = LoggerFactory.getLogger(ReportController.class);
+
      // 신고 생성
     @PostMapping
     public ResponseEntity<?> submit(@RequestBody Report r) {
         reportService.submit(r);
+
+        try{
+            MDC.put("event_type", "report");
+            logger.info("[신고 발생] reporter_id={}, reported_id={}", r.getReporter_id(), r.getReported_id());
+        }finally{
+            MDC.remove("event_type");
+        }
         return ResponseEntity.ok().build();
     }
 
@@ -62,7 +75,31 @@ public class ReportController {
     return reportService.exists(reporterId, reportedType, reportedId);
 }
 
+ /** 안 읽은 신고 개수 → 종 배지 */
+    @GetMapping("/alerts/count")
+    public ResponseEntity<?> getUnreadCount() {
+        return ResponseEntity.ok(Map.of("count", reportService.getUnreadCount()));
+    }
 
+    /** 안 읽은 신고 목록 */
+    @GetMapping("/alerts/unread")
+    public ResponseEntity<List<Report>> getUnread(@RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(reportService.getUnread(limit));
+    }
+
+    /** 모두 읽음 처리 */
+    @PatchMapping("/alerts/read-all")
+    public ResponseEntity<?> markAllRead() {
+        int affected = reportService.markAllRead();
+        return ResponseEntity.ok(Map.of("affected", affected));
+    }
+
+    /** 개별 읽음 처리 */
+    @PatchMapping("/alerts/{id}/read")
+    public ResponseEntity<?> markOneRead(@PathVariable int id) {
+        reportService.markOneRead(id);
+        return ResponseEntity.ok().build();
+    }
 
 
 

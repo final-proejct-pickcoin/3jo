@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.finalproject.pickcoin.repository.PortfolioRepository">
+
+    <!-- KRW 잔액 -->
+    <select id="krwBalance" resultType="java.math.BigDecimal">
+        SELECT w.amount
+        FROM wallet w
+        JOIN asset a ON a.asset_id = w.asset_id
+        WHERE w.user_id = #{userId} AND a.symbol = 'KRW'
+        LIMIT 1
+    </select>
+
+    <!-- 보유 코인 -->
+    <select id="holdings" parameterType="long" resultType="map">
+        SELECT
+            w.asset_id    AS assetId,
+            a.symbol      AS symbol,
+            a.asset_name  AS assetName,
+            a.market      AS market,
+            w.amount      AS amount,
+            NULL          AS avgPrice,   <!-- 없음: 서비스에서 0 처리-->
+            NULL          AS nowPrice    <!-- 없음: 서비스에서 0 처리-->
+        FROM wallet w
+        JOIN asset a ON a.asset_id = w.asset_id
+        WHERE w.user_id = #{userId}
+            AND w.amount > 0
+        ORDER BY w.updated_at DESC
+    </select>
+
+
+
+    <!-- 최근 체결 20건 -->
+    <select id="recentFills" resultType="map">
+        SELECT o.asset_id AS assetId, a.symbol AS symbol,
+            CASE o.order_type WHEN 0 THEN 'BUY' ELSE 'SELL' END AS side,
+            t.amount AS qty, t.price AS price, COALESCE(t.fee,0) AS fee,
+            DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s.%f') AS filledAt
+        FROM `transaction` t
+        JOIN orders o ON o.order_id = t.order_id
+        JOIN asset  a ON a.asset_id = o.asset_id
+        WHERE o.user_id = #{userId}
+        ORDER BY t.tx_id DESC
+        LIMIT 20
+    </select>
+
+    <select id="findFills" parameterType="long" resultType="map">
+        SELECT
+            f.asset_id,
+            a.symbol,
+            a.asset_name,             <!-- 있으면 프론트에서 이름도 표시 -->
+            f.side,                   <!-- 'BUY'/'SELL' -->
+            f.qty,
+            f.price,
+            COALESCE(f.fee,0) AS fee,
+            f.filled_at
+        FROM fills f
+        JOIN assets a ON a.asset_id = f.asset_id
+        WHERE f.user_id = #{userId}
+            AND f.status = 'FILLED'
+        ORDER BY f.filled_at ASC
+    </select>
+
+    <!-- 거래내역 리스트 -->
+    <select id="trades" resultType="map">
+        SELECT
+            t.tx_id        AS txId,
+            o.asset_id     AS assetId,
+            a.symbol       AS symbol,
+            a.asset_name   AS assetName,
+            o.order_type   AS orderType,   
+            t.amount       AS qty,
+            t.price        AS price,
+            COALESCE(t.fee,0) AS fee,
+            t.created_at   AS filledAt,
+            (t.amount * t.price) AS notional
+        FROM `transaction` t
+        JOIN `orders` o ON o.order_id = t.order_id
+        JOIN asset a    ON a.asset_id = o.asset_id
+        WHERE o.user_id = #{userId}
+        <if test="assetId != null">AND o.asset_id = #{assetId}</if>
+        ORDER BY t.created_at DESC
+        <if test="limit != null and offset != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+
+    <!-- 필요시 페이지네이션 총개수용 -->
+    <select id="tradesCount" resultType="long">
+        SELECT COUNT(*)
+        FROM `transaction` t
+        JOIN `order` o ON o.order_id = t.order_id
+        WHERE o.user_id = #{userId}
+        <if test="assetId != null">
+            AND o.asset_id = #{assetId}
+        </if>
+    </select>
+
+
+
+</mapper>

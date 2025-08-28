@@ -13,4 +13,6 @@ public interface MarketService {
     void insert_bookmark(int user_id, int asset_id); // 관심코인 테이블에 클릭한 코인 id와 사용자 id 정보 넣기
 
     void delete_bookmark(int user_id, int asset_id); // 관심코인 테이블에서 사용자 id와 코인 id를 기준으로 컬럼 삭제
+
+    List<Market_item> get_assets_id(String asset_symbol); // 심볼을 기준으로 asset_id 가져오기
 }

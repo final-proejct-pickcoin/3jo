@@ -26,6 +26,21 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 // import { headers } from "next/headers";
 
+//API
+const API_BASE = "http://localhost:8000";
+// 공지 전용 Spring API
+const BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");
+const ANN_API_BASE = `${BASE}/admin/announcements`;
+
+const toInt = (v) => {
+  if (v === null || v === undefined) return null;
+  const n = parseInt(String(v), 10);
+  return Number.isNaN(n) ? null : n;
+};
+
+const makeClientId = () =>
+  `tmp-${(globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))}`;
+
 export default function Component() {
   // const jwt_decode = require("jwt-decode");
   const [isLoggedIn, setIsLoggedIn] = useState(null);
@@ -40,6 +55,9 @@ export default function Component() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [logLevelFilter, setLogLevelFilter] = useState("all");
   const [selectedLogs, setSelectedLogs] = useState([]);
+  // 공지 편집용 상태 추가
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   // 프로필 관련 상태들 추가
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -47,6 +65,51 @@ export default function Component() {
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [isAnnouncementDetailOpen, setIsAnnouncementDetailOpen] = useState(false);
+  const [token, setToken] = useState('')
+  const [dateFilter, setDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const itemsPerPage = 10;
+  const [currentLogsPage, setCurrentLogsPage] = useState(1);
+  const startIndex = (currentLogsPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const [fee, setFee] = useState(0.10); // 수수료율 초기값: 0.10%
+  const [yesterdayRevenue, setYesterdayRevenue] = useState(12450);
+  const [todayRevenue, setTodayRevenue] = useState(14000);
+  const [weekRevenue, setWeekRevenue] = useState(89320);
+  const [monthRevenue, setMonthRevenue] = useState(289450);
+  const [tradeAmount, setTradeAmount] = useState({
+    yesterday: 0,
+    today: 0,
+    this_week: 0,
+    this_month: 0,
+  });
+
+  // 수수료율 적용 버튼 클릭 시 예시 계산 (실제 API 연동 시 변경)
+  const applyFee = () => {
+    setYesterdayRevenue(Math.round(tradeAmount.yesterday * (fee / 100)));
+    setTodayRevenue(Math.round(tradeAmount.today * (fee / 100)));
+    setWeekRevenue(Math.round(tradeAmount.this_week * (fee / 100)));
+    setMonthRevenue(Math.round(tradeAmount.this_month * (fee / 100)));
+  };
+
+  const totalPages = Math.ceil(total / itemsPerPage);
+  // 한 번에 보여줄 페이지 번호 수 설정
+  const maxPageButtons = 5;
+  const getPageNumbers = () => {
+    let start = Math.max(currentPage - Math.floor(maxPageButtons / 2), 1);
+    let end = start + maxPageButtons - 1;
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(end - maxPageButtons + 1, 1);
+    }
+    let pages = [];
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: "",
     content: "",
@@ -69,6 +132,7 @@ export default function Component() {
   });
 
   // Mock notifications
+  const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -94,76 +158,10 @@ export default function Component() {
   ]);
 
   // Mock data with more realistic information
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([]);  
+  const [logs, setLogs] = useState([]);
 
-  const [logs, setLogs] = useState([
-    {
-      id: 1,
-      timestamp: "2024-01-15 14:30:25",
-      user: "user123",
-      action: "로그인",
-      ip: "192.168.1.100",
-      status: "성공",
-      level: "info"
-    },
-    {
-      id: 2,
-      timestamp: "2024-01-15 14:28:15",
-      user: "user456",
-      action: "거래 체결",
-      ip: "192.168.1.101",
-      status: "성공",
-      level: "info"
-    },
-    {
-      id: 3,
-      timestamp: "2024-01-15 14:25:10",
-      user: "user789",
-      action: "출금 요청",
-      ip: "192.168.1.102",
-      status: "대기",
-      level: "warn"
-    },
-    {
-      id: 4,
-      timestamp: "2024-01-15 14:22:05",
-      user: "suspicious_user",
-      action: "로그인 실패",
-      ip: "192.168.1.103",
-      status: "실패",
-      level: "error"
-    }
-  ]);
-
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 1,
-      title: "시스템 점검 안내",
-      content: "2024년 1월 20일 새벽 2시부터 4시까지 시스템 점검이 있습니다.",
-      date: "2024-01-15",
-      important: true,
-      status: "active",
-      views: 1234
-    },
-    {
-      id: 2,
-      title: "새로운 코인 상장",
-      content: "ETH/USDT 거래쌍이 새롭게 추가되었습니다.",
-      date: "2024-01-14",
-      important: false,
-      status: "active",
-      views: 856
-    },
-    {
-      id: 3,
-      title: "수수료 정책 변경",
-      content: "거래 수수료가 0.1%에서 0.08%로 인하됩니다.",
-      date: "2024-01-12",
-      important: true,
-      status: "expired",
-      views: 2341
-    }
-  ]);
+  const [announcements, setAnnouncements] = useState([]);
 
   // Filter functions
   const filteredUsers = users.filter((user) => {
@@ -177,69 +175,325 @@ export default function Component() {
     const matchesStatus = statusFilter === "all" || String(user.is_verified) === statusFilter;
   return matchesSearch && matchesStatus;
   });
-  const filteredLogs = logs.filter((log) => {
-    const matchesLevel = logLevelFilter === "all" || log.level === logLevelFilter;
-    return matchesLevel;
+
+ const filteredLogs = (Array.isArray(logs) ? logs : []).filter((log) => {
+    const logLevel = log.level.trim().toLowerCase();
+    const filter = logLevelFilter.toLowerCase();
+    const matchesLevel = filter === "all" || logLevel === filter;
+
+    const selectedDate = dateFilter; 
+    let matchesDate = true;
+
+    if (selectedDate) {
+      // log.timestamp은 String이라 아래쪽에서 변환해줘야함.
+      const logDateObj  = new Date(log.timestamp);
+
+      const logDate = logDateObj.getFullYear() + '-' +
+      String(logDateObj.getMonth() + 1).padStart(2, '0') + '-' +
+      String(logDateObj.getDate()).padStart(2, '0');
+
+      matchesDate = logDate === selectedDate;
+    }
+
+    return matchesLevel && matchesDate;
   });
 
+  
+const pagedLogs = filteredLogs.slice(startIndex, endIndex);  
   // Action handlers
-  const handleUserStatusToggle = (userId) => {
+const handleUserStatusToggle = async (userId) => {
+  const targetUser = users.find((u) => u.user_id === userId);
+  if (!targetUser) return;
 
-    const targetUser = users.find((u) => u.user_id === userId);
-    if (!targetUser) return;
+  const nextVerified = targetUser.is_verified === 1 ? 0 : 1;
 
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.user_id === userId
-          ? { ...user, is_verified: user.is_verified === 1 ? 0 : 1 }
-          : user
+  // 1) 낙관적 업데이트(여기서 nextVerified를 그대로 사용)
+  setUsers((prev) =>
+    prev.map((u) =>
+      u.user_id === userId ? { ...u, is_verified: nextVerified } : u
+    )
+  );
+
+  try {
+    await axios.get("http://localhost:8000/admin/user-status", {
+      params: { user_id: userId, is_verified: nextVerified },
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+  } catch (err) {
+    // 2) 실패 시 롤백
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.user_id === userId ? { ...u, is_verified: targetUser.is_verified } : u
       )
     );
-    axios.get("http://localhost:8000/admin/user-status", {
-        params: {
-          user_id: userId,
-          is_verified: targetUser.is_verified,
-        }
-      }).catch((err) => {
-        console.error("상태 업데이트 실패:", err)
-      })
+    console.error("상태 업데이트 실패:", err);
+  }
+};
 
-  };
+// === 공지 목록 불러오기 ===
+const fetchAnnouncements = async () => {
+  try {    
 
-  const handleDeleteAnnouncement = (id) => {
-    setAnnouncements(announcements.filter((ann) => ann.id !== id));
-  };
+    const { data } = await axios.get(ANN_API_BASE, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
 
-  const router = useRouter();
+    const mapped = (Array.isArray(data) ? data : []).map((it) => {
+      const created = it.createdAt || it.created_at || it.date || it.created || null;
 
-  const handleLogout = () => {
-    const email = localStorage.getItem("sub");
-    // 로그아웃 처리
-    axios
-      .post(
-        "http://localhost:8000/admin/logout",
-        new URLSearchParams({ email }),
-        {
-          headers: { "Content-Type": "application/x-www-form-urlencoded" }
-        }
+      const active =
+        typeof it.active === "boolean"
+          ? it.active
+          : it.status === "active" ||
+            it.status === "ACTIVE" ||
+            it.is_active === 1 ||
+            it.isActive === true;
+
+      const serverId =
+        toInt(it.id) ??
+        toInt(it.noticeId) ??
+        toInt(it.announcementId) ??
+        toInt(it.notice_id);
+
+      return {
+        // 렌더링용 id (항상 존재)
+        id: serverId ?? makeClientId(),
+        // 서버 호출용 id (없으면 null)
+        serverId,
+        title: it.title ?? "(제목 없음)",
+        content: it.content ?? "",
+        date: created
+          ? new Date(created).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
+        important: Boolean(it.important ?? it.isImportant ?? false),
+        status: active ? "active" : "expired",
+        views: it.views ?? it.viewCount ?? 0,
+      };
+    });
+
+    setAnnouncements(mapped);
+  } catch (err) {
+    console.error("공지 목록 불러오기 실패:", err);
+  }
+};
+
+// === 공지 생성 ===
+const createAnnouncement = async (payload) => {
+  try {
+
+    const { data } = await axios.post(
+      ANN_API_BASE,
+      {
+        title: payload.title,
+        content: payload.content,
+        important: payload.important ?? false,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    );
+
+    const created = data?.createdAt || data?.created_at || data?.date || new Date();
+
+    const serverId =
+      toInt(data?.id) ??
+      toInt(data?.noticeId) ??
+      toInt(data?.announcementId) ??
+      toInt(data?.notice_id);
+
+    const newItem = {
+      id: serverId ?? makeClientId(),
+      serverId,
+      title: data?.title ?? payload.title,
+      content: data?.content ?? payload.content,
+      date: new Date(created).toISOString().slice(0, 10),
+      important: Boolean(data?.important ?? payload.important),
+      status:
+        typeof data?.active === "boolean"
+          ? data.active
+            ? "active"
+            : "expired"
+          : data?.status === "expired"
+          ? "expired"
+          : (data?.is_active === 0 ? "expired" : "active"),
+      views: data?.views ?? 0,
+    };
+
+    setAnnouncements((prev) => [newItem, ...prev]);
+    setNewAnnouncement({ title: "", content: "", important: false });
+    setIsAnnouncementDialogOpen(false);
+  } catch (err) {
+    console.error("공지 생성 실패:", err);
+  }
+};
+
+// === 공지 상태/삭제 API (여기에 붙여넣기) ===
+const patchAnnouncementStatus = async (serverId, active) => {
+  const sid = toInt(serverId);                 // ← 숫자로 캐스팅
+  if (sid === null) throw new Error("상태 변경 불가: serverId 없음");
+
+  console.log("[PATCH] /admin/announcements/%s/status?active=%s", sid, active);
+  await axios.patch(`${ANN_API_BASE}/${sid}/status`, {}, {
+    params: { active },
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+});
+};
+
+const deleteAnnouncement = async (serverId) => {
+  const sid = toInt(serverId);                 // ← 숫자로 캐스팅
+  if (sid === null) throw new Error("삭제 불가: serverId 없음");
+
+  console.log("[DELETE] /admin/announcements/%s", sid); // 디버그
+
+  await axios.delete(`${ANN_API_BASE}/${sid}`, {
+   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+ });
+};
+
+
+// === 버튼 클릭 시 ===
+const handleCreateAnnouncement = () => {
+  if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
+  createAnnouncement(newAnnouncement);
+};
+
+  const handleDeleteAnnouncement = async (serverId) => {
+   const backup = announcements;
+   const sid = toInt(serverId);
+   // serverId가 없는 임시 항목 보호
+   if (sid === null) {
+     alert("서버에 저장되지 않은 임시 항목이라 삭제할 수 없습니다.");
+     return;
+   }
+   const cur = announcements.find(a => toInt(a.serverId) === sid);
+   setAnnouncements(prev => prev.filter(a => toInt(a.serverId) !== sid)); // 낙관적 삭제
+
+  try {
+     await deleteAnnouncement(sid); // 이미 숫자로 캐스팅된 sid 사용
+    console.log("[DEL] done:", cur?.serverId);
+  } catch (e) {
+    console.error("공지 삭제 실패:", e?.response?.status, e?.response?.data || e?.message);
+    setAnnouncements(backup);     // 실패 시 롤백
+    alert(`삭제 실패: ${e?.response?.status || ""} ${e?.response?.data || e?.message}`);
+  }
+};
+
+// 다이얼로그 열기
+const openEditDialog = (ann) => {
+  setEditingAnnouncement({
+    id: ann.id,
+    serverId: toInt(ann.serverId),
+    title: ann.title ?? "",
+    content: ann.content ?? "",
+    important: !!ann.important,
+  });
+  setIsEditDialogOpen(true);
+};
+
+// 공지 수정 API
+const updateAnnouncement = async (serverId, payload) => {
+  
+  const { data } = await axios.put(`${ANN_API_BASE}/${serverId}`, payload, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  return data;
+};
+
+// 저장 핸들러
+const handleSaveEdit = async () => {
+  if (!editingAnnouncement) return;
+  const sid = toInt(editingAnnouncement.serverId);
+  if (sid === null) {
+    alert("서버에 저장되지 않은 임시 항목은 수정할 수 없습니다.");
+    return;
+  }
+
+  const { id, title, content, important } = editingAnnouncement;
+  const backup = announcements;
+
+  // 낙관적 업데이트
+  setAnnouncements(prev =>
+    prev.map(a => String(a.id) === String(id) ? { ...a, title, content, important } : a)
+  );
+
+  try {
+    const data = await updateAnnouncement(sid, { title, content, important });
+
+    const created =
+      data?.createdAt || data?.created_at || data?.date || null;
+    const active =
+      typeof data?.active === "boolean"
+        ? data.active
+        : data?.status === "active" || data?.is_active === 1 || data?.isActive === true;
+
+    const newServerId =
+      toInt(data?.id) ??
+      toInt(data?.noticeId) ??
+      toInt(data?.announcementId) ??
+      toInt(data?.notice_id) ?? sid;
+
+    setAnnouncements(prev =>
+      prev.map(a =>
+        String(a.id) === String(id)
+          ? {
+              ...a,
+              serverId: newServerId,
+              title: data?.title ?? title,
+              content: data?.content ?? content,
+              important: Boolean(data?.important ?? important),
+              date: created ? new Date(created).toISOString().slice(0, 10) : a.date,
+              status: active ? "active" : (data?.status === "expired" ? "expired" : a.status),
+              views: toInt(data?.views) ?? a.views ?? 0,
+            }
+          : a
       )
-      .then(() => {
-        // 토큰 삭제
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_name");
-        localStorage.removeItem("role");
-        localStorage.removeItem("sub");
+    );
 
-        // 상태 초기화
-        setIsLoggedIn(false);
+    setIsEditDialogOpen(false);
+    setEditingAnnouncement(null);
+  } catch (e) {
+    console.error("공지 수정 실패:", e?.response?.status, e?.response?.data || e?.message);
+    setAnnouncements(backup);
+    alert(`수정 실패: ${e?.response?.status || ""} ${e?.response?.data || e?.message}`);
+  }
+};
 
-        // 로그인 페이지로 리다이렉트
-        router.push("/admin");
-      })
-      .catch((error) => {
-        console.error("로그아웃 실패:", error);
-      });
-  };
+const router = useRouter();
+
+const handleLogout = () => {
+  const email = localStorage.getItem("sub");
+  // 로그아웃 처리
+  axios
+    .post(
+      "http://localhost:8000/admin/logout",
+      new URLSearchParams({ email }),
+      {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      }
+    )
+    .then(() => {
+      // 토큰 삭제
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user_name");
+      localStorage.removeItem("role");
+      localStorage.removeItem("sub");
+
+      // 상태 초기화
+      setIsLoggedIn(false);
+
+      // 로그인 페이지로 리다이렉트
+      router.push("/admin");
+    })
+    .catch((error) => {
+      console.error("로그아웃 실패:", error);
+    });
+};
   const handleExportLogs = () => {
     const selectedLogData = logs.filter((log) => selectedLogs.includes(log.id));
     const csvContent =
@@ -271,15 +525,25 @@ export default function Component() {
       )
     );
   };
-  const handleMarkAllNotificationsAsRead = () => {
+  const handleMarkAllNotificationsAsRead = async () => {
+  try {
+    // (선택) 백엔드 모두 읽음 API 호출
+    await axios.patch(`${BASE}/report/alerts/read-all`);
+
+    // 프론트 상태 업데이트
     setNotifications(
       notifications.map((notif) => ({
         ...notif,
         read: true
       }))
     );
-  };
-  const unreadCount = notifications.filter((n) => !n.read).length;
+
+    // 뱃지 숫자 초기화
+    setUnreadCount(0);
+  } catch (err) {
+    console.error("모두 읽음 처리 실패:", err);
+  }
+};
   const handleDeleteSelectedLogs = () => {
     setLogs(logs.filter((log) => !selectedLogs.includes(log.id)));
     setSelectedLogs([]);
@@ -288,52 +552,43 @@ export default function Component() {
     console.log("Archiving logs:", selectedLogs);
     setSelectedLogs([]);
   };
-  const handleCreateAnnouncement = () => {
-    if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
-    const announcement = {
-      id: announcements.length + 1,
-      title: newAnnouncement.title,
-      content: newAnnouncement.content,
-      date: new Date().toISOString().split("T")[0],
-      important: newAnnouncement.important,
-      status: "active",
-      views: 0
-    };
-    setAnnouncements([announcement, ...announcements]);
-    setNewAnnouncement({
-      title: "",
-      content: "",
-      important: false
-    });
-    setIsAnnouncementDialogOpen(false);
-  };
+ 
   const handleAnnouncementClick = (announcement) => {
     setSelectedAnnouncement(announcement);
     setIsAnnouncementDetailOpen(true);
     // 조회수 증가
-    setAnnouncements(
-      announcements.map((ann) =>
-        ann.id === announcement.id
-          ? {
-              ...ann,
-              views: ann.views + 1
-            }
-          : ann
-      )
-    );
-  };
-  const handleAnnouncementStatusToggle = (id) => {
-    setAnnouncements(
-      announcements.map((ann) =>
-        ann.id === id
-          ? {
-              ...ann,
-              status: ann.status === "active" ? "expired" : "active"
-            }
-          : ann
-      )
-    );
-  };
+    setAnnouncements((prev) =>
+   prev.map((ann) =>
+     ann.id === announcement.id ? { ...ann, views: ann.views + 1 } : ann
+   )
+ );
+};
+
+  const handleAnnouncementStatusToggle = async (id) => {
+   const cur = announcements.find(a => String(a.id) === String(id));
+    if (!cur) return;
+    const nextActive = cur.status !== "active";
+
+    setAnnouncements(prev =>
+      prev.map(a =>
+        String(a.id) === String(id)
+          ? { ...a, status: nextActive ? "active" : "expired" }
+               : a
+              )
+             );
+    try {
+     // [추가] 서버 PATCH 호출 (흐릿함 사라짐)
+     await patchAnnouncementStatus(cur.serverId, nextActive);
+   } catch (e) {
+     // [추가] 실패 시 원래 상태로 롤백
+     setAnnouncements(prev =>
+       prev.map(a =>
+         String(a.id) === String(id) ? { ...a, status: cur.status } : a
+       )
+     );
+     console.error("상태 변경 실패:", e);
+   }
+ };          
 
   const isTokenExpired = (token) => {
     if(!token) return true
@@ -347,40 +602,51 @@ export default function Component() {
     }
   }
 
+  // 수익 관리
+  const getTradeAmount = () => {
+    axios.get("http://localhost:8000/admin/gettradeamount")
+      .then((res)=>{
+        setTradeAmount(res.data);
+        const data = res.data;
+        setTradeAmount(data);
+        setYesterdayRevenue(Math.round(data.yesterday * (fee / 100)));
+        setTodayRevenue(Math.round(data.today * (fee / 100)));
+        setWeekRevenue(Math.round(data.this_week * (fee / 100)));
+        setMonthRevenue(Math.round(data.this_month * (fee / 100)));
+      })
+      .catch((err)=>{
+        console.log(err)
+      })
+  }
+
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    fetch(`http://localhost:8000/logs?index=login-logs`)
+      .then(res => res.json())
+      .then(data => setLogs(data))
+      .catch(err => console.error(err));
+  }, []);
 
-    // if(!token){
-    //   setIsLoggedIn(false);
-    //   return
-    // }
+  const getUserPerPage = async (requestPage, itemsPerPage) => {
 
-    // if(isTokenExpired(token)){
-    //   console.log("토큰 만료")
-    //   localStorage.clear();
-    //   setIsLoggedIn(false)
-    //   return
-    // }
+    setCurrentPage(requestPage)
 
-    // const email = localStorage.getItem("sub");
-    // const name = localStorage.getItem("name");
-    // const role = localStorage.getItem("role");
+    await axios.get("http://localhost:8000/admin/getuser", {
+      params:{
+        page: requestPage,
+        limit: itemsPerPage
+      }
+    })
+      .then((result)=>{
+        // console.log("프론트 유저정보", result.data.users)
+        setUsers(result.data.users)
+        setTotal(result.data.total);
+      })
+      .catch((err)=> console.log(err))
+  }
 
-    // setProfileData({
-    //   ...profileData,
-    //   role: role,
-    //   name: name,
-    //   email: email
-    // });
-
-    // // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
-    // axios.get("http://localhost:8000/admin/getuser")
-    // .then((result)=>{
-    //   setUsers(result.data)
-    // })
-    // .catch((err)=> console.log(err))
-
-    // setIsLoggedIn(true);
+  useEffect(() => {
+    const token = localStorage.getItem("access_token")
+    setToken(token);
 
     if (!token || isTokenExpired(token)) {
       localStorage.removeItem("access_token");
@@ -396,23 +662,40 @@ export default function Component() {
       const name = localStorage.getItem("name");
       const role = localStorage.getItem("role");
 
-      setProfileData({
-        ...profileData,
-        role: role,
-        name: name,
-        email: email
-      });
+      setProfileData((prev) => ({ ...prev, role, name, email }));
 
       // , {headers:{Authorization:`Bearer ${token}`}} <- get()에 두번째 인자로.
-      axios.get("http://localhost:8000/admin/getuser")
-        .then((result)=>{
-          setUsers(result.data)
-        })
-        .catch((err)=> console.log(err))
+      
+      getUserPerPage(currentPage, itemsPerPage);
 
-      setIsLoggedIn(true);
+      setIsLoggedIn(true);      
+      fetchAnnouncements();
+      getTradeAmount()
+      
+      const fetchReports = async () => {
+      try {
+      const { data: countRes } = await axios.get(`${BASE}/report/alerts/count`);
+      setUnreadCount(countRes.count);
+
+      const { data: unreadRes } = await axios.get(`${BASE}/report/alerts/unread?limit=10`);
+      // Report → notification 형태로 변환
+      const mapped = unreadRes.map(r => ({
+        id: r.report_id,
+        title: `${r.reported_type} 신고`,
+        message: r.description || "신고 사유 없음",
+        time: new Date(r.createdAt || r.created_at).toLocaleString("ko-KR"),
+        read: r.admin_seen === true
+      }));
+
+      setNotifications(mapped);
+    } catch (err) {
+      console.error("신고 알림 불러오기 실패:", err);
     }
-  }, []);
+  };
+
+  fetchReports();
+    }
+  }, [token]);
 
   if (isLoggedIn === null) {
     return <div style={{ background: "#fff", width: "100%", height: "100vh" }} />; // 로딩 중
@@ -433,7 +716,7 @@ export default function Component() {
               </div>
               <div>
                 <span className={`text-xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                  PickCoin Admin
+                  PickCoin 관리자
                 </span>
                 <div className="flex items-center space-x-2 mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -707,10 +990,10 @@ export default function Component() {
                   <FileText className="h-4 w-4 mr-3" />
                   공지사항
                 </TabsTrigger>
-                <TabsTrigger value="system" className="justify-start w-full mb-2">
+                {/* <TabsTrigger value="system" className="justify-start w-full mb-2">
                   <Server className="h-4 w-4 mr-3" />
                   시스템 관리
-                </TabsTrigger>
+                </TabsTrigger> */}
               </TabsList>
             </Tabs>
           </nav>
@@ -809,8 +1092,9 @@ export default function Component() {
                                 variant={user.is_verified === 1 ? "destructive" : "default"}
                                 size="sm"
                                 onClick={() => handleUserStatusToggle(user.user_id)}
-                                className="w-20" // 고정 너비 추가
+                                className="w-20" 
                               >
+                                {/* 고정 너비 추가 */}
                                 {user.is_verified === 1 ? (
                                   <>
                                     <Ban className="h-4 w-4 mr-1" />
@@ -829,6 +1113,40 @@ export default function Component() {
                       ))}
                     </TableBody>
                   </Table>
+                  {/* 페이지네이션 UI 입력 */}
+                  <div style={{ marginTop: "16px", display: "flex", gap: "8px", justifyContent: "center" }}>
+                    <button onClick={() => getUserPerPage(1)} disabled={currentPage === 1}>
+                      맨 처음
+                    </button>
+                    <button onClick={() => getUserPerPage(currentPage - 1)} disabled={currentPage === 1}>
+                      이전
+                    </button>
+
+                    {getPageNumbers().map(pageNum => (
+                      <button
+                        key={pageNum}
+                        onClick={() => getUserPerPage(pageNum)}
+                        style={{
+                          fontWeight: pageNum === currentPage ? 'bold' : 'normal',
+                          textDecoration: pageNum === currentPage ? 'underline' : 'none',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: pageNum === currentPage ? '2px solid #2563eb' : '1px solid #ccc',
+                          backgroundColor: pageNum === currentPage ? '#bfdbfe' : 'transparent',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+
+                    <button onClick={() => getUserPerPage(currentPage + 1)} disabled={currentPage === total}>
+                      다음
+                    </button>
+                    <button onClick={() => getUserPerPage(total)} disabled={currentPage === total}>
+                      맨 끝
+                    </button>
+                  </div>     
                 </CardContent>
               </Card>
 
@@ -980,7 +1298,7 @@ export default function Component() {
                           <SelectItem value="error">ERROR</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Input type="date" className="w-40" />
+                      <Input type="date" className="w-40" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
                     </div>
                   </div>
                 </CardHeader>
@@ -990,7 +1308,7 @@ export default function Component() {
                       <TableRow>
                         <TableHead className="w-12">
                           <Checkbox
-                            checked={selectedLogs.length === filteredLogs.length}
+                            checked={selectedLogs.length === logs.length}
                             onCheckedChange={(checked) => {
                               if (checked) {
                                 setSelectedLogs(filteredLogs.map((log) => log.id));
@@ -1003,13 +1321,12 @@ export default function Component() {
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>시간</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>레벨</TableHead>
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>사용자</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>행위</TableHead>
-                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>IP</TableHead>
+                        <TableHead className={isDarkMode ? "text-gray-300" : ""}>행위</TableHead>                        
                         <TableHead className={isDarkMode ? "text-gray-300" : ""}>상태</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredLogs.map((log) => (
+                      {pagedLogs.map((log) => (
                         <TableRow key={log.id} className={isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                           <TableCell>
                             <Checkbox
@@ -1024,7 +1341,7 @@ export default function Component() {
                             />
                           </TableCell>
                           <TableCell className={`font-mono text-sm ${isDarkMode ? "text-gray-300" : ""}`}>
-                            {log.timestamp}
+                            {new Date(log.timestamp).toLocaleString("ko-KR")}
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -1040,8 +1357,7 @@ export default function Component() {
                             </Badge>
                           </TableCell>
                           <TableCell className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>{log.user}</TableCell>
-                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{log.action}</TableCell>
-                          <TableCell className={`font-mono text-sm ${isDarkMode ? "text-gray-300" : ""}`}>{log.ip}</TableCell>
+                          <TableCell className={isDarkMode ? "text-gray-300" : ""}>{log.action}</TableCell>                          
                           <TableCell>
                             <div className="flex items-center">
                               {log.status === "성공" ? (
@@ -1056,8 +1372,25 @@ export default function Component() {
                           </TableCell>
                         </TableRow>
                       ))}
-                    </TableBody>
+                    </TableBody>                    
                   </Table>
+                  <div className="flex items-center justify-center space-x-2 mt-4">
+                        <button
+                          disabled={currentLogsPage === 1}
+                          onClick={() => setCurrentLogsPage(currentLogsPage - 1)}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          이전
+                        </button>
+                        <span className="px-2">페이지 {currentLogsPage}</span>
+                        <button
+                          disabled={endIndex >= filteredLogs.length}
+                          onClick={() => setCurrentLogsPage(currentLogsPage + 1)}
+                          className="px-3 py-1 border rounded disabled:opacity-50"
+                        >
+                          다음
+                        </button>
+                      </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1066,92 +1399,155 @@ export default function Component() {
               <div>
                 <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6`}>수익 관리</h1>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
                   <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
                     <CardHeader>
                       <CardTitle className={isDarkMode ? "text-white" : ""}>수수료 설정</CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>거래쌍 수수료 설정</CardDescription>
+                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>전체 거래대금에 적용할 수수료율</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-4">
+                      <div className="flex items-center space-x-4">
+                        <Label className={isDarkMode ? "text-gray-200" : ""}>수수료율 (%)</Label>
+                        <Input type="number" min={0} onChange={(e) => setFee(e.target.value)} className="w-28" defaultValue="0.10" />
+                      </div>
+                      <Button className="w-full" onClick={applyFee}>수수료 적용</Button>
+                    </CardContent>
+                  </Card>
+
+
+                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}>
+                    <CardHeader>
+                      <CardTitle className={isDarkMode ? "text-white" : "text-gray-900"}>
+                        수익 현황
+                      </CardTitle>
+                      <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                        기간별 수수료 수익 분석
+                      </CardDescription>
+                      <div className="mt-2">
+                        <label className={`mr-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
+                          적용 수수료(%):
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          readOnly
+                          className="w-20 p-1 rounded border border-gray-300"
+                          value={fee}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4 text-center mt-4">
                         {[
-                          { pair: "BTC/USDT", volume: "28,450", fee: "0.08" },
-                          { pair: "ETH/USDT", volume: "15,230", fee: "0.10" },
-                          { pair: "ADA/USDT", volume: "8,920", fee: "0.15" }
-                        ].map((item, index) => (
+                          { label: "어제 수익", value: yesterdayRevenue, color: "green" },
+                          { label: "오늘 수익", value: todayRevenue, color: "green" },
+                          { label: "이번 주 수익", value: weekRevenue, color: "blue" },
+                          { label: "최근 한달 수익", value: monthRevenue, color: "blue" },
+                        ].map(({ label, value, color }, index) => (
                           <div
                             key={index}
-                            className={`flex items-center justify-between p-4 border rounded-lg ${
-                              isDarkMode ? "border-gray-600" : ""
-                            }`}
+                            className={`p-6 rounded-lg bg-${color}-50 flex flex-col justify-center items-center h-32`}
                           >
-                            <div>
-                              <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>{item.pair}</Label>
-                              <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                24시간 거래량: {item.volume} BTC
-                              </p>
+                            <div className={`text-2xl font-bold text-${color}-600`}>
+                              {value.toLocaleString()}원
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Input className="w-20" defaultValue={item.fee} />
-                              <span className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>%</span>
+                            <div className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
+                              {label}
                             </div>
                           </div>
                         ))}
                       </div>
-                      <Button className="w-full">수수료 적용</Button>
                     </CardContent>
                   </Card>
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={isDarkMode ? "text-white" : ""}>수익 현황</CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>일시적인 수수료 수익 분석</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <div className="text-2xl font-bold text-green-600">$12,450</div>
-                            <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>어제 수익</div>
-                            <div className="text-xs text-green-600 mt-1">+15.2% &#8599;</div>
-                          </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600">$89,320</div>
-                            <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>이번 주</div>
-                            <div className="text-xs text-blue-600 mt-1">+8.7% &#8599;</div>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            {/* 계속 이어서 수익 관리 부분 */}
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                거래 수수료
-                              </span>
-                              <span className="font-bold text-green-600">$847,230 (67%)</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                최근 수익률
-                              </span>
-                              <span className="font-bold text-blue-600">$289,450 (23%)</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : ""}`}>
-                                상장 수익률
-                              </span>
-                              <span className="font-bold text-purple-600">$125,600 (10%)</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+
                 </div>
               </div>
             </TabsContent>
 
             <TabsContent value="announcements" className="space-y-6">
+
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className={`sm:max-w-[525px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`}>
+                  <DialogHeader>
+                    <DialogTitle className={isDarkMode ? "text-white" : ""}>공지 수정</DialogTitle>
+                    <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
+                      선택한 공지사항을 수정합니다.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {editingAnnouncement && (
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label className={isDarkMode ? "text-gray-300" : ""}>제목</Label>
+                        <Input
+                          value={editingAnnouncement.title}
+                          onChange={(e) =>
+                            setEditingAnnouncement(prev => ({ ...prev, title: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label className={isDarkMode ? "text-gray-300" : ""}>내용</Label>
+                        <Textarea
+                          rows={4}
+                          value={editingAnnouncement.content}
+                          onChange={(e) =>
+                            setEditingAnnouncement(prev => ({ ...prev, content: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="edit-important"
+                          checked={!!editingAnnouncement.important}
+                          onCheckedChange={(checked) =>
+                            setEditingAnnouncement(prev => ({ ...prev, important: checked }))
+                          }
+                        />
+                        <Label htmlFor="edit-important" className={isDarkMode ? "text-gray-300" : ""}>
+                          중요 공지사항
+                        </Label>
+                      </div>
+                    </div>
+                  )}
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>취소</Button>
+                    <Button onClick={handleSaveEdit}>저장</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+               {/*미리보기 모달*/}
+               <Dialog open={isAnnouncementDetailOpen} onOpenChange={setIsAnnouncementDetailOpen}>
+                <DialogContent className={`sm:max-w-[600px] ${isDarkMode ? "bg-gray-800 border-gray-700" : ""}`}>
+                  <DialogHeader>
+                    <div className="flex items-center justify-between">
+                      <DialogTitle className={isDarkMode ? "text-white" : ""}>
+                        {selectedAnnouncement?.title || "공지 미리보기"}
+                      </DialogTitle>
+                      {selectedAnnouncement?.important && <Badge variant="destructive">중요</Badge>}
+                    </div>
+                    <DialogDescription className={isDarkMode ? "text-gray-400" : ""}>
+                      등록일 {selectedAnnouncement?.date} ·{" "}
+                      상태 {selectedAnnouncement?.status === "active" ? "활성" : "만료"} ·{" "}
+                      조회수 {selectedAnnouncement?.views?.toLocaleString?.()}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className={`mt-4 rounded-md border p-4 max-h-[60vh] overflow-y-auto ${
+                    isDarkMode ? "border-gray-700 text-gray-200" : "border-gray-200 text-gray-800"
+                  }`}>
+                    <pre className="whitespace-pre-wrap break-words">
+                      {selectedAnnouncement?.content}
+                    </pre>
+                  </div>
+
+                  <DialogFooter>
+                    <Button onClick={() => setIsAnnouncementDetailOpen(false)}>닫기</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
@@ -1174,6 +1570,7 @@ export default function Component() {
                         사용자에게 전달할 공지사항을 작성하세요.
                       </DialogDescription>
                     </DialogHeader>
+                    
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
                         <Label htmlFor="title" className={isDarkMode ? "text-gray-300" : ""}>
@@ -1209,6 +1606,7 @@ export default function Component() {
                         </Label>
                       </div>
                     </div>
+
                     <DialogFooter>
                       <Button type="submit" onClick={handleCreateAnnouncement}>
                         공지사항 생성
@@ -1275,14 +1673,15 @@ export default function Component() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleAnnouncementClick(announcement)}>
                                   <Eye className="h-4 w-4 mr-2" /> 미리보기
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEditDialog(announcement)}
+                                  >
                                   <Edit className="h-4 w-4 mr-2" /> 수정
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleDeleteAnnouncement(announcement.id)}
+                                  onClick={() => handleDeleteAnnouncement(announcement.serverId)}
                                   className="text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" /> 삭제
@@ -1308,117 +1707,6 @@ export default function Component() {
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="system" className="space-y-6">
-              <div>
-                <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6`}>
-                  시스템 관리
-                </h1>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={`flex items-center ${isDarkMode ? "text-white" : ""}`}>
-                        <Shield className="h-5 w-5 mr-2" /> 보안 설정
-                      </CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>
-                        시스템 보안 및 접근 제어 설정
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>2단계 인증</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            모든 관련자 권한 부여에 2FA 적용
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>IP 화이트 리스트</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            허용된 IP에서만 접근 가능
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>세션 타임아웃</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            30분 비활성화 시 자동 로그아웃
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={`flex items-center ${isDarkMode ? "text-white" : ""}`}>
-                        <Server className="h-5 w-5 mr-2" /> 백업 관리
-                      </CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>
-                        데이터 백업 및 복구 설정
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>자동 백업</Label>
-                          <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
-                            매일 새벽 2시 자동 백업 설정
-                          </p>
-                        </div>
-                        <Switch defaultChecked={true} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className={`font-medium ${isDarkMode ? "text-gray-200" : ""}`}>마지막 백업</Label>
-                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                          <div>
-                            <p className="text-sm font-medium">2024-01-15 02:00</p>
-                            <p className="text-xs text-gray-600">크기: 2.4GB</p>
-                          </div>
-                          <Badge variant="default">성공</Badge>
-                        </div>
-                      </div>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        수동 백업 실행
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-                    <CardHeader>
-                      <CardTitle className={isDarkMode ? "text-white" : ""}>시스템 상태</CardTitle>
-                      <CardDescription className={isDarkMode ? "text-gray-400" : ""}>
-                        현재 시스템 상태 모니터링
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                          <div className="text-2xl font-bold text-green-600">99.9%</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>가동률</div>
-                        </div>
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <div className="text-2xl font-bold text-blue-600">68%</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>CPU 사용률</div>
-                        </div>
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                          <div className="text-2xl font-bold text-purple-600">72%</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>메모리 사용률</div>
-                        </div>
-                        <div className="text-center p-4 bg-orange-50 rounded-lg">
-                          <div className="text-2xl font-bold text-orange-600">15ms</div>
-                          <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>응답 시간</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
           </Tabs>
         </main>
       </div>
@@ -1438,4 +1726,3 @@ export default function Component() {
     </div>
   );
 }
-

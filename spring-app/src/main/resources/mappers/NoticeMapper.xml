@@ -1,8 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
-	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-	
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
 <mapper namespace="com.finalproject.pickcoin.repository.NoticeRepository">
-	
+
+  <resultMap id="NoticeMap" type="com.finalproject.pickcoin.domain.Notice">
+    <id     column="notice_id"  property="notice_id"/>
+    <result column="category"   property="category"/>
+    <result column="content"    property="content"/>
+    <result column="created_at" property="createdAt"/>
+    <result column="created_by" property="created_by"/>
+    <!-- was: property="isActive" -->
+    <result column="is_active"  property="active"/>
+    <result column="title"      property="title"/>
+    <result column="updated_at" property="updatedAt"/>
+  </resultMap>
+
+  <select id="findLatestActive" resultMap="NoticeMap">
+    SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
+    FROM notice
+    WHERE is_active = 1
+    ORDER BY created_at DESC, notice_id DESC
+    LIMIT 1
+  </select>
+
+  <!-- 활성 공지 목록 (최신순, limit 지정) -->
+  <select id="findActiveList" parameterType="int" resultMap="NoticeMap">
+    SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
+    FROM notice
+    WHERE is_active = 1
+    ORDER BY created_at DESC, notice_id DESC
+    LIMIT #{limit}
+  </select>
+
+  <select id="findAll" resultMap="NoticeMap">
+    SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
+    FROM notice
+    ORDER BY notice_id DESC
+  </select>
+
+  <select id="findById" parameterType="int" resultMap="NoticeMap">
+    SELECT notice_id, category, content, created_at, created_by, is_active, title, updated_at
+    FROM notice
+    WHERE notice_id = #{id}
+  </select>
+
+  <insert id="insert"
+          parameterType="com.finalproject.pickcoin.domain.Notice"
+          useGeneratedKeys="true" keyProperty="notice_id">
+    INSERT INTO notice
+      (category, content, created_at, created_by, is_active, title, updated_at)
+    VALUES
+      (#{category},
+       #{content},
+       NOW(6),
+       #{created_by},
+       <!-- was: #{isActive,jdbcType=TINYINT} -->
+       #{active,jdbcType=TINYINT},
+       #{title},
+       NOW(6))
+  </insert>
+
+  <update id="update" parameterType="com.finalproject.pickcoin.domain.Notice">
+    UPDATE notice
+       SET category   = #{category},
+           content    = #{content},
+           created_by = #{created_by},
+           <!-- was: #{isActive,jdbcType=TINYINT} -->
+           is_active  = #{active,jdbcType=TINYINT},
+           title      = #{title},
+           updated_at = NOW(6)
+     WHERE notice_id  = #{notice_id}
+  </update>
+
+  <update id="updateActive">
+    UPDATE notice
+       SET is_active  = #{active,jdbcType=TINYINT},
+           updated_at = NOW(6)
+     WHERE notice_id  = #{id}
+  </update>
+
+  <delete id="delete" parameterType="int">
+    DELETE FROM notice WHERE notice_id = #{id}
+  </delete>
 
 </mapper>
+

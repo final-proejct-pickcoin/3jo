@@ -33,6 +33,7 @@ out/
 /nbdist/
 /.nb-gradle/
 
+
 ### VS Code ###
 .vscode/
 
@@ -50,8 +51,9 @@ venv/
 
 ## react ##
 node_modules/
-<<<<<<< HEAD
-
-=======
->>>>>>> feature_l
 */venv
+
+## gcp key ##
+key/pickcoin-687a99cb3128.json
+
+elasticsearch_data/

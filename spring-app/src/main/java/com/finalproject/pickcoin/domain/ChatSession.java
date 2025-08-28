@@ -25,7 +25,7 @@ public class ChatSession {
     @Temporal(TemporalType.TIMESTAMP)    
     private Date startAt;
 
-    @Column(name="edn_at", updatable = false)
+    @Column(name="end_at", updatable = false)
     @Temporal(TemporalType.TIMESTAMP)    
     private Date endAt;
     

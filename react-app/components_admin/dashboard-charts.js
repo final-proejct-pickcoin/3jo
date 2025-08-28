@@ -32,34 +32,7 @@ const COLORS = [
   "#8b5cf6",
 ];
 
-// Mock data for charts
-const tradingPairData = [
-  {
-    name: "BTC/USDT",
-    value: 45,
-    volume: 28450.67,
-  },
-  {
-    name: "ETH/USDT",
-    value: 25,
-    volume: 15230.45,
-  },
-  {
-    name: "ADA/USDT",
-    value: 15,
-    volume: 8920.12,
-  },
-  {
-    name: "DOT/USDT",
-    value: 10,
-    volume: 5670.89,
-  },
-  {
-    name: "Others",
-    value: 5,
-    volume: 2340.56,
-  },
-];
+
 const dailyVolumeData = [
   {
     date: "01/10",
