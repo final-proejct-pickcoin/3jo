@@ -397,7 +397,12 @@ export const CommunityHub = () => {
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
   const [popularKeywords, setPopularKeywords] = useState([])
-  const { stats } = useWebSocket()
+  const [stats, setStats] = useState({
+    activeUsers: 0,
+    postsToday: 0,
+    onlineNow: 0,
+    totalPosts: 0
+  });
   
   //페이지네이션 상태
   const [page, setPage] = useState(1)
@@ -420,24 +425,28 @@ export const CommunityHub = () => {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }, [page])
 
-//   const fetchStats = useCallback(async () => {
-//     try {
-//       const { data } = await axios.get("http://localhost:8080/community/stats")
-//       const activeRes = await axios.get("http://localhost:8080/users/active-users")
-//       setStats({
-//         activeUsers: Number(data.activeUsers ?? 0),
-//         postsToday: Number(data.postsToday ?? 0),
-//         onlineNow: activeRes.data.activeUsers ?? 0,
-//         totalPosts: Number(data.totalPosts ?? 0),
-//       })
-//     } catch (e) {
-//       console.error("통계 불러오기 실패:", e)
-//     }
-//   }, [])
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data } = await axios.get("http://localhost:8080/community/stats")
+      const activeRes = await axios.get("http://localhost:8080/users/active-users")
+      setStats({
+        activeUsers: Number(data.activeUsers ?? 0),
+        postsToday: Number(data.postsToday ?? 0),
+        onlineNow: activeRes.data.activeUsers ?? 0,
+        totalPosts: Number(data.totalPosts ?? 0),
+      })
+    } catch (e) {
+      console.error("통계 불러오기 실패:", e)
+    }
+  }, [])
 
-//    useEffect(() => {
-//    fetchStats()
-//  }, [fetchStats])
+   useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000);
+
+    // 컴포넌트 언마운트 시 interval 정리
+    return () => clearInterval(interval);
+  }, [fetchStats])
 
   // 신고 기능
   const [reportModalOpen, setReportModalOpen] = useState(false)

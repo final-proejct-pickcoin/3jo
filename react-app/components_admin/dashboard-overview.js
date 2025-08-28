@@ -86,7 +86,7 @@ useEffect(() => {
   socket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log("📩 WebSocket 데이터:", data);
+      // console.log("📩 WebSocket 데이터:", data);
 
       if (data.onlineNow !== undefined) {
         setStats(prev => ({
@@ -153,7 +153,7 @@ useEffect(() => {
 
   const getWithdrawLogs = async () => {
     const res = await axios.get("http://localhost:8000/withdraws");
-    console.log(res.data);
+    // console.log(res.data);
     setWithDrawLogs(res.data)
   }
 
@@ -478,27 +478,38 @@ useEffect(() => {
               </ResponsiveContainer>
             </div>
             <div className="mt-4 space-y-2">
-              {coinData.map((coin, index) => (
-                <div
-                  key={coin.name}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <div className="flex items-center">
-                    <div
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                    <span
-                      className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
-                    >
-                      {coin.name}
+              {coinData
+                .slice() // 원본 훼손 방지용 복사
+                .sort((a, b) => b.volume - a.volume) // volume 내림차순 정렬
+                .slice(0, 5) // 상위 5개만 추출
+                .map((coin, index) => (
+                  <div
+                    key={coin.name}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <div className="flex items-center">
+                      <div
+                        className="w-3 h-3 rounded-full mr-2"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span
+                        className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+                      >
+                        {coin.name}
+                      </span>
+                    </div>
+                    <span className={isDarkMode ? "text-gray-300" : "text-gray-600"}>
+                      {coin.volume.toLocaleString("ko-KR")}원
                     </span>
                   </div>
-                  <span className={isDarkMode ? "text-gray-300" : "text-gray-600"}>
-                    {coin.volume.toLocaleString("ko-KR")}원
-                  </span>
+                ))}
+
+              {/* 더 많은 코인이 있으면 아래 점 세 개 표시 */}
+              {coinData.length > 5 && (
+                <div className={`text-center cursor-default ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  (Volume 상위 5) &#8230;
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>

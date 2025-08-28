@@ -119,7 +119,7 @@ def getinq(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
             cursor.execute(sql, (limit, offset))
             inquiries = cursor.fetchall()
 
-            print(inquiries)
+            # print(inquiries)
     except Exception as err:
         print("Error in /admin/getinq:", err)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(err))
@@ -137,7 +137,7 @@ def userStatus(user_id: int, is_verified: bool):
         with conn.cursor() as cursor:            
             new_verified = 0 if is_verified == 1 else 1
             data = (new_verified, user_id)
-            print("백에서 받은 유저데이터:", data)
+            # print("백에서 받은 유저데이터:", data)
             sql = """
                     UPDATE users
                     SET is_verified = %s

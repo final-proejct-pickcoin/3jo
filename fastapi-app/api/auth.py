@@ -26,7 +26,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 @router.post("/admin/register")
 async def register(request:Request, email: str = Form(...), password: str = Form(...), name: str = Form(...)):
     data = await request.form()
-    print(f"Received form data: {data}")
+    # print(f"Received form data: {data}")
     # db연결
     conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
 

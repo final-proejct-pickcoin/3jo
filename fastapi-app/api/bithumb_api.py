@@ -372,20 +372,18 @@ async def get_coingecko_market_cap(symbol: str):
 
 # ===== 빗썸 API 함수들 =====
 async def get_bithumb_coin_data(symbol: str):
-    """빗썸에서 특정 코인 데이터 조회"""
+    """빗썸에서 특정 코인 데이터 조회 (실패 시에도 fallback 보장)"""
     try:
         url = f"https://api.bithumb.com/public/ticker/{symbol}_KRW"
         timeout = aiohttp.ClientTimeout(total=10)
-        
+
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
                     if data.get("status") == "0000":
                         ticker_data = data.get("data", {})
-                        
                         current_price = float(ticker_data.get("closing_price", 0))
-                        
                         return {
                             "status": "success",
                             "data": {
@@ -399,14 +397,16 @@ async def get_bithumb_coin_data(symbol: str):
                                 "units_traded": float(ticker_data.get("units_traded_24H", 0)),
                                 "prev_closing_price": float(ticker_data.get("prev_closing_price", 0)),
                                 "timestamp": ticker_data.get("date"),
-                                "tick_size": get_bithumb_tick_size(symbol, current_price)
+                                "tick_size": get_bithumb_tick_size(symbol, current_price),
+                                "market_warning": "NONE",
                             }
                         }
-                        
     except Exception as e:
         print(f"❌ 빗썸 API 실패 ({symbol}): {e}")
-    
-    return None
+
+    # ✅ 여기까지 내려오면 실패 → fallback 리턴
+    fb = generate_fallback_coin_data(symbol)
+    return {"status": "success", "data": fb}
 
 def generate_fallback_coin_data(symbol: str):
     """폴백 코인 데이터 생성"""
@@ -1188,7 +1188,8 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                        message_count += 1
                        
                        if message_count <= 10:  # 처음 10개 메시지 로그
-                           print(f"📊 메시지 {message_count}: {bithumb_data.get('type')}")
+                        #    print(f"📊 메시지 {message_count}: {bithumb_data.get('type')}")
+                        pass
                        
                        if bithumb_data.get("type") == "ticker":
                            content = bithumb_data.get("content", {})
@@ -1199,7 +1200,8 @@ async def connect_to_bithumb_websocket(client_websocket, coins_data):
                                continue
                            
                            if message_count <= 5:  # 처음 5개 데이터 상세 로그
-                               print(f"💰 실시간 데이터: {symbol} = {close_price}원")
+                            #    print(f"💰 실시간 데이터: {symbol} = {close_price}원")
+                            pass
                            
                            # 클라이언트에 전송
                            formatted_data = {

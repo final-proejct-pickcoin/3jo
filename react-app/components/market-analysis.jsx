@@ -57,6 +57,7 @@ function NewsSummaryCard() {
     }
   }
 
+
   useEffect(() => {
     fetchSummary()
     const id = setInterval(fetchSummary, 10 * 60 * 1000) // 10분 갱신
@@ -245,12 +246,8 @@ export const MarketAnalysis = () => {
 
     const fetchTopCap = async () => {
       try {
-        const url =
-          `https://api.coingecko.com/api/v3/coins/markets` +
-          `?vs_currency=${v}&order=market_cap_desc&per_page=10&page=1` +
-          `&sparkline=false&price_change_percentage=24h`
-
-        const res = await fetch(url) // cleanup에서 abort 안 함
+        const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+        const res = await fetch(`${base}/proxy/topcap?vs=${v}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const arr = await res.json()
 
