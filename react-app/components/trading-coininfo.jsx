@@ -54,7 +54,7 @@ const fetchCoinCapData = async (symbol) => {
  }
 };
 
-// �� 로컬 폴백 데이터 생성
+//  로컬 폴백 데이터 생성
 const createLocalFallbackData = (symbol) => {
  const koreanName = get_korean_name(symbol);
  const basePrice = getRealisticPrice(symbol);
@@ -332,8 +332,7 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
   if (!coin) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md border border-gray-100">
-          <div className="text-6xl mb-4">��</div>
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl max-w-md border border-gray-100 dark:border-gray-700">
           <h2 className="text-2xl font-bold mb-3 text-gray-800">코인을 선택해보세요</h2>
           <p className="text-gray-600 leading-relaxed">
             왼쪽에서 관심있는 코인을 클릭하면<br/>
@@ -347,9 +346,9 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
   const investmentGrade = getInvestmentGrade();
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto" style={{ height: '1100px' }}>
+    <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-y-auto" style={{ height: '1600px' }}>
       {/* 🎯 메인 헤더 - 업비트 스타일 */}
-      <div className="bg-white m-4 rounded-2xl shadow-xl border border-gray-100">
+      <div className="bg-white dark:bg-gray-800 m-4 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
         <div className="p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className={`w-20 h-20 ${getCoinIconColor(coin.symbol)} rounded-3xl flex items-center justify-center text-white text-3xl font-bold shadow-lg`}>
@@ -359,128 +358,129 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {getKoreanName()}
               </h1>
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-lg text-gray-600 font-medium">{coin.symbol}/KRW</span>
-                {realTimeData && (
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
-                    ● 실시간 연동
-                  </span>
-                )}
-                <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full font-medium">
-                  글로벌 #{coinDetail?.market_cap_rank ? coinDetail.market_cap_rank : '미제공'}위
-                </span>
-              </div>
+                         <div className="flex items-center gap-3 flex-wrap">
+             <span className="text-lg text-gray-600 dark:text-gray-400 font-medium">{coin.symbol}/KRW</span>
+             {realTimeData && (
+               <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-full font-medium">
+                 ● 실시간 연동
+               </span>
+             )}
+             <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-full font-medium">
+               글로벌 #{coinDetail?.market_cap_rank ? coinDetail.market_cap_rank : '미제공'}위
+             </span>
+           </div>
             </div>
           </div>
 
           {/* 현재 가격 & 투자 등급 */}
           <div className="grid grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-gray-100">
-              <div className="text-md text-emerald-700 font-medium mb-2">현재 가격</div>
-              <div className="text-3xl font-bold text-emerald-900 mb-2">
-                {getCurrentPrice().toLocaleString()}원
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-lg font-bold ${getCurrentChange() > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                  {typeof getCurrentChange() === 'number'
-                    ? getCurrentChange().toFixed(2) + '%'
-                    : '미제공'}
-                </span>
-                {realTimeData?.chgAmt && (
-                  <span className="text-sm text-gray-600">
-                    ({realTimeData.chgAmt > 0 ? '+' : ''}{parseInt(realTimeData.chgAmt).toLocaleString()}원)
-                  </span>
-                )}
-              </div>
-            </div>
+                         <div className="bg-white dark:bg-gray-700 p-6 rounded-2xl border border-gray-100 dark:border-gray-600">
+               <div className="text-md text-emerald-700 dark:text-emerald-400 font-medium mb-2">현재 가격</div>
+               <div className="text-3xl font-bold text-emerald-900 dark:text-emerald-100 mb-2">
+                 {getCurrentPrice().toLocaleString()}원
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className={`text-lg font-bold ${getCurrentChange() > 0 ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'}`}>
+                   {typeof getCurrentChange() === 'number'
+                     ? getCurrentChange().toFixed(2) + '%'
+                     : '미제공'}
+                 </span>
+                 {realTimeData?.chgAmt && (
+                   <span className="text-sm text-gray-600 dark:text-gray-400">
+                     ({realTimeData.chgAmt > 0 ? '+' : ''}{parseInt(realTimeData.chgAmt).toLocaleString()}원)
+                   </span>
+                 )}
+               </div>
+             </div>
             
-            <div className="bg-white p-6 rounded-2xl border border-gray-100">
-              <div className={`text-md font-medium mb-2 ${
-                investmentGrade.color === 'purple' ? 'text-purple-700' :
-                investmentGrade.color === 'blue' ? 'text-blue-700' :
-                investmentGrade.color === 'green' ? 'text-green-700' :
-                investmentGrade.color === 'yellow' ? 'text-yellow-700' :
-                'text-red-700'
-              }`}>
-                투자 등급
-              </div>
-              <div className={`text-3xl font-bold mb-1 ${
-                investmentGrade.color === 'purple' ? 'text-purple-900' :
-                investmentGrade.color === 'blue' ? 'text-blue-900' :
-                investmentGrade.color === 'green' ? 'text-green-900' :
-                investmentGrade.color === 'yellow' ? 'text-yellow-900' :
-                'text-red-900'
-              }`}>
-                {investmentGrade.grade}
-              </div>
-              <div className={`text-sm ${
-                investmentGrade.color === 'purple' ? 'text-purple-600' :
-                investmentGrade.color === 'blue' ? 'text-blue-600' :
-                investmentGrade.color === 'green' ? 'text-green-600' :
-                investmentGrade.color === 'yellow' ? 'text-yellow-600' :
-                'text-red-600'
-              }`}>
-                {investmentGrade.description}
-              </div>
-            </div>
+                         <div className="bg-white dark:bg-gray-700 p-6 rounded-2xl border border-gray-100 dark:border-gray-600">
+               <div className={`text-md font-medium mb-2 ${
+                 investmentGrade.color === 'purple' ? 'text-purple-700 dark:text-purple-400' :
+                 investmentGrade.color === 'blue' ? 'text-blue-700 dark:text-blue-400' :
+                 investmentGrade.color === 'green' ? 'text-green-700 dark:text-green-400' :
+                 investmentGrade.color === 'yellow' ? 'text-yellow-700 dark:text-yellow-400' :
+                 'text-red-700 dark:text-red-400'
+               }`}>
+                 투자 등급
+               </div>
+               <div className={`text-3xl font-bold mb-1 ${
+                 investmentGrade.color === 'purple' ? 'text-purple-900 dark:text-purple-100' :
+                 investmentGrade.color === 'blue' ? 'text-blue-900 dark:text-blue-100' :
+                 investmentGrade.color === 'green' ? 'text-green-900 dark:text-green-100' :
+                 investmentGrade.color === 'yellow' ? 'text-yellow-900 dark:text-yellow-100' :
+                 'text-red-900 dark:text-red-100'
+               }`}>
+                 {investmentGrade.grade}
+               </div>
+               <div className={`text-sm ${
+                 investmentGrade.color === 'purple' ? 'text-purple-600 dark:text-purple-300' :
+                 investmentGrade.color === 'blue' ? 'text-blue-600 dark:text-blue-300' :
+                 investmentGrade.color === 'green' ? 'text-green-600 dark:text-green-300' :
+                 investmentGrade.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-300' :
+                 'text-red-600 dark:text-red-300'
+               }`}>
+                 {investmentGrade.description}
+               </div>
+             </div>
           </div>
         </div>
       </div>
 
-      {/* 핵심 지표 대시보드 */}
-      <div className="bg-white m-4 rounded-2xl shadow-xl border border-gray-100">
-        <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            핵심 지표 대시보드
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
-              <div className="text-md text-blue-700 mb-1">시가총액</div>
-              <div className="text-lg font-bold text-blue-900">
-                {coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
-              <div className="text-md text-green-700 mb-1">24시간 거래량</div>
-              <div className="text-sm font-bold text-green-900">
-                {coinDetail?.total_volume ? formatLargeNumber(coinDetail.total_volume) + '원' : '미제공'}
-              </div>
-            </div>
-            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
-              <div className="text-me text-purple-700 mb-1">개발 활동</div>
-              <div className="text-sm font-bold text-purple-900">{getDeveloperActivity()}</div>
-            </div>
-            <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
-              <div className="text-md text-orange-700 mb-1">커뮤니티</div>
-              <div className="text-sm font-bold text-orange-900">{getCommunityStrength()}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+             {/* 핵심 지표 대시보드 */}
+       <div className="bg-white dark:bg-gray-800 m-4 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+         <div className="p-6">
+           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
+             핵심 지표 대시보드
+           </h2>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             <div className="bg-white dark:bg-gray-700 p-4 rounded-xl text-center border border-gray-100 dark:border-gray-600">
+               <div className="text-md text-blue-700 dark:text-blue-400 mb-1">시가총액</div>
+               <span className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                 {marketCap && marketCap > 0 ? formatLargeNumber(marketCap) + '원' : 
+                   coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
+               </span>
+             </div>
+             <div className="bg-white dark:bg-gray-700 p-4 rounded-xl text-center border border-gray-100 dark:border-gray-600">
+               <div className="text-md text-green-700 dark:text-green-400 mb-1">24시간 거래량</div>
+               <div className="text-lg font-bold text-green-900 dark:text-green-100">
+                 {coinDetail?.total_volume ? formatLargeNumber(coinDetail.total_volume) + '원' : '미제공'}
+               </div>
+             </div>
+             <div className="bg-white dark:bg-gray-700 p-4 rounded-xl text-center border border-gray-100 dark:border-gray-600">
+               <div className="text-md text-purple-700 dark:text-purple-400 mb-1">개발 활동</div>
+               <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{getDeveloperActivity()}</div>
+             </div>
+             <div className="bg-white dark:bg-gray-700 p-4 rounded-xl text-center border border-gray-100 dark:border-gray-600">
+               <div className="text-md text-orange-700 dark:text-orange-400 mb-1">커뮤니티</div>
+               <div className="text-lg font-bold text-orange-900 dark:text-orange-100">{getCommunityStrength()}</div>
+             </div>
+           </div>
+         </div>
+       </div>
 
-      {/* 상세 분석 탭 */}
-      <div className="bg-white m-4 rounded-2xl shadow-xl border border-gray-100">
-        <div className="flex border-b border-gray-200">
-          {[
-            { id: 'overview', label: '개요' },
-            { id: 'investment', label: '투자 분석' },
-            { id: 'technology', label: '기술 정보' },
-            { id: 'risks', label: '위험 분석' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 p-4 text-center font-medium transition-all duration-200 ${
-                activeTab === tab.id 
-                  ? 'text-gray-700 border-b-2 border-gray-400 bg-gray-50' 
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
-            >
-              <div className="text-xl mb-1">{tab.icon}</div>
-              <div className="text-sm font-semibold">{tab.label}</div>
-            </button>
-          ))}
-        </div>
+             {/* 상세 분석 탭 */}
+       <div className="bg-white dark:bg-gray-800 m-4 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+         <div className="flex border-b border-gray-200 dark:border-gray-600">
+           {[
+             { id: 'overview', label: '개요' },
+             { id: 'investment', label: '투자 분석' },
+             { id: 'technology', label: '기술 정보' },
+             { id: 'risks', label: '위험 분석' }
+           ].map((tab) => (
+             <button
+               key={tab.id}
+               onClick={() => setActiveTab(tab.id)}
+               className={`flex-1 p-4 text-center font-medium transition-all duration-200 ${
+                 activeTab === tab.id 
+                   ? 'text-gray-700 dark:text-gray-100 border-b-2 border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-700' 
+                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+               }`}
+             >
+               <div className="text-xl mb-1">{tab.icon}</div>
+               <div className="text-sm font-semibold">{tab.label}</div>
+             </button>
+           ))}
+         </div>
 
         <div className="p-6">
           {activeTab === 'overview' && (
@@ -493,43 +493,6 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
                 <p className="text-gray-700 leading-relaxed text-lg">
                   {loading ? "불러오는 중..." : (coinDetail?.description || `${getKoreanName()}은 혁신적인 블록체인 기술을 활용한 디지털 자산 프로젝트입니다.`)}
                 </p>
-              </div>
-
-              {/* 기본 정보 그리드 */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-green-700 mb-2">🎂 출시일</div>
-                    <div className="text-lg font-bold text-green-900">
-                      {coinDetail?.genesis_date ? new Date(coinDetail.genesis_date).toLocaleDateString() : '미제공'}
-                    </div>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-blue-700 mb-2">🏆 글로벌 순위</div>
-                    <div className="text-lg font-bold text-blue-900">
-                      #{coinDetail?.market_cap_rank || '미제공'}위
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-yellow-700 mb-2">💎 순환 공급량</div>
-                    <div className="text-lg font-bold text-yellow-900">
-                      {coinDetail?.circulating_supply && coinDetail.circulating_supply > 0 
-                        ? formatSupply(coinDetail.circulating_supply) + ' ' + coin.symbol 
-                        : '미제공'}
-                    </div>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-red-700 mb-2">📦 최대 공급량</div>
-                    <div className="text-lg font-bold text-red-900">
-                      {coinDetail?.max_supply && coinDetail.max_supply > 0 
-                        ? formatSupply(coinDetail.max_supply) + ' ' + coin.symbol 
-                        : '무제한'}
-                    </div>
-                  </div>
-                </div>
               </div>
            </div>
           )}

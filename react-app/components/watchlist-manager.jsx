@@ -189,27 +189,27 @@ export default function MyPageWatchlist() {
       {/* 관심코인 관리 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">관심코인 관리</CardTitle>
-          <p className="text-gray-600">자주 모니터링하는 코인들을 관리하세요</p>
+          <CardTitle className="text-xl font-semibold dark:text-gray-100">관심코인 관리</CardTitle>
+          <p className="text-gray-600 dark:text-gray-400">자주 모니터링하는 코인들을 관리하세요</p>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {watchlist.map((coin) => (
-              <div key={coin.symbol} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+              <div key={coin.symbol} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-sm">{coin.symbol[0]}</span>
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900">{coin.symbol}</div>
-                    <div className="text-sm text-gray-600">{coin.name}</div>
+                    <div className="font-semibold text-gray-900 dark:text-gray-100">{coin.symbol}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{coin.name}</div>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleWatchlist(coin.symbol)}
-                  className={coin.isWatched ? "text-yellow-500" : "text-gray-400"}
+                  className={coin.isWatched ? "text-yellow-500" : "text-gray-400 dark:text-gray-500"}
                 >
                   {coin.isWatched ? (
                     <Star className="w-5 h-5" />
@@ -226,27 +226,27 @@ export default function MyPageWatchlist() {
       {/* 거래 내역 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">거래 내역</CardTitle>
-          <p className="text-gray-600">나의 매매 활동 및 실적</p>
+          <CardTitle className="text-xl font-semibold dark:text-gray-100">거래 내역</CardTitle>
+          <p className="text-gray-600 dark:text-gray-400">나의 매매 활동 및 실적</p>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {transactions.map((tx, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+              <div key={index} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <div className="flex items-center space-x-3">
                   {getTransactionIcon(tx.type)}
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
                       {tx.type === "buy" ? "매수" : "매도"} {tx.quantity} {tx.symbol}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       @ {formatKRW(tx.price)} • {tx.date}
                     </div>
                   </div>
                 </div>
                 
                 <div className="text-right">
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900 dark:text-gray-100">
                     {formatKRW(tx.totalValue)}
                   </div>
                   <div className={`text-sm font-medium ${
@@ -264,25 +264,25 @@ export default function MyPageWatchlist() {
       {/* 거래 통계 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">거래 통계</CardTitle>
+          <CardTitle className="text-xl font-semibold dark:text-gray-100">거래 통계</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 mb-1">5</div>
-              <div className="text-sm text-gray-600">총 거래 횟수</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">5</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">총 거래 횟수</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600 mb-1">3</div>
-              <div className="text-sm text-gray-600">수익 거래</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">수익 거래</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600 mb-1">2</div>
-              <div className="text-sm text-gray-600">손실 거래</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">손실 거래</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 mb-1">60%</div>
-              <div className="text-sm text-gray-600">수익률</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">60%</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">수익률</div>
             </div>
           </div>
         </CardContent>

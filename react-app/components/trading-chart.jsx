@@ -1152,7 +1152,7 @@ const indicatorGroups = {
              </button>
            </div>
            {/* 드로잉 도구 */}
-           <div style={{ display: "flex", gap: 4 }}>
+           {/* <div style={{ display: "flex", gap: 4 }}>
              {drawingTools.slice(0, 3).map(tool => (
                <button
                  key={tool.key}
@@ -1171,7 +1171,7 @@ const indicatorGroups = {
                  {tool.icon}
                </button>
              ))}
-           </div>
+           </div> */}
          </div>
        </div>
      </div>
