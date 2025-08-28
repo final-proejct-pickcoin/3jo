@@ -1388,14 +1388,14 @@ const pagedTrades = useMemo(() => {
   }
 
   return (
-    <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
-      <div className="flex min-h-screen bg-gray-50">
+    <div className="border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* 좌측 사이드바 */}
-        <div className="w-64 bg-white border-r border-gray-200 p-6">
+        <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-6">
           <div className="mb-8">
             <button 
               className={`block w-full text-left text-2xl font-bold mb-6 transition-colors ${
-                activeSection.startsWith("krw") || activeSection.startsWith("crypto") ? "text-blue-600" : "text-gray-900"
+                activeSection.startsWith("krw") || activeSection.startsWith("crypto") ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-gray-100"
               }`}
               onClick={() => setActiveSection("krw-account")}
             >
@@ -1493,7 +1493,7 @@ const pagedTrades = useMemo(() => {
             <div className="mb-6">
               <button 
                 className={`block w-full text-left text-lg font-semibold mb-3 transition-colors ${
-                  activeSection.startsWith("krw") ? "text-blue-600" : "text-gray-700"
+                  activeSection.startsWith("krw") ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
                 }`}
                 onClick={() => setActiveSection("krw-account")}
               >
@@ -1502,7 +1502,7 @@ const pagedTrades = useMemo(() => {
               <div className="space-y-2 ml-4">
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                    activeSubSection === "krw-account" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSubSection === "krw-account" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
@@ -1514,7 +1514,7 @@ const pagedTrades = useMemo(() => {
                 </button>
                 <button 
                   className={`block w-full text-left text-md text-bold py-2 px-3 rounded-lg transition-colors ${
-                    activeSection === "krw-account" && activeTab === "deposit" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSection === "krw-account" && activeTab === "deposit" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
@@ -1533,7 +1533,7 @@ const pagedTrades = useMemo(() => {
                 </button>
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                    activeSection === "krw-account" && activeTab === "history" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                    activeSection === "krw-account" && activeTab === "history" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("krw-account")
@@ -1557,7 +1557,7 @@ const pagedTrades = useMemo(() => {
             <div className="mb-6">
                              <button 
                  className={`block w-full text-left text-lg font-semibold mb-3 transition-colors ${
-                   activeSection.startsWith("crypto") ? "text-blue-600" : "text-gray-700"
+                   activeSection.startsWith("crypto") ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
                  }`}
                  onClick={() => {
                    setActiveSection("crypto-holdings")
@@ -1570,7 +1570,7 @@ const pagedTrades = useMemo(() => {
               <div className="space-y-2 ml-4">
                 <button 
                   className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                  activeSection === "crypto-holdings" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                  activeSection === "crypto-holdings" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                   onClick={() => {
                     setActiveSection("crypto-holdings")
@@ -1582,7 +1582,7 @@ const pagedTrades = useMemo(() => {
                  </button>
                                  <button 
                    className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                     activeSection === "crypto-history" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                     activeSection === "crypto-history" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                    }`}
                    onClick={() => {
                      setActiveSection("crypto-history")
@@ -1594,7 +1594,7 @@ const pagedTrades = useMemo(() => {
                  </button>
                                  <button 
                    className={`block w-full text-left text-md py-2 px-3 rounded-lg transition-colors ${
-                     activeSection === "crypto-analysis" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"
+                     activeSection === "crypto-analysis" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
                    }`}
                    onClick={() => {
                      setActiveSection("crypto-analysis")
@@ -1611,7 +1611,7 @@ const pagedTrades = useMemo(() => {
             <div>
               <button 
                 className={`block w-full text-left text-2xl font-bold mb-6 transition-colors ${
-                  activeSection === "profile" ? "text-blue-600" : "text-gray-700"
+                  activeSection === "profile" ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"
                 }`}
                 onClick={() => {
                   setActiveSection("profile")
@@ -1626,7 +1626,7 @@ const pagedTrades = useMemo(() => {
         </div>
 
         {/* 메인 콘텐츠 영역 */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 bg-white dark:bg-gray-900">
           {renderContent()}
         </div>
       </div>
