@@ -42,6 +42,7 @@ mysql_data/
 
 ## redis ##
 redis_data/
+redis_data
 
 ## python ##
 *.pyc
