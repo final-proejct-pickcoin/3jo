@@ -30,7 +30,7 @@ from api.proxy_router import router as proxy_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
-from api.elasticsearch import create_indices_if_not_exist, wait_for_es, create_kibana_index_pattern
+from api.elasticsearch import create_kibana_index_pattern
 
 # // [news schedule] 크롤링 주기 설정
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -118,7 +118,8 @@ origins = [
     "http://localhost",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8080",
-    "http://127.0.0.1"
+    "http://127.0.0.1",
+    "https://api.coingecko.com/api/v3/coins/list"
 ]
 
 app.add_middleware(

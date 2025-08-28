@@ -24,6 +24,7 @@ services:
       - redis
       - elasticsearch
       - kibana
+      - spring-app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     networks:
     - elastic-net
@@ -89,7 +90,6 @@ services:
       - FAST_REFRESH=true
     depends_on:
       - fastapi-app
-      - spring-app
     command: ["pnpm", "dev"]
     networks:
     - elastic-net
