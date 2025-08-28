@@ -543,7 +543,7 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
                     </div>
                   </div>
 
-                  {coinDetail?.ath && (
+                  {/* {coinDetail?.ath && (
                     <div className="bg-white p-4 rounded-lg border border-gray-100">
                       <div className="flex justify-between items-center">
                         <span className="text-yellow-700 font-medium">역대 최고가</span>
@@ -557,7 +557,7 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
                         </div>
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
             
                 <div className="space-y-4">
