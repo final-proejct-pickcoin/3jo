@@ -124,7 +124,7 @@ export const PortfolioManager = () => {
     deposit_logs(user_id);
     // console.log("입출금 로그",logs)
 
-  }, [user_id, logs]);
+  }, [user_id]);
 
   useEffect(() => {
     // 캐시 우선
@@ -248,13 +248,13 @@ export const PortfolioManager = () => {
     if (!user_id) return alert("로그인이 필요합니다.");
     const amount = toNumber(depositAmount);
     if (amount <= 0) return alert("입금 금액을 올바르게 입력하세요.");
-
     try {
       setIsBusy(true);
       setErrMsg("");
       const { data } = await axios.post(`${ACCOUNT_API}/deposit`, null, {
         params: { user_id, amount },
       });
+      setTimeout(() => deposit_logs(user_id), 2000);
       setKrw(Number(data?.krw_balance ?? 0));
       setDepositAmount("");
       // 한도 사용량 증가 (입금 시 집계)
@@ -271,16 +271,16 @@ export const PortfolioManager = () => {
     if (!user_id) return alert("로그인이 필요합니다.");
     const amountRaw = toNumber(withdrawAmount);
     if (amountRaw <= 0) return alert("출금 금액을 올바르게 입력하세요.");
-    if (krw < amountRaw) return alert("보유 KRW가 부족합니다.");
-
+    if (krw < amountRaw) return alert("보유 KRW가 부족합니다.");    
     try {
       setIsBusy(true);
       setErrMsg("");
       const { data } = await axios.post(`${ACCOUNT_API}/withdraw`, null, {
         params: { user_id, amount: amountRaw },
       });
+      setTimeout(() => deposit_logs(user_id), 2000);
       setKrw(Number(data?.krw_balance ?? 0));
-      setWithdrawAmount("");
+      setWithdrawAmount("");      
       // *출금도 한도에 반영하려면 다음 줄 주석 해제*
       // bumpUsageOnDeposit(user_id, amountRaw);
     } catch (e) {
