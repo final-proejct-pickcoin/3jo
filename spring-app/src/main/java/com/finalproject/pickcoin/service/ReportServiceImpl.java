@@ -43,19 +43,19 @@ public class ReportServiceImpl implements ReportService {
             reportRepository.insert(r);
 
             // 4) inquiry 동시 저장
-            Inquiry inq = new Inquiry();
-            inq.setAmount(null);                 // 신고는 금액 없음
-            inq.setCategory("신고");
-            inq.setStatus("신규"); 
-            inq.setClosedAt(null);
+            // Inquiry inq = new Inquiry();
+            // inq.setAmount(null);                 // 신고는 금액 없음
+            // inq.setCategory("신고");
+            // inq.setStatus("신규"); 
+            // inq.setClosedAt(null);
             // Inquiry.createdAt 은 @CreationTimestamp라 생략해도 됨.
             // MyBatis XML에서 COALESCE(NOW())를 쓰는 경우엔 아래 줄을 써도 됩니다.
             // inq.setCreatedAt(LocalDateTime.now());
 
             // 사용자 필드명은 snake_case → setter 이름도 setUser_id
-            inq.setUser_id(r.getReporter_id());  // 대상 기준이면 r.getReported_id()
+            // inq.setUser_id(r.getReporter_id());  // 대상 기준이면 r.getReported_id()
 
-            inquiryRepository.insert(inq);
+            // inquiryRepository.insert(inq);
 
         } catch (DuplicateKeyException e) {
             throw new IllegalStateException("이미 신고한 대상입니다.");

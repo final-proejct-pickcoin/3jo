@@ -65,21 +65,21 @@ async def create_kibana_index_pattern():
     await create_kibana_index_patterns()
 
 # ES 실행될 때까지 대기
-# async def wait_for_es(timeout=60, interval=1):
-#     """
-#     비동기 방식으로 Elasticsearch가 준비될 때까지 대기
-#     """
-#     start = asyncio.get_event_loop().time()
-#     while True:
-#         try:
-#             if es.ping():
-#                 print("Elasticsearch is ready")
-#                 return True
-#         except Exception as e:
-#             print(f"ES ping failed: {e}")
-#         if asyncio.get_event_loop().time() - start > timeout:
-#             raise TimeoutError("Elasticsearch not ready after timeout")
-#         await asyncio.sleep(interval)
+async def wait_for_es(timeout=60, interval=1):
+    """
+    비동기 방식으로 Elasticsearch가 준비될 때까지 대기
+    """
+    start = asyncio.get_event_loop().time()
+    while True:
+        try:
+            if es.ping():
+                print("Elasticsearch is ready")
+                return True
+        except Exception as e:
+            print(f"ES ping failed: {e}")
+        if asyncio.get_event_loop().time() - start > timeout:
+            raise TimeoutError("Elasticsearch not ready after timeout")
+        await asyncio.sleep(interval)
 
 # # 인덱스 없으면 생성
 def create_indices_if_not_exist():
