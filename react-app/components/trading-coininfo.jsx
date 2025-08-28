@@ -54,7 +54,7 @@ const fetchCoinCapData = async (symbol) => {
  }
 };
 
-// �� 로컬 폴백 데이터 생성
+//  로컬 폴백 데이터 생성
 const createLocalFallbackData = (symbol) => {
  const koreanName = get_korean_name(symbol);
  const basePrice = getRealisticPrice(symbol);
@@ -333,7 +333,6 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md border border-gray-100">
-          <div className="text-6xl mb-4">��</div>
           <h2 className="text-2xl font-bold mb-3 text-gray-800">코인을 선택해보세요</h2>
           <p className="text-gray-600 leading-relaxed">
             왼쪽에서 관심있는 코인을 클릭하면<br/>
@@ -347,7 +346,7 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
   const investmentGrade = getInvestmentGrade();
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto" style={{ height: '1100px' }}>
+    <div className="bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto" style={{ height: '1600px' }}>
       {/* 🎯 메인 헤더 - 업비트 스타일 */}
       <div className="bg-white m-4 rounded-2xl shadow-xl border border-gray-100">
         <div className="p-6">
@@ -436,23 +435,24 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-md text-blue-700 mb-1">시가총액</div>
-              <div className="text-lg font-bold text-blue-900">
-                {coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
-              </div>
+              <span className="text-lg font-bold text-purple-900">
+                {marketCap && marketCap > 0 ? formatLargeNumber(marketCap) + '원' : 
+                  coinDetail?.market_cap ? formatLargeNumber(coinDetail.market_cap) + '원' : '미제공'}
+              </span>
             </div>
             <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-md text-green-700 mb-1">24시간 거래량</div>
-              <div className="text-sm font-bold text-green-900">
+              <div className="text-lg font-bold text-green-900">
                 {coinDetail?.total_volume ? formatLargeNumber(coinDetail.total_volume) + '원' : '미제공'}
               </div>
             </div>
             <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
-              <div className="text-me text-purple-700 mb-1">개발 활동</div>
-              <div className="text-sm font-bold text-purple-900">{getDeveloperActivity()}</div>
+              <div className="text-md text-purple-700 mb-1">개발 활동</div>
+              <div className="text-lg font-bold text-purple-900">{getDeveloperActivity()}</div>
             </div>
             <div className="bg-white p-4 rounded-xl text-center border border-gray-100">
               <div className="text-md text-orange-700 mb-1">커뮤니티</div>
-              <div className="text-sm font-bold text-orange-900">{getCommunityStrength()}</div>
+              <div className="text-lg font-bold text-orange-900">{getCommunityStrength()}</div>
             </div>
           </div>
         </div>
@@ -493,43 +493,6 @@ const CoinInfoPanel = ({ coin, realTimeData, marketCap }) => {
                 <p className="text-gray-700 leading-relaxed text-lg">
                   {loading ? "불러오는 중..." : (coinDetail?.description || `${getKoreanName()}은 혁신적인 블록체인 기술을 활용한 디지털 자산 프로젝트입니다.`)}
                 </p>
-              </div>
-
-              {/* 기본 정보 그리드 */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-green-700 mb-2">🎂 출시일</div>
-                    <div className="text-lg font-bold text-green-900">
-                      {coinDetail?.genesis_date ? new Date(coinDetail.genesis_date).toLocaleDateString() : '미제공'}
-                    </div>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-blue-700 mb-2">🏆 글로벌 순위</div>
-                    <div className="text-lg font-bold text-blue-900">
-                      #{coinDetail?.market_cap_rank || '미제공'}위
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-yellow-700 mb-2">💎 순환 공급량</div>
-                    <div className="text-lg font-bold text-yellow-900">
-                      {coinDetail?.circulating_supply && coinDetail.circulating_supply > 0 
-                        ? formatSupply(coinDetail.circulating_supply) + ' ' + coin.symbol 
-                        : '미제공'}
-                    </div>
-                  </div>
-                  <div className="bg-white p-4 rounded-lg border border-gray-100">
-                    <div className="text-sm text-red-700 mb-2">📦 최대 공급량</div>
-                    <div className="text-lg font-bold text-red-900">
-                      {coinDetail?.max_supply && coinDetail.max_supply > 0 
-                        ? formatSupply(coinDetail.max_supply) + ' ' + coin.symbol 
-                        : '무제한'}
-                    </div>
-                  </div>
-                </div>
               </div>
            </div>
           )}

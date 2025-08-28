@@ -54,7 +54,6 @@ export default function TradingInterface() {
 
   // 호가창 상태
   const [orderbook, setOrderbook] = useState({ bids: [], asks: [], timestamp: null });
-  const [tickSize, setTickSize] = useState(1);
 
   // 주문 가격/수량
   const [orderPrice, setOrderPrice] = useState(0);
@@ -265,6 +264,10 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
                     chgRate,
                     chgAmt: parseFloat(c.chgAmt) || 0,
                     value,
+                    // 추가 데이터들
+                    volume: parseFloat(c.volume) || parseFloat(c.unitsTraded) || 0,
+                    highPrice: parseFloat(c.highPrice) || parseFloat(c.high24h) || 0,
+                    lowPrice: parseFloat(c.lowPrice) || parseFloat(c.low24h) || 0,
                     timestamp: c.timestamp || Date.now(),
                     priceDirection: closePrice > prevPrice ? 'up' : closePrice < prevPrice ? 'down' : 'same',
                     lastUpdate: Date.now()
@@ -275,6 +278,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
               // 호가 데이터 처리
               const { symbol, bids, asks } = data.content;
               if (symbol === selectedCoin + '_KRW') {
+                console.log('Orderbook 데이터 수신:', { symbol, bids, asks });
                 setOrderbook({ bids, asks, timestamp: Date.now() });
               }
             }
@@ -455,7 +459,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
   // 현재가 계산
   const currentPriceKRW = useMemo(() => {
     const rt = realTimeData[selectedCoin + "_KRW"];
-    if (rt?.closePrice) return parseInt(rt.closePrice, 10);
+    if (rt?.closePrice) return parseFloat(rt.closePrice); // parseInt → parseFloat로 변경하여 소수점 유지
     const fallback = updatedCoinList.find(c => c.symbol === selectedCoin)?.price;
     return typeof fallback === "number" ? fallback : 0;
   }, [selectedCoin, realTimeData, updatedCoinList]);
@@ -652,7 +656,7 @@ useEffect(() => {
             {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
           </span>
           <span className="text-sm text-gray-500">
-            구독: {wsStats.active_subscriptions || 0}개 | 실시간: {Object.keys(realTimeData).length}개 | 총 코인: {coinList.length}개
+            실시간: {Object.keys(realTimeData).length}개 | 총 코인: {coinList.length}개
           </span>
         </div>
         <div className="text-sm text-gray-500">마지막 업데이트: {new Date().toLocaleTimeString()}</div>
@@ -826,7 +830,7 @@ useEffect(() => {
               )}
 
               {chartPanelExpanded && chartTab === "코인정보" && (
-                <div className="p-4" style={{ height: '900px' }}>
+                <div className="p-4" style={{ height: '600px', overflowY: 'auto' }}>
                   <CoinInfoPanel
                     coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]}
                     realTimeData={realTimeData[selectedCoin + '_KRW']}
@@ -837,10 +841,18 @@ useEffect(() => {
 
               {/* 하단: 주문/호가/정보 */}
               {detailView === "chart" && (
-                <div className="w-full flex flex-row" style={{ height: chartPanelExpanded ? 600 : 800, marginTop: chartPanelExpanded ? '170px' : '20px' }}>
+                <div className="w-full flex flex-row" style={{ 
+                  height: chartPanelExpanded ? 'auto' : '800px', 
+                  minHeight: chartPanelExpanded ? '600px' : '800px',
+                  marginTop: chartPanelExpanded ? '20px' : '20px' 
+                }}>
                   {/* 주문 영역 */}
                   <div className="flex-1 w-2/3 flex flex-col bg-white px-6 overflow-auto"
-                    style={{ minHeight: '800px', paddingTop: chartPanelExpanded ? '16px' : '28px', paddingBottom: '0' }}>
+                    style={{ 
+                      minHeight: '600px', 
+                      paddingTop: '20px', 
+                      paddingBottom: '20px' 
+                    }}>
                     {/* 메인 탭 */}
                     <div className="flex justify-center border-b border-gray-200 mb-4">
                       <button
@@ -1143,7 +1155,7 @@ useEffect(() => {
                   </div>
 
                   {/* 호가/정보 */}
-                  <div className="w-1/3 flex flex-col bg-white border-l border-gray-200 pt-7">
+                  <div className="w-1/3 flex flex-col bg-whitept-7">
                     {/* 호가 */}
                     <div className="border-b border-gray-200">
                       <button
@@ -1159,11 +1171,32 @@ useEffect(() => {
                             selectedCoin={selectedCoin}
                             realTimeData={realTimeData[selectedCoin + '_KRW']}
                             orderbook={orderbook}
-                            tickSize={tickSize}
                             currentPriceKRW={currentPriceKRW}
                             onPriceSelect={(price) => {
                               // 호가 클릭 시: 지정가면 입력값으로 세팅, 시장가면 무시
-                              if (orderType === "지정가") setOrderPrice(price);
+                              if (orderType === "지정가") {
+                                // JavaScript 부동소수점 오류 방지: 정확한 소수점 자릿수 유지
+                                const exactPrice = parseFloat(price);
+                                setOrderPrice(exactPrice);
+                                
+                                // 가격대별 정확한 소수점 자릿수로 표시
+                                let formattedPrice;
+                                if (exactPrice < 1) {
+                                  formattedPrice = exactPrice.toFixed(4); // 0.1234
+                                } else if (exactPrice < 10) {
+                                  formattedPrice = exactPrice.toFixed(4); // 1.5678
+                                } else if (exactPrice < 100) {
+                                  formattedPrice = exactPrice.toFixed(2); // 41.79
+                                } else if (exactPrice < 1000) {
+                                  formattedPrice = exactPrice.toFixed(2); // 123.45
+                                } else if (exactPrice < 10000) {
+                                  formattedPrice = exactPrice.toFixed(2); // 1234.56
+                                } else {
+                                  formattedPrice = exactPrice.toFixed(2); // 12345.67
+                                }
+                                
+                                setOrderPriceInput(formattedPrice);
+                              }
                             }}
                           />
                         </div>
@@ -1182,13 +1215,165 @@ useEffect(() => {
                       {expandedSections.거래정보 && (
                         <div className="p-4 border-t border-gray-200 bg-gray-50">
                           <div className="space-y-3 text-sm text-gray-700">
-                            <div className="flex justify-between"><span className="font-semibold">거래량</span><span>-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">거래대금</span><span>-</span></div>
-                            <div className="text-xs text-gray-400 mb-3">(최근24시간)</div>
-                            <div className="flex justify-between"><span className="font-semibold">24h 최고</span><span className="text-red-500">-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">24h 최저</span><span className="text-blue-500">-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">시가총액</span><span>-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">유통량</span><span>-</span></div>
+                            {/* 거래량 */}
+                            <div className="flex justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold">거래량</span>
+                                <span className="text-xs text-gray-400">(최근24시간)</span>
+                              </div>
+                              <span className="font-mono">
+                                {(() => {
+                                  // realTimeData에서 먼저 확인, 없으면 coinList에서
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  if (rt?.volume && rt.volume > 0) {
+                                    const vol = parseFloat(rt.volume);
+                                    if (vol >= 1000000) return (vol / 1000000).toFixed(2) + 'M';
+                                    if (vol >= 1000) return (vol / 1000).toFixed(2) + 'K';
+                                    return vol.toFixed(2);
+                                  } else if (coin?.unitsTraded) {
+                                    const vol = parseFloat(coin.unitsTraded);
+                                    if (vol >= 1000000) return (vol / 1000000).toFixed(2) + 'M';
+                                    if (vol >= 1000) return (vol / 1000).toFixed(2) + 'K';
+                                    return vol.toFixed(2);
+                                  }
+                                  return '-';
+                                })()} {selectedCoin}
+                              </span>
+                            </div>
+                            
+                            {/* 거래대금 */}
+                            <div className="flex justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold">거래대금</span>
+                                <span className="text-xs text-gray-400">(최근24시간)</span>
+                              </div>
+                              <span className="font-mono">
+                                {(() => {
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  let vol = 0;
+                                  let price = 0;
+                                  
+                                  if (rt?.volume && rt.volume > 0) {
+                                    vol = parseFloat(rt.volume);
+                                    price = parseFloat(rt.closePrice);
+                                  } else if (coin?.unitsTraded && coin?.price) {
+                                    vol = parseFloat(coin.unitsTraded);
+                                    price = parseFloat(coin.price);
+                                  }
+                                  
+                                  if (vol > 0 && price > 0) {
+                                    const total = vol * price;
+                                    if (total >= 1000000000000) return (total / 1000000000000).toFixed(2) + 'T';
+                                    if (total >= 1000000000) return (total / 1000000000).toFixed(2) + 'B';
+                                    if (total >= 1000000) return (total / 1000000).toFixed(2) + 'M';
+                                    if (total >= 1000) return (total / 1000).toFixed(2) + 'K';
+                                    return total.toFixed(0);
+                                  }
+                                  return '-';
+                                })()} KRW
+                              </span>
+                            </div>
+                                                        
+                            {/* 24h 최고 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold">24h 최고</span>
+                              <span className="font-mono text-red-500">
+                                {(() => {
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  let price = 0;
+                                  if (rt?.highPrice && rt.highPrice > 0) {
+                                    price = parseFloat(rt.highPrice);
+                                  } else if (coin?.high24h) {
+                                    price = parseFloat(coin.high24h);
+                                  }
+                                  
+                                  if (price > 0) {
+                                    if (price < 1) return price.toFixed(4);
+                                    if (price < 10) return price.toFixed(4);
+                                    if (price < 100) return price.toFixed(2);
+                                    if (price < 1000) return Math.round(price).toLocaleString();
+                                    if (price < 10000) return Math.round(price).toLocaleString();
+                                    if (price < 100000) return (Math.round(price / 10) * 10).toLocaleString();
+                                    if (price < 1000000) return (Math.round(price / 100) * 100).toLocaleString();
+                                    return (Math.round(price / 1000) * 1000).toLocaleString();
+                                  }
+                                  return '-';
+                                })()}
+                              </span>
+                            </div>
+                            
+                            {/* 24h 최저 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold">24h 최저</span>
+                              <span className="font-mono text-blue-500">
+                                {(() => {
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  let price = 0;
+                                  if (rt?.lowPrice && rt.lowPrice > 0) {
+                                    price = parseFloat(rt.lowPrice);
+                                  } else if (coin?.low24h) {
+                                    price = parseFloat(coin.low24h);
+                                  }
+                                  
+                                  if (price > 0) {
+                                    if (price < 1) return price.toFixed(4);
+                                    if (price < 10) return price.toFixed(4);
+                                    if (price < 100) return price.toFixed(2);
+                                    if (price < 1000) return Math.round(price).toLocaleString();
+                                    if (price < 10000) return Math.round(price).toLocaleString();
+                                    if (price < 100000) return (Math.round(price / 10) * 10).toLocaleString();
+                                    if (price < 1000000) return (Math.round(price / 100) * 100).toLocaleString();
+                                    return (Math.round(price / 1000) * 1000).toLocaleString();
+                                  }
+                                  return '-';
+                                })()}
+                              </span>
+                            </div>
+                            
+                            {/* 시가총액 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold">시가총액</span>
+                              <span className="font-mono">
+                                {(() => {
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  if (coin?.marketCap) {
+                                    const cap = parseFloat(coin.marketCap);
+                                    if (cap >= 1000000000000) return (cap / 1000000000000).toFixed(1) + 'T';
+                                    if (cap >= 1000000000) return (cap / 1000000000).toFixed(1) + 'B';
+                                    if (cap >= 1000000) return (cap / 1000000).toFixed(1) + 'M';
+                                    if (cap >= 1000) return (cap / 1000).toFixed(1) + 'K';
+                                    return cap.toFixed(0);
+                                  }
+                                  return '-';
+                                })()} KRW
+                              </span>
+                            </div>
+                            
+                            {/* 유통량 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold">유통량</span>
+                              <span className="font-mono">
+                                {(() => {
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  if (coin?.circulatingSupply) {
+                                    const supply = parseFloat(coin.circulatingSupply);
+                                    if (supply >= 1000000000) return (supply / 1000000000).toFixed(2) + 'B';
+                                    if (supply >= 1000000) return (supply / 1000000).toFixed(2) + 'M';
+                                    if (supply >= 1000) return (supply / 1000).toFixed(2) + 'K';
+                                    return supply.toFixed(2);
+                                  }
+                                  return '-';
+                                })()}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
