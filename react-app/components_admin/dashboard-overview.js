@@ -626,7 +626,7 @@ useEffect(() => {
                     {withdrawal.email}
                   </p>
                   <p className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    {Number(withdrawal.amount).toLocaleString()}원 &bull; {withdrawal.time.slice(0, 19).replace('T', ' ')}
+                    {Number(withdrawal.amount).toLocaleString()}원 &bull; {new Date(withdrawal.time).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false })}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
