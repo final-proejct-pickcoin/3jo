@@ -445,7 +445,7 @@ function TradingChart({
         chartRef.current = null;
       }
 
-      // 차트 생성 - 성능 최적화 옵션
+      // 차트 생성 - 고성능 최적화 옵션
       const chart = LW.createChart(containerRef.current, {
         width: containerRef.current.clientWidth || 900,
         height: Math.max(500, height - (showIndicators ? 200 : 120)),
@@ -456,8 +456,8 @@ function TradingChart({
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
         },
         grid: { 
-          vertLines: { color: palette.grid }, 
-          horzLines: { color: palette.grid } 
+          vertLines: { color: palette.grid, visible: false }, 
+          horzLines: { color: palette.grid, visible: false } 
         },
         rightPriceScale: {
           borderColor: palette.axis,
@@ -468,34 +468,43 @@ function TradingChart({
           autoScale: true,
           visible: true,
           entireTextOnly: false,
+          // 성능 최적화
+          drawTicks: false,
         },
         timeScale: { 
           borderColor: palette.axis, 
           timeVisible: true, 
           secondsVisible: ["1m", "5m"].includes(timeframe),
-          rightOffset: 2,
-          barSpacing: 7,
-          minBarSpacing: 6,
+          rightOffset: 1,
+          barSpacing: 6,
+          minBarSpacing: 4,
           fixLeftEdge: false,
           fixRightEdge: false,
           autoScale: false,
+          // 성능 최적화
+          drawTicks: false,
+          borderVisible: false,
         },
         crosshair: {
           mode: 1,
-          vertLine: { color: palette.accent, style: 1, width: 1, labelVisible: true },
-          horzLine: { color: palette.accent, style: 1, width: 1, labelVisible: true },
+          vertLine: { color: palette.accent, style: 1, width: 1, labelVisible: false },
+          horzLine: { color: palette.accent, style: 1, width: 1, labelVisible: false },
         },
         handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
-        handleScale: { axisPressedMouseMove: true, pinch: true, mouseWheel: true },
-        // 성능 최적화 옵션 추가
+        handleScale: { axisPressedMouseMove: false, pinch: true, mouseWheel: true },
+        // 고성능 최적화 옵션
         watermark: { visible: false },
         leftPriceScale: { visible: false },
+        // 추가 성능 최적화
+        overlayPriceScales: { visible: false },
+        kineticScroll: { mouse: false, touch: true },
+        trackingMode: { exitMode: 1 },
       });
 
       chartRef.current = chart;
 
 
-      // 메인 시리즈 생성
+      // 메인 시리즈 생성 - 성능 최적화
       let seriesData = candles;
       if (chartType === "heikin-ashi") {
         seriesData = transformToHeikinAshi(candles);
@@ -505,6 +514,13 @@ function TradingChart({
       if (!seriesData || seriesData.length === 0) {
         console.warn('캔들 데이터가 없습니다.');
         return;
+      }
+
+      // 데이터 최적화: 최대 1000개 캔들만 표시 (성능 향상)
+      const maxCandles = 1000;
+      if (seriesData.length > maxCandles) {
+        seriesData = seriesData.slice(-maxCandles);
+        console.log(`성능 최적화: ${maxCandles}개 캔들만 표시 (전체: ${candles.length}개)`);
       }
 
   // ✅ 틱 차트: 차트 타입에 따라 봉/라인/에어리어 모두 지원
@@ -553,6 +569,10 @@ function TradingChart({
           wickUpColor: palette.up,
           wickDownColor: palette.down,
           priceFormat: { type: "price", precision: 0, minMove: 1000 },
+          // 성능 최적화 옵션
+          lastValueVisible: false,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
         });
         priceSeriesRef.current.setData(
           seriesData.map(({ time, open, high, low, close }) => ({ time, open, high, low, close }))
@@ -808,8 +828,25 @@ function TradingChart({
 
       // 차트가 완전히 준비되었는지 확인
       if (chart && chart.timeScale && chart.priceScale) {
-      setReady(true);
-        console.log('✅ 차트 초기화 완료 - 드로잉 도구 사용 가능');
+        // 성능 최적화: 차트 옵션 추가 설정
+        chart.timeScale().applyOptions({
+          rightOffset: 1,
+          barSpacing: 6,
+          minBarSpacing: 4,
+          fixLeftEdge: false,
+          fixRightEdge: false,
+          autoScale: false,
+          drawTicks: false,
+          borderVisible: false,
+        });
+        
+        chart.priceScale('right').applyOptions({
+          drawTicks: false,
+          borderVisible: false,
+        });
+        
+        setReady(true);
+        console.log('✅ 차트 초기화 완료 - 드로잉 도구 사용 가능 (성능 최적화 적용)');
       } else {
         console.warn('⚠️ 차트 초기화 실패 - 스케일이 준비되지 않음');
         setReady(false);
@@ -852,20 +889,21 @@ function TradingChart({
   ]);
 
 
-  // 실시간 가격으로 마지막 캔들만 update (차트 전체 setData 금지)
+  // 실시간 가격으로 마지막 캔들만 update (차트 전체 setData 금지) - 성능 최적화
   useEffect(() => {
     if (!ready || !priceSeriesRef.current || bithumbCandles.length === 0) return;
-    // 1초마다 현재가로 마지막 캔들 update
+    
+    // 성능 최적화: 업데이트 빈도 조절 (2초마다)
     const interval = setInterval(() => {
       try {
-      const lastCandle = bithumbCandles[bithumbCandles.length - 1];
+        const lastCandle = bithumbCandles[bithumbCandles.length - 1];
         if (!lastCandle || !lastCandle.time || !lastCandle.open || !lastCandle.close) return;
       
-      // 현재가 반영 (currentPrice가 있으면 사용)
-      let price = currentPrice;
+        // 현재가 반영 (currentPrice가 있으면 사용)
+        let price = currentPrice;
         if (!price || price === 0 || isNaN(price)) {
-        price = lastCandle.close;
-      }
+          price = lastCandle.close;
+        }
         
         // 모든 값이 유효한지 확인
         if (isNaN(price) || isNaN(lastCandle.open) || isNaN(lastCandle.high) || isNaN(lastCandle.low)) {
@@ -873,12 +911,12 @@ function TradingChart({
           return;
         }
       
-      // 가격이 너무 극단적이지 않도록 조정
-      const prevClose = lastCandle.close;
-      const maxChange = prevClose * 0.05; // 최대 5% 변동
-      if (Math.abs(price - prevClose) > maxChange) {
-        price = prevClose + (price > prevClose ? maxChange : -maxChange);
-      }
+        // 가격이 너무 극단적이지 않도록 조정
+        const prevClose = lastCandle.close;
+        const maxChange = prevClose * 0.05; // 최대 5% 변동
+        if (Math.abs(price - prevClose) > maxChange) {
+          price = prevClose + (price > prevClose ? maxChange : -maxChange);
+        }
         
         // 최종 유효성 검사
         if (price <= 0 || isNaN(price)) {
@@ -886,10 +924,10 @@ function TradingChart({
           return;
         }
       
-      // 캔들 타입별로 update
-      if (["candlestick", "heikin-ashi"].includes(chartType)) {
+        // 캔들 타입별로 update
+        if (["candlestick", "heikin-ashi"].includes(chartType)) {
           const updateData = {
-          time: lastCandle.time,
+            time: lastCandle.time,
             open: Math.max(0, lastCandle.open),
             high: Math.max(0, Math.max(lastCandle.high, price)),
             low: Math.max(0, Math.min(lastCandle.low, price)),
@@ -900,9 +938,9 @@ function TradingChart({
           if (Object.values(updateData).every(val => val > 0 && !isNaN(val))) {
             priceSeriesRef.current.update(updateData);
           }
-      } else {
+        } else {
           const updateData = {
-          time: lastCandle.time,
+            time: lastCandle.time,
             value: Math.max(0, price)
           };
           
@@ -913,11 +951,12 @@ function TradingChart({
       } catch (error) {
         console.error('캔들 업데이트 실패:', error);
       }
-    }, 1000);
+    }, 2000); // 2초마다 업데이트로 성능 향상
+    
     return () => clearInterval(interval);
   }, [ready, bithumbCandles, chartType, currentPrice]);
 
-  // 실시간 현재가 라인 업데이트
+  // 실시간 현재가 라인 업데이트 - 성능 최적화
   useEffect(() => {
     if (!ready || !priceLineRef.current) return;
     
@@ -932,7 +971,7 @@ function TradingChart({
       } catch (error) {
         console.log('현재가 라인 업데이트 실패:', error);
       }
-    }, 500); // 0.5초마다 업데이트
+    }, 1000); // 1초마다 업데이트로 성능 향상
     
     return () => clearInterval(interval);
   }, [ready, priceInfo.displayPrice]);

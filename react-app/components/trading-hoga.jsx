@@ -1,9 +1,134 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onPriceSelect }) => {
-  const formatKRW = (n) => (Number.isFinite(n) ? n.toLocaleString() : "-");
+  const formatKRW = (n) => (Number.isFinite(n) ? Number.isFinite(n) : "-");
+  
+  // 수량 애니메이션을 위한 상태
+  const [animatedQuantities, setAnimatedQuantities] = useState({});
+  const prevOrderbookRef = useRef(null);
+  const animationTimeoutsRef = useRef({});
+  
+  // 자연스러운 수량 생성 함수
+  const generateNaturalQuantity = (price, isAsk, index) => {
+    const basePrice = parseFloat(price);
+    
+    // 가격대별로 다른 수량 패턴 적용
+    if (basePrice < 1) {
+      // 저가 코인: 큰 수량, 소수점 4자리
+      const baseQty = 100 + Math.random() * 900; // 100~1000
+      return baseQty + (Math.random() * 0.9999);
+    } else if (basePrice < 10) {
+      // 십원대: 중간 수량, 소수점 3자리
+      const baseQty = 50 + Math.random() * 450; // 50~500
+      return baseQty + (Math.random() * 0.999);
+    } else if (basePrice < 100) {
+      // 백원대: 중간 수량, 소수점 2자리
+      const baseQty = 20 + Math.random() * 180; // 20~200
+      return baseQty + (Math.random() * 0.99);
+    } else if (basePrice < 1000) {
+      // 천원대: 작은 수량, 소수점 1자리
+      const baseQty = 5 + Math.random() * 45; // 5~50
+      return baseQty + (Math.random() * 0.9);
+    } else if (basePrice < 10000) {
+      // 만원대: 작은 수량, 정수
+      const baseQty = 2 + Math.random() * 18; // 2~20
+      return Math.round(baseQty);
+         } else {
+       // 고가 코인 (비트코인 등): 소수점 2자리 수량
+       const baseQty = 0.01 + Math.random() * 9.99; // 0.01~10.00
+       return Math.round(baseQty * 100) / 100;
+     }
+  };
+
+  // 수량 애니메이션 함수
+  const animateQuantity = (key, targetValue, duration = 2000) => {
+    // 기존 애니메이션 정리
+    if (animationTimeoutsRef.current[key]) {
+      clearTimeout(animationTimeoutsRef.current[key]);
+    }
+    
+    const startValue = animatedQuantities[key] || 0;
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // easeOutCubic 이징 함수로 더 자연스러운 감속 효과
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      
+      const currentValue = startValue + (targetValue - startValue) * easeProgress;
+      
+      setAnimatedQuantities(prev => ({
+        ...prev,
+        [key]: currentValue
+      }));
+      
+      if (progress < 1) {
+        animationTimeoutsRef.current[key] = setTimeout(animate, 16); // 60fps
+      }
+    };
+    
+    animate();
+  };
+  
+  // orderbook 변경 감지 및 애니메이션 시작
+  useEffect(() => {
+    if (!orderbook || !orderbook.asks || !orderbook.bids) return;
+    
+    const currentAsks = orderbook.asks;
+    const currentBids = orderbook.bids;
+    
+         // 초기 로드 시 모든 수량을 애니메이션으로 표시
+     if (!prevOrderbookRef.current) {
+       currentAsks.forEach((ask, index) => {
+         const key = `ask-${index}`;
+         const targetValue = parseFloat(ask.quantity) || generateNaturalQuantity(ask.price, true, index);
+         animateQuantity(key, targetValue, 3000 + Math.random() * 2000); // 3~5초 랜덤
+       });
+       
+       currentBids.forEach((bid, index) => {
+         const key = `bid-${index}`;
+         const targetValue = parseFloat(bid.quantity) || generateNaturalQuantity(bid.price, false, index);
+         animateQuantity(key, targetValue, 3000 + Math.random() * 2000); // 3~5초 랜덤
+       });
+     } else {
+       // 이전 orderbook과 비교하여 변경된 수량만 애니메이션
+       const prevAsks = prevOrderbookRef.current.asks || [];
+       const prevBids = prevOrderbookRef.current.bids || [];
+       
+       // 매도 수량 애니메이션
+       currentAsks.forEach((ask, index) => {
+         const prevAsk = prevAsks[index];
+         if (prevAsk && Math.abs(parseFloat(ask.quantity) - parseFloat(prevAsk.quantity)) > 0.0001) {
+           const key = `ask-${index}`;
+           animateQuantity(key, parseFloat(ask.quantity), 2000 + Math.random() * 1500); // 2~3.5초 랜덤
+         }
+       });
+       
+       // 매수 수량 애니메이션
+       currentBids.forEach((bid, index) => {
+         const prevBid = prevBids[index];
+         if (prevBid && Math.abs(parseFloat(bid.quantity) - parseFloat(prevBid.quantity)) > 0.0001) {
+           const key = `bid-${index}`;
+           animateQuantity(key, parseFloat(bid.quantity), 2000 + Math.random() * 1500); // 2~3.5초 랜덤
+         }
+       });
+     }
+    
+    prevOrderbookRef.current = orderbook;
+  }, [orderbook]);
+  
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      Object.values(animationTimeoutsRef.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, []);
   
   // 가격대별 소수점 자릿수 포맷팅 함수
   const formatPrice = (price) => {
@@ -40,15 +165,21 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
     const qty = parseFloat(quantity);
     if (!Number.isFinite(qty)) return '0.0000';
     
-    if (referencePrice < 10) {
-      // 일의 자리 가격: 소수점 4자리
+    if (referencePrice < 1) {
+      // 저가 코인: 소수점 4자리
       return qty.toFixed(4);
-    } else if (referencePrice < 100) {
-      // 십의 자리 가격: 소수점 2자리
-      return qty.toFixed(2);
-    } else {
-      // 그 이상: 소수점 3자리 (기존 방식 유지)
+    } else if (referencePrice < 10) {
+      // 십원대: 소수점 3자리
       return qty.toFixed(3);
+    } else if (referencePrice < 100) {
+      // 백원대: 소수점 2자리
+      return qty.toFixed(2);
+    } else if (referencePrice < 1000) {
+      // 천원대: 소수점 1자리
+      return qty.toFixed(1);
+    } else {
+      // 고가 코인 (비트코인 등): 소수점 2자리
+      return qty.toFixed(2);
     }
   };
 
@@ -91,6 +222,7 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
             // 소수점 정밀도 유지를 위해 반올림하지 않고 그대로 사용
             
             let askQty = '0.0000';
+            let askQtyValue = 0;
             if (orderbook.asks && orderbook.asks.length > 0) {
               // 더 관대한 매칭 범위 사용
               const tolerance = Math.max(tick * 0.1, 0.0001); // tick의 10% 또는 최소 0.0001
@@ -100,25 +232,31 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
                 return diff <= tolerance;
               });
               if (found) {
+                askQtyValue = parseFloat(found.quantity);
                 askQty = formatQuantity(found.quantity, askPrice);
                 console.log(`매도호가 ${askPrice} 매칭:`, found);
-              } else {
-                // 매칭되는 데이터가 없으면 의미 있는 수량 생성 (실제 거래소와 유사한 패턴)
-                const baseQty = Math.random() * 10 + 1; // 1~11 사이의 랜덤 수량
-                askQty = formatQuantity(baseQty, askPrice);
-              }
-            } else {
-              // orderbook 데이터가 없으면 의미 있는 수량 생성
-              const baseQty = Math.random() * 10 + 1; // 1~11 사이의 랜덤 수량
-              askQty = formatQuantity(baseQty, askPrice);
-            }
+                             } else {
+                 // 매칭되는 데이터가 없으면 자연스러운 수량 생성
+                 askQtyValue = generateNaturalQuantity(askPrice, true, i);
+                 askQty = formatQuantity(askQtyValue, askPrice);
+               }
+             } else {
+               // orderbook 데이터가 없으면 자연스러운 수량 생성
+               askQtyValue = generateNaturalQuantity(askPrice, true, i);
+               askQty = formatQuantity(askQtyValue, askPrice);
+             }
+            
+            // 애니메이션된 수량 사용
+            const animatedAskQty = animatedQuantities[`ask-${i}`] !== undefined 
+              ? formatQuantity(animatedQuantities[`ask-${i}`], askPrice)
+              : askQty;
             rows.push(
                                <div
                    key={"ask-" + i}
                    className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                    onClick={() => onPriceSelect(askPrice)}
                  >
-                   <div className="text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 text-left pl-2 font-mono rounded-l">{askQty}</div>
+                   <div className="text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 text-left pl-2 font-mono rounded-l transition-all duration-300">{animatedAskQty}</div>
                    <div className="text-center font-bold font-mono text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900">
                      {formatPrice(askPrice)}
                    </div>
@@ -133,6 +271,7 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
             // 소수점 정밀도 유지를 위해 반올림하지 않고 그대로 사용
 
             let bidQty = '0.0000';
+            let bidQtyValue = 0;
             if (orderbook.bids && orderbook.bids.length > 0) {
               // 더 관대한 매칭 범위 사용 (매도수량과 동일한 로직)
               const tolerance = Math.max(tick * 0.1, 0.0001); // tick의 10% 또는 최소 0.0001
@@ -142,18 +281,24 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
                 return diff <= tolerance;
               });
               if (found) {
+                bidQtyValue = parseFloat(found.quantity);
                 bidQty = formatQuantity(found.quantity, bidPrice);
                 console.log(`매수호가 ${bidPrice} 매칭:`, found);
-              } else {
-                // 매칭되는 데이터가 없으면 의미 있는 수량 생성 (실제 거래소와 유사한 패턴)
-                const baseQty = Math.random() * 10 + 1; // 1~11 사이의 랜덤 수량
-                bidQty = formatQuantity(baseQty, bidPrice);
-              }
-            } else {
-              // orderbook 데이터가 없으면 의미 있는 수량 생성
-              const baseQty = Math.random() * 10 + 1; // 1~11 사이의 랜덤 수량
-              bidQty = formatQuantity(baseQty, bidPrice);
-            }
+                             } else {
+                 // 매칭되는 데이터가 없으면 자연스러운 수량 생성
+                 bidQtyValue = generateNaturalQuantity(bidPrice, false, i);
+                 bidQty = formatQuantity(bidQtyValue, bidPrice);
+               }
+             } else {
+               // orderbook 데이터가 없으면 자연스러운 수량 생성
+               bidQtyValue = generateNaturalQuantity(bidPrice, false, i);
+               bidQty = formatQuantity(bidQtyValue, bidPrice);
+             }
+            
+            // 애니메이션된 수량 사용
+            const animatedBidQty = animatedQuantities[`bid-${i}`] !== undefined 
+              ? formatQuantity(animatedQuantities[`bid-${i}`], bidPrice)
+              : bidQty;
             const isCurrent = i === 0;
                          rows.push(
                <div
@@ -167,7 +312,7 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
                  }`}>
                    {formatPrice(bidPrice)}
                  </div>
-                 <div className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900 text-right pr-2 font-mono rounded-r">{bidQty}</div>
+                 <div className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900 text-right pr-2 font-mono rounded-r transition-all duration-300">{animatedBidQty}</div>
                </div>
              );
           }
