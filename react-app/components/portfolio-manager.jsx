@@ -351,41 +351,133 @@ const fmt = (v) =>
 const [trades, setTrades] = useState([])
 const [loadingTrades, setLoadingTrades] = useState(false)
 
+// useEffect(() => {
+//   if (!user_id) return
+//   const loadTrades = async () => {
+//     try {
+//       setLoadingTrades(true)
+//       const res = await axios.get(`${PORTFOLIO_API}/trades`, { params: { user_id } })
+//       //console.log("TRADES raw response:", res.data);
+//       // 백엔드 응답 예: [{ symbol, orderType, notional, assetId, price, createdAt, ... }, ...]
+//       const rows = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+
+//       const trades = rows.map((r) => {
+//         const isBuy = Number(r.orderType) === 0;
+//         const priceKRW = Number(r.price ?? 0);             // 단가(원)
+//         const valueKRW = Number(r.notional ?? 0);          // 체결금액(원) — 백엔드가 notional 제공
+//         const amount   = priceKRW ? valueKRW / priceKRW : 0; // 수량 = 금액/단가
+
+//         return {
+//           isBuy,                                   // true/false
+//           side: isBuy ? "buy" : "sell",            // "buy"/"sell"도 제공(원하면 사용)
+//           symbol: String(r.symbol || "").toUpperCase(),
+//           amount,
+//           priceKRW,
+//           valueKRW,
+//           pnlKRW: Number(r.pnl_krw ?? r.pnl ?? 0), // 있으면 표시, 없으면 0
+//           date: r.createdAt ?? r.ts ?? r.date ?? r.filledAt??"", // 백엔드 키 중 있는 걸 사용
+//         };
+//       });
+
+//       setTrades(trades);
+//     } finally {
+//       setLoadingTrades(false)
+//     }
+//   }
+//   loadTrades()
+// }, [user_id])
+
+// useEffect(() => {
+//   if (!user_id) return;
+//   const loadTrades = async () => {
+//     try {
+//       setLoadingTrades(true);
+//       const res = await axios.get(`${PORTFOLIO_API}/trades`, { params: { user_id } });
+//       const rows = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+
+//       const trades = rows.map((r) => {
+//         // 백엔드가 side(0/1), qty, price, ts 같이 줄 수도 있고
+//         // orderType, notional, createdAt 으로 줄 수도 있어서 모두 호환
+//         const isBuy = Number(r.orderType ?? r.side) === 0;
+//         const priceKRW = Number(r.price ?? r.priceKRW ?? 0);
+
+//         // 수량 우선: amount/qty -> 없으면 notional/price로 역산
+//         const qty = Number(r.amount ?? r.qty ?? 0);
+//         const notional = Number(
+//           r.notional ?? (qty && priceKRW ? qty * priceKRW : 0)
+//         );
+
+//         // 심볼 표준화 (표시용/그룹용 분리)
+//         const { base, market, rtKey } =
+//           normalizeSymbol(r.symbol ?? r.rtKey ?? r.assetSymbol);
+
+//         return {
+//           isBuy,
+//           side: isBuy ? "buy" : "sell",
+//           symbolKey: rtKey,                   // 그룹/누적용 키 (예: BTC_KRW)
+//           displaySymbol: `${base}-${market}`, // 화면 표시용 (예: BTC-KRW)
+//           amount: qty,
+//           priceKRW,
+//           valueKRW: notional,
+//           pnlKRW: Number(r.pnl_krw ?? r.pnl ?? 0),
+//           date: r.createdAt ?? r.ts ?? r.filledAt ?? r.date ?? "",
+//         };
+//       });
+
+//       setTrades(trades);
+//     } finally {
+//       setLoadingTrades(false);
+//     }
+//   };
+//   loadTrades();
+// }, [user_id]);
 useEffect(() => {
-  if (!user_id) return
+  if (!user_id) return;
   const loadTrades = async () => {
     try {
-      setLoadingTrades(true)
-      const res = await axios.get(`${PORTFOLIO_API}/trades`, { params: { user_id } })
-      //console.log("TRADES raw response:", res.data);
-      // 백엔드 응답 예: [{ symbol, orderType, notional, assetId, price, createdAt, ... }, ...]
+      setLoadingTrades(true);
+      const res = await axios.get(`${PORTFOLIO_API}/trades`, { params: { user_id } });
       const rows = Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
       const trades = rows.map((r) => {
-        const isBuy = Number(r.orderType) === 0;
-        const priceKRW = Number(r.price ?? 0);             // 단가(원)
-        const valueKRW = Number(r.notional ?? 0);          // 체결금액(원) — 백엔드가 notional 제공
-        const amount   = priceKRW ? valueKRW / priceKRW : 0; // 수량 = 금액/단가
+        // side: 0/1 또는 "BUY"/"SELL" 모두 허용
+        const sideRaw = r.orderType ?? r.side;
+        const isBuy =
+          typeof sideRaw === "string"
+            ? sideRaw.toUpperCase() === "BUY"
+            : Number(sideRaw) === 0;
+
+        const priceKRW =
+          Number(r.price ?? r.priceKRW ?? 0);
+
+        // qty/amount가 없으면 notional/price로 역산
+        const qtyRaw = Number(r.amount ?? r.qty ?? 0);
+        const notionalRaw = Number(
+          r.notional ?? (qtyRaw && priceKRW ? qtyRaw * priceKRW : 0)
+        );
+
+        // 심볼 표시는 단순/안정적으로
+        const sym = String(r.symbol || "").toUpperCase();
 
         return {
-          isBuy,                                   // true/false
-          side: isBuy ? "buy" : "sell",            // "buy"/"sell"도 제공(원하면 사용)
-          symbol: String(r.symbol || "").toUpperCase(),
-          amount,
+          isBuy,
+          side: isBuy ? "buy" : "sell",
+          symbol: sym,
+          amount: qtyRaw || (priceKRW ? notionalRaw / priceKRW : 0),
           priceKRW,
-          valueKRW,
-          pnlKRW: Number(r.pnl_krw ?? r.pnl ?? 0), // 있으면 표시, 없으면 0
-          date: r.createdAt ?? r.ts ?? r.date ?? r.filledAt??"", // 백엔드 키 중 있는 걸 사용
+          valueKRW: notionalRaw,
+          pnlKRW: Number(r.pnl_krw ?? r.pnl ?? 0),
+          date: r.createdAt ?? r.ts ?? r.filledAt ?? r.date ?? "",
         };
       });
 
       setTrades(trades);
     } finally {
-      setLoadingTrades(false)
+      setLoadingTrades(false);
     }
-  }
-  loadTrades()
-}, [user_id])
+  };
+  loadTrades();
+}, [user_id]);
 
 
 function withRunningTotals(trades) {
@@ -425,43 +517,98 @@ function withRunningTotals(trades) {
   return decorated.reverse();
 }
 
+// const tradesWithRun = useMemo(() => {
+//   if (!Array.isArray(trades) || trades.length === 0) return [];
+
+//   // 화면에 현재 쓰는 순서(최신→과거라고 가정)를 *그대로* 기준 삼음
+//   const list = [...trades];
+
+//   // 누적용 버퍼 (심볼별)
+//   const acc = new Map(); // symbol -> { buy: number, sell: number }
+
+//   // 리스트의 "아래줄"까지 합계를 보여주려면, 아래에서부터 위로 누적해서 위로 올림
+//   // (보이는 순서가 최신→과거라면, 뒤에서 앞으로 누적해야 "이 줄까지" after 가 맞음)
+//   for (let i = list.length - 1; i >= 0; i--) {
+//     const t = list[i];
+//     const s = t.symbol;
+//     if (!acc.has(s)) acc.set(s, { buy: 0, sell: 0 });
+//     const a = acc.get(s);
+
+//     // 이번 트랜잭션 반영 "후" 상태 저장
+//     const after = {
+//       buyKRW: a.buy + (t.isBuy ? Number(t.valueKRW || 0) : 0),
+//       sellKRW: a.sell + (!t.isBuy ? Number(t.valueKRW || 0) : 0),
+//     };
+//     after.netKRW = after.buyKRW - after.sellKRW;
+
+//     // 반영 전 상태도 원하면 이렇게
+//     const before = { ...a, netKRW: a.buy - a.sell };
+
+//     // 이 줄에 누적값 달아놓기
+//     list[i] = { ...t, runningBefore: before, runningAfter: after };
+
+//     // 누적 버퍼 갱신
+//     if (t.isBuy) a.buy = after.buyKRW;
+//     else a.sell = after.sellKRW;
+//   }
+
+//   return list;
+// }, [trades]);
+// const tradesWithRun = useMemo(() => {
+//   if (!Array.isArray(trades) || trades.length === 0) return [];
+//   const list = [...trades];
+//   const acc = new Map(); // symbolKey -> { buy, sell }
+
+//   for (let i = list.length - 1; i >= 0; i--) {
+//     const t = list[i];
+//     const key = t.symbolKey ?? t.displaySymbol ?? t.symbol;
+//     if (!acc.has(key)) acc.set(key, { buy: 0, sell: 0 });
+//     const a = acc.get(key);
+
+//     const after = {
+//       buyKRW:  a.buy  + (t.isBuy ? Number(t.valueKRW || 0) : 0),
+//       sellKRW: a.sell + (!t.isBuy ? Number(t.valueKRW || 0) : 0),
+//     };
+//     after.netKRW = after.buyKRW - after.sellKRW;
+
+//     list[i] = {
+//       ...t,
+//       runningBefore: { ...a, netKRW: a.buy - a.sell },
+//       runningAfter: after,
+//     };
+
+//     if (t.isBuy) a.buy = after.buyKRW; else a.sell = after.sellKRW;
+//   }
+//   return list;
+// }, [trades]);
 const tradesWithRun = useMemo(() => {
   if (!Array.isArray(trades) || trades.length === 0) return [];
-
-  // 화면에 현재 쓰는 순서(최신→과거라고 가정)를 *그대로* 기준 삼음
   const list = [...trades];
+  const acc = new Map(); // symbol -> { buy, sell }
 
-  // 누적용 버퍼 (심볼별)
-  const acc = new Map(); // symbol -> { buy: number, sell: number }
-
-  // 리스트의 "아래줄"까지 합계를 보여주려면, 아래에서부터 위로 누적해서 위로 올림
-  // (보이는 순서가 최신→과거라면, 뒤에서 앞으로 누적해야 "이 줄까지" after 가 맞음)
   for (let i = list.length - 1; i >= 0; i--) {
     const t = list[i];
-    const s = t.symbol;
-    if (!acc.has(s)) acc.set(s, { buy: 0, sell: 0 });
-    const a = acc.get(s);
+    const key = t.symbol;                // 단순 키
+    if (!acc.has(key)) acc.set(key, { buy: 0, sell: 0 });
+    const a = acc.get(key);
 
-    // 이번 트랜잭션 반영 "후" 상태 저장
     const after = {
-      buyKRW: a.buy + (t.isBuy ? Number(t.valueKRW || 0) : 0),
+      buyKRW:  a.buy  + (t.isBuy ? Number(t.valueKRW || 0) : 0),
       sellKRW: a.sell + (!t.isBuy ? Number(t.valueKRW || 0) : 0),
     };
     after.netKRW = after.buyKRW - after.sellKRW;
 
-    // 반영 전 상태도 원하면 이렇게
-    const before = { ...a, netKRW: a.buy - a.sell };
+    list[i] = {
+      ...t,
+      runningBefore: { ...a, netKRW: a.buy - a.sell },
+      runningAfter: after,
+    };
 
-    // 이 줄에 누적값 달아놓기
-    list[i] = { ...t, runningBefore: before, runningAfter: after };
-
-    // 누적 버퍼 갱신
-    if (t.isBuy) a.buy = after.buyKRW;
-    else a.sell = after.sellKRW;
+    if (t.isBuy) a.buy = after.buyKRW; else a.sell = after.sellKRW;
   }
-
   return list;
 }, [trades]);
+
 
 // 화면에 보여줄 거래 행 개수 
 const [visibleTrades, setVisibleTrades] = useState(10);
@@ -1092,66 +1239,58 @@ useEffect(() => {
                     <div className="text-sm text-muted-foreground">거래 내역이 없습니다.</div>
                   )}
 
-                  {pagedTrades.map((tx, index) => {
-                    const tradeKey =
-                        tx.id ??
-                        tx.tradeId ??
-                        tx.orderId ??
-                        `${tx.symbol}-${tx.date}-${tx.side}-${index}`;
-
-                    // <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div key={tradeKey} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            tx.side === "buy" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {tx.side === "buy" ? "+" : "-"}
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {tx.side === "buy" ? "매수" : "매도"} {tx.amount} {tx.symbol}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            @ {currency === "KRW"
-                              ? `₩${Math.round(tx.priceKRW).toLocaleString()}`
-                              : `$${Math.round(tx.priceKRW / (krwRate || 1350)).toLocaleString()}`}
-                            {" • "}
-                            {new Date(tx.date).toString() !== "Invalid Date"
-                              ? new Date(tx.date).toLocaleDateString()
-                              : (tx.date || "")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        {/* 누적 보유고(원 기준) */}
-                        <p className="font-semibold">
-                          {currency === "KRW"
-                            ? `₩${Math.round(tx.runningAfter.netKRW).toLocaleString()}`
-                            : `$${Math.round(tx.runningAfter.netKRW / (krwRate || 1350)).toLocaleString()}`}
-                        </p>
-
-                        {/* 이번 거래 금액 */}
-                        <div className="text-xs">
-                          {tx.isBuy ? (
-                            <div className="text-green-500">
-                              +{currency === "KRW"
-                                ? `₩${Math.round(tx.valueKRW).toLocaleString()}`
-                                : `$${Math.round(tx.valueKRW / (krwRate || 1350)).toLocaleString()}`}
+                  {pagedTrades.map((tx, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                tx.side === "buy" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                              }`}
+                            >
+                              {tx.side === "buy" ? "+" : "-"}
                             </div>
-                          ) : (
-                            <div className="text-red-500">
-                              -{currency === "KRW"
-                                ? `₩${Math.round(tx.valueKRW).toLocaleString()}`
-                                : `$${Math.round(tx.valueKRW / (krwRate || 1350)).toLocaleString()}`}
+                            <div>
+                              <p className="font-medium">
+                                {tx.side === "buy" ? "매수" : "매도"} {tx.amount} {tx.symbol}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                @ {currency === "KRW"
+                                  ? `₩${Math.round(tx.priceKRW).toLocaleString()}`
+                                  : `$${Math.round(tx.priceKRW / (krwRate || 1350)).toLocaleString()}`}
+                                • {new Date(tx.date).toString() !== "Invalid Date"
+                                    ? new Date(tx.date).toLocaleDateString()
+                                    : (tx.date || "")}
+                              </p>
                             </div>
-                          )}
+                          </div>
+                          <div className="text-right">
+                            {/* 누적 보유고 */}
+                            <p className="font-semibold">
+                              {currency === "KRW"
+                                ? `₩${Math.round(tx.runningAfter.netKRW).toLocaleString()}`
+                                : `$${Math.round(tx.runningAfter.netKRW / (krwRate || 1350)).toLocaleString()}`}
+                            </p>
+
+                            {/* 이번 거래 금액 */}
+                            <div className="text-xs">
+                              {tx.isBuy ? (
+                                <div className="text-green-500">
+                                  +{currency === "KRW"
+                                    ? `₩${Math.round(tx.valueKRW).toLocaleString()}`
+                                    : `$${Math.round(tx.valueKRW / (krwRate || 1350)).toLocaleString()}`}
+                                </div>
+                              ) : (
+                                <div className="text-red-500">
+                                  -{currency === "KRW"
+                                    ? `₩${Math.round(tx.valueKRW).toLocaleString()}`
+                                    : `$${Math.round(tx.valueKRW / (krwRate || 1350)).toLocaleString()}`}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
                         </div>
-                      </div>
-                    </div>
-  })}
+                      ))}
 
                   {/* 하단 – 더보기/접기 */}
                   {tradesWithRun.length > 10 && (
