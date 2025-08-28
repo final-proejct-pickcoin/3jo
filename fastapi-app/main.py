@@ -26,6 +26,7 @@ from api.admin_user import router as admin_user_router
 from api.admin import router as admin_router
 from api.inquiry import router as inq_router
 from api.chat import router as ws_router
+from api.proxy_router import router as proxy_router
 
 from api.bithumb_api import router as bithumb_router, realtime_ws
 
@@ -53,6 +54,7 @@ import os
 
 import asyncio
 from zoneinfo import ZoneInfo
+
 
 
 load_dotenv()
@@ -148,6 +150,8 @@ app.include_router(inq_router)
 # 채팅 웹소켓 라우터
 app.include_router(ws_router)
 
+# CoinGecko 프록시 라우터
+app.include_router(proxy_router)
 
 # 빗썸 API 라우터
 app.include_router(bithumb_router)
@@ -240,7 +244,7 @@ def job_news_refresh():
 
 # 2) 앱 시작 시 스케줄러 시작 + ES 초기화(비차단)
 @app.on_event("startup")
-def start_scheduler():
+def start_scheduler():    
     try:
         # ✅ ES 초기화는 앱을 막지 않도록 "백그라운드 스레드"에서 수행
         threading.Thread(target=init_search_background, daemon=True).start()

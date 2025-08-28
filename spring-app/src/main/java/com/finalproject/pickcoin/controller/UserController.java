@@ -454,34 +454,34 @@ public class UserController {
 
     // 로그아웃
     @DeleteMapping("/logout")
-public ResponseEntity<?> logout(@RequestParam String email){
-    try {
-        MDC.put("event_type", "logout");
-        MDC.put("email", email);
-        logger.info("유저 로그아웃 발생 - 사용자: {}", email);
-    } finally {
-        MDC.remove("email");
-        MDC.remove("event_type");
+    public ResponseEntity<?> logout(@RequestParam String email){
+        try {
+            MDC.put("event_type", "logout");
+            MDC.put("email", email);
+            logger.info("유저 로그아웃 발생 - 사용자: {}", email);
+        } finally {
+            MDC.remove("email");
+            MDC.remove("event_type");
+        }
+        logged_users.remove(email);
+
+        // ✅ 로그아웃 시 통계 브로드캐스트
+        Map<String, Object> stats = statsService.getCommunityStats();
+        StatsController.StatsWebSocket.broadcast(stats);
+
+        return ResponseEntity.ok("logout");
     }
-    logged_users.remove(email);
 
-    // ✅ 로그아웃 시 통계 브로드캐스트
-    Map<String, Object> stats = statsService.getCommunityStats();
-    StatsController.StatsWebSocket.broadcast(stats);
+    @GetMapping("/active-users")
+    public ResponseEntity<Map<String, Object>> getActiveUsers() {
+        Map<String, Object> result = new HashMap<>();
+        result.put("activeUsers", logged_users.size()); // 현재 접속자 수
+        result.put("users", logged_users); // 접속자 이메일 목록 (옵션)
 
-    return ResponseEntity.ok("logout");
-}
+        // ✅ 조회 시에도 WebSocket push (선택 사항)
+        StatsController.StatsWebSocket.broadcast(result);
 
-@GetMapping("/active-users")
-public ResponseEntity<Map<String, Object>> getActiveUsers() {
-    Map<String, Object> result = new HashMap<>();
-    result.put("activeUsers", logged_users.size()); // 현재 접속자 수
-    result.put("users", logged_users); // 접속자 이메일 목록 (옵션)
-
-    // ✅ 조회 시에도 WebSocket push (선택 사항)
-    StatsController.StatsWebSocket.broadcast(result);
-
-    return ResponseEntity.ok(result);
-}
+        return ResponseEntity.ok(result);
+    }
 }
 
