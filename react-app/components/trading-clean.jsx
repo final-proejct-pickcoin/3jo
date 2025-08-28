@@ -384,26 +384,24 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
       const rt = realTimeData[coin.symbol + '_KRW'];
+      // 등락률/등락금액은 REST(빗썸) 값만 사용
+      let change = coin.change || 0;
+      let changeAmount = coin.changeAmount || 0;
+      let trend = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
+      let price = coin.price || 0;
       if (rt && !Number.isNaN(Number(rt.closePrice))) {
-        const millionValue = Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
-        const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
-        return {
-          ...coin,
-          price: Math.floor(Number(rt.closePrice)) || 0,
-          change: Number(rt.chgRate) || 0,
-          changeAmount: Math.floor(Number(rt.chgAmt)) || 0,
-          trend: Number(rt.chgRate) > 0 ? 'up' : Number(rt.chgRate) < 0 ? 'down' : 'same',
-          // 실시간 없으면 REST 값으로 안전하게 폴백
-          volume: formattedVolume || (Number(coin.volume) ? `${Math.round(Number(coin.volume)/1_000_000).toLocaleString()} 백만` : '')
-        };
+        price = Math.floor(Number(rt.closePrice)) || 0;
       }
+      // 거래량 등은 실시간 반영
+      const millionValue = rt && Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
+      const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
       return {
         ...coin,
-        price: coin.price || 0,
-        change: coin.change || 0,
-        changeAmount: coin.changeAmount || 0,
-        trend: coin.change > 0 ? 'up' : coin.change < 0 ? 'down' : 'same',
-        volume: Number(coin.volume) ? `${Math.round(Number(coin.volume) / 1_000_000).toLocaleString()} 백만` : ''
+        price,
+        change,
+        changeAmount,
+        trend,
+        volume: formattedVolume || (Number(coin.volume) ? `${Math.round(Number(coin.volume)/1_000_000).toLocaleString()} 백만` : '')
       };
     });
   }, [coinList, realTimeData]);
