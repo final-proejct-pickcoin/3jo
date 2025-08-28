@@ -21,8 +21,8 @@
             a.asset_name  AS assetName,
             a.market      AS market,
             w.amount      AS amount,
-            NULL          AS avgPrice,   <!-- 없음: 서비스에서 0 처리-->
-            NULL          AS nowPrice    <!-- 없음: 서비스에서 0 처리-->
+            NULL          AS avgPrice,   <!-- 없음: 서비스에서 계산-->
+            NULL          AS nowPrice    <!-- 없음: 프론트(WebSocket)에서 계산-->
         FROM wallet w
         JOIN asset a ON a.asset_id = w.asset_id
         WHERE w.user_id = #{userId}
@@ -30,6 +30,22 @@
         ORDER BY w.updated_at DESC
     </select>
 
+    <select id="fillsForAvg" parameterType="map" resultType="map">
+    SELECT
+        o.asset_id   AS assetId,
+        o.order_type AS side,   -- 0=매수, 1=매도
+        t.amount     AS qty,
+        t.price      AS price,
+        t.created_at AS ts
+    FROM `transaction` t
+    JOIN orders o ON o.order_id = t.order_id
+    WHERE o.user_id = #{userId}
+        AND o.asset_id IN
+        <foreach collection="assetIds" item="id" open="(" close=")" separator=",">
+        #{id}
+        </foreach>
+    ORDER BY ts ASC
+    </select>
 
 
     <!-- 최근 체결 20건 -->

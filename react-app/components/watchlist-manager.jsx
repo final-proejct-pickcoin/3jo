@@ -13,14 +13,97 @@ import {
   StarOff
 } from "lucide-react"
 
-export const WatchlistManager = () => {
-  const [watchlist, setWatchlist] = useState([
-    { symbol: "BTC", name: "Bitcoin", isWatched: true },
-    { symbol: "ETH", name: "Ethereum", isWatched: true },
-    { symbol: "ADA", name: "Cardano", isWatched: true },
-    { symbol: "DOT", name: "Polkadot", isWatched: true },
-    { symbol: "LINK", name: "Chainlink", isWatched: true }
-  ])
+const API_BASE = "http://localhost:8080/api/mypage";
+
+
+
+//=====================
+//1) JWT 파싱 함수 (UTF-8 안전)
+function parseJwt(token) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+    );
+    return JSON.parse(json);
+  } catch (e) {
+    console.error("JWT 파싱 실패:", e);
+    return null;
+  }
+}
+// AuthController 만들고 나서
+async function fetchUserIdFromToken(token) {
+  try {
+    const res = await fetch("http://localhost:8080/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // 200이더라도 ok=false일 수 있으니 JSON을 보고 판단
+    const data = await res.json().catch(() => ({}));
+    if (data && data.ok && (data.user_id ?? null) != null) {
+      return Number(data.user_id);
+    }
+    // id가 없고 email만 온 경우: 필요하면 여기서 email로 백엔드에 user_id 조회 API를 더 호출
+    console.warn("[/api/auth/me] no user_id; payload =", data);
+    return null;
+  } catch (e) {
+    console.warn("user_id 조회 실패:", e);
+    return null;
+  }
+}
+//=====================
+//user_lookupController 만든 뒤
+//이메일 추출
+function getEmailFromToken(t) {
+  try {
+    const base64Url = t.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
+    );
+    const claims = JSON.parse(json);
+    return claims?.email || claims?.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+//=====================
+async function fetchUserIdByEmail(email) {
+  const res = await fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(email)}`);
+  const data = await res.json().catch(() => ({}));
+  if (data?.ok && data?.user_id != null) return Number(data.user_id);
+  return null;
+}
+
+
+
+export default function MyPageWatchlist() {
+  
+  const [watchlist, setWatchlist] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [user_id, setUserId] = useState(null); // 초기값 null로 설정
+
+
+  const [token, setToken] = useState(null);
+
+
+  // 알림 UI 상태
+  const [alertDialogOpen, setAlertDialogOpen] = useState({});
+  const [newAlertType, setNewAlertType] = useState("price");
+  const [newAlertCond, setNewAlertCond] = useState("above");
+  const [newAlertValue, setNewAlertValue] = useState("");
+
+  
+  useEffect(() => {
+  if (!user_id) return;
+  setLoading(true);
+  Promise.all([
+    axios.get(`${API_BASE}/bookmarks/list`,        { params: { user_id } }),
+    axios.get(`${API_BASE}/assets/unbookmarked`,   { params: { user_id } }),
+  ])})
 
   // 거래 내역 데이터
   const transactions = [
