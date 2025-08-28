@@ -81,7 +81,7 @@ async def wait_for_es(timeout=60, interval=1):
             raise TimeoutError("Elasticsearch not ready after timeout")
         await asyncio.sleep(interval)
 
-# 인덱스 없으면 생성
+# # 인덱스 없으면 생성
 def create_indices_if_not_exist():
     """
     필요한 인덱스가 없으면 자동 생성

@@ -24,6 +24,7 @@ import websockets
 import aiohttp
 import time
 import random
+import redis
 import requests
 import threading
 import re
@@ -33,6 +34,8 @@ from collections import defaultdict
 
 # 라우터 생성
 router = APIRouter(prefix="/api", tags=["bithumb"])
+
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
 
 # ===== 환율 캐시 관리 =====
 _exchange_rate_cache = {"rate": None, "timestamp": 0}
@@ -372,20 +375,18 @@ async def get_coingecko_market_cap(symbol: str):
 
 # ===== 빗썸 API 함수들 =====
 async def get_bithumb_coin_data(symbol: str):
-    """빗썸에서 특정 코인 데이터 조회"""
+    """빗썸에서 특정 코인 데이터 조회 (실패 시에도 fallback 보장)"""
     try:
         url = f"https://api.bithumb.com/public/ticker/{symbol}_KRW"
         timeout = aiohttp.ClientTimeout(total=10)
-        
+
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
                     if data.get("status") == "0000":
                         ticker_data = data.get("data", {})
-                        
                         current_price = float(ticker_data.get("closing_price", 0))
-                        
                         return {
                             "status": "success",
                             "data": {
@@ -399,14 +400,16 @@ async def get_bithumb_coin_data(symbol: str):
                                 "units_traded": float(ticker_data.get("units_traded_24H", 0)),
                                 "prev_closing_price": float(ticker_data.get("prev_closing_price", 0)),
                                 "timestamp": ticker_data.get("date"),
-                                "tick_size": get_bithumb_tick_size(symbol, current_price)
+                                "tick_size": get_bithumb_tick_size(symbol, current_price),
+                                "market_warning": "NONE",
                             }
                         }
-                        
     except Exception as e:
         print(f"❌ 빗썸 API 실패 ({symbol}): {e}")
-    
-    return None
+
+    # ✅ 여기까지 내려오면 실패 → fallback 리턴
+    fb = generate_fallback_coin_data(symbol)
+    return {"status": "success", "data": fb}
 
 def generate_fallback_coin_data(symbol: str):
     """폴백 코인 데이터 생성"""
@@ -1660,99 +1663,99 @@ async def fetch_coin_links(symbol: str, asset_data: dict) -> dict:
     return links_out
 
 
-def generate_complete_analysis(
-    symbol, asset_data, history_data, markets_data, usd_krw_rate=1387, links: dict | None = None
-):
-   """완전한 코인 분석 데이터 생성 (실시간 환율 적용 + 실제 링크 주입)"""
-   korean_names = get_all_korean_names()
-   korean_name = korean_names.get(symbol, asset_data.get("name", symbol))
-   rank = int(asset_data.get("rank", 999))
-   price_usd = float(asset_data.get("priceUsd", 0))
-   price_krw = price_usd * usd_krw_rate
+# def generate_complete_analysis(
+#     symbol, asset_data, history_data, markets_data, usd_krw_rate=1387, links: dict | None = None
+# ):
+#    """완전한 코인 분석 데이터 생성 (실시간 환율 적용 + 실제 링크 주입)"""
+#    korean_names = get_all_korean_names()
+#    korean_name = korean_names.get(symbol, asset_data.get("name", symbol))
+#    rank = int(asset_data.get("rank", 999))
+#    price_usd = float(asset_data.get("priceUsd", 0))
+#    price_krw = price_usd * usd_krw_rate
 
-   # 가격 변동률 계산
-   price_changes = calculate_price_changes(history_data, price_usd)
+#    # 가격 변동률 계산
+#    price_changes = calculate_price_changes(history_data, price_usd)
 
-   # 리스크/점수 분석(기존 로직 가정)
-   analysis = generate_smart_analysis(symbol, rank, price_changes)
+#    # 리스크/점수 분석(기존 로직 가정)
+#    analysis = generate_smart_analysis(symbol, rank, price_changes)
 
-   # 링크: 주입된 links 사용 + 폴백
-   links = links or {}
-   homepage = links.get("homepage") or asset_data.get("explorer")
-   whitepaper = links.get("whitepaper")
-   twitter_screen_name = links.get("twitter_screen_name")
-   repos_url = links.get("repos_url", {"github": None, "gitlab": None, "bitbucket": None})
+#    # 링크: 주입된 links 사용 + 폴백
+#    links = links or {}
+#    homepage = links.get("homepage") or asset_data.get("explorer")
+#    whitepaper = links.get("whitepaper")
+#    twitter_screen_name = links.get("twitter_screen_name")
+#    repos_url = links.get("repos_url", {"github": None, "gitlab": None, "bitbucket": None})
 
-   # 딕셔너리 만들기 전에 계산
-   _price_usd = float(asset_data.get("priceUsd") or 0.0)
-   _supply = float(asset_data.get("supply") or 0.0)
-   _market_cap_usd = (
-       _price_usd * _supply
-       if (_price_usd > 0 and _supply > 0)
-       else float(asset_data.get("marketCapUsd") or 0.0)
-   )
-   return {
-        # 기본 정보
-        "id": asset_data.get("id"),
-        "name": korean_name,
-        "symbol": symbol,
-        "description": analysis["description"],
+#    # 딕셔너리 만들기 전에 계산
+#    _price_usd = float(asset_data.get("priceUsd") or 0.0)
+#    _supply = float(asset_data.get("supply") or 0.0)
+#    _market_cap_usd = (
+#        _price_usd * _supply
+#        if (_price_usd > 0 and _supply > 0)
+#        else float(asset_data.get("marketCapUsd") or 0.0)
+#    )
+#    return {
+#         # 기본 정보
+#         "id": asset_data.get("id"),
+#         "name": korean_name,
+#         "symbol": symbol,
+#         "description": analysis["description"],
 
-        # 순위 및 점수
-        "market_cap_rank": rank,
-        "coingecko_score": analysis["scores"]["overall"],
-        "developer_score": analysis["scores"]["developer"],
-        "community_score": analysis["scores"]["community"],
+#         # 순위 및 점수
+#         "market_cap_rank": rank,
+#         "coingecko_score": analysis["scores"]["overall"],
+#         "developer_score": analysis["scores"]["developer"],
+#         "community_score": analysis["scores"]["community"],
         
-        # 가격 정보 (환율 적용)
-        "current_price": price_krw,
-        "market_cap": _market_cap_usd * usd_krw_rate,
-        "total_volume": float(asset_data.get("volumeUsd24Hr") or 0.0) * usd_krw_rate,
+#         # 가격 정보 (환율 적용)
+#         "current_price": price_krw,
+#         "market_cap": _market_cap_usd * usd_krw_rate,
+#         "total_volume": float(asset_data.get("volumeUsd24Hr") or 0.0) * usd_krw_rate,
         
-        # 공급량
-        "total_supply": float(asset_data.get("supply", 0)),
-        "circulating_supply": float(asset_data.get("supply", 0)),
-        "max_supply": float(asset_data.get("maxSupply", 0)) if asset_data.get("maxSupply") else None,
+#         # 공급량
+#         "total_supply": float(asset_data.get("supply", 0)),
+#         "circulating_supply": float(asset_data.get("supply", 0)),
+#         "max_supply": float(asset_data.get("maxSupply", 0)) if asset_data.get("maxSupply") else None,
 
-        # 가격 변동
-        "price_change_24h": float(asset_data.get("changePercent24Hr", 0)),
-        "price_change_7d": price_changes.get("7d", 0),
-        "price_change_30d": price_changes.get("30d", 0),
-        "price_change_1y": price_changes.get("1y", 0),
+#         # 가격 변동
+#         "price_change_24h": float(asset_data.get("changePercent24Hr", 0)),
+#         "price_change_7d": price_changes.get("7d", 0),
+#         "price_change_30d": price_changes.get("30d", 0),
+#         "price_change_1y": price_changes.get("1y", 0),
 
-        # 고가/저가/ATH/ATL (샘플 계산 유지)
-        "high_24h": price_krw * 1.05,
-        "low_24h": price_krw * 0.95,
-        "ath": price_krw * analysis["multiples"]["ath"],
-        "ath_date": "2024-01-01T00:00:00.000Z",
-        "atl": price_krw * analysis["multiples"]["atl"],
-        "atl_date": "2023-01-01T00:00:00.000Z",
+#         # 고가/저가/ATH/ATL (샘플 계산 유지)
+#         "high_24h": price_krw * 1.05,
+#         "low_24h": price_krw * 0.95,
+#         "ath": price_krw * analysis["multiples"]["ath"],
+#         "ath_date": "2024-01-01T00:00:00.000Z",
+#         "atl": price_krw * analysis["multiples"]["atl"],
+#         "atl_date": "2023-01-01T00:00:00.000Z",
 
-        # 카테고리/기술
-        "categories": analysis["categories"],
-        "hashing_algorithm": analysis["technology"]["algorithm"],
-        "consensus_mechanism": analysis["technology"]["consensus"],
+#         # 카테고리/기술
+#         "categories": analysis["categories"],
+#         "hashing_algorithm": analysis["technology"]["algorithm"],
+#         "consensus_mechanism": analysis["technology"]["consensus"],
 
-        # 투자/리스크
-        "investment_grade": analysis["investment"]["grade"],
-        "risk_level": analysis["investment"]["risk"],
-        "volatility_analysis": analysis["risks"]["volatility"],
-        "liquidity_risk": analysis["risks"]["liquidity"],
-        "market_position_risk": analysis["risks"]["market_position"],
+#         # 투자/리스크
+#         "investment_grade": analysis["investment"]["grade"],
+#         "risk_level": analysis["investment"]["risk"],
+#         "volatility_analysis": analysis["risks"]["volatility"],
+#         "liquidity_risk": analysis["risks"]["liquidity"],
+#         "market_position_risk": analysis["risks"]["market_position"],
 
-        # ✅ 링크(실제)
-        "homepage": homepage,
-        "whitepaper": whitepaper,
-        "twitter_screen_name": twitter_screen_name,
-        "repos_url": {
-            "github": repos_url.get("github"),
-            "gitlab": repos_url.get("gitlab"),
-            "bitbucket": repos_url.get("bitbucket"),
-        },
+#         # ✅ 링크(실제)
+#         "homepage": homepage,
+#         "whitepaper": whitepaper,
+#         "twitter_screen_name": twitter_screen_name,
+#         "repos_url": {
+#             "github": repos_url.get("github"),
+#             "gitlab": repos_url.get("gitlab"),
+#             "bitbucket": repos_url.get("bitbucket"),
+#         },
 
-        # 보조 정보
-        "explorer": asset_data.get("explorer"),  # 참고용으로 그대로 유지
-    }
+#         # 보조 정보
+#         "explorer": asset_data.get("explorer"),  # 참고용으로 그대로 유지
+#     }
 
 # ===== 실시간 티커 API =====
 @router.get("/ticker/{symbol}")

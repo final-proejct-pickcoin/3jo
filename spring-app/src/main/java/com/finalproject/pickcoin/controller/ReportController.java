@@ -18,9 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.finalproject.pickcoin.domain.Inquiry;
 import com.finalproject.pickcoin.domain.Report;
 import com.finalproject.pickcoin.enums.EntityType;
 import com.finalproject.pickcoin.enums.ReportStatus;
+import com.finalproject.pickcoin.service.InquiryService;
 import com.finalproject.pickcoin.service.ReportService;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReportController {
     private final ReportService reportService;
+    private final InquiryService inquiryService;
 
     Logger logger = LoggerFactory.getLogger(ReportController.class);
 
@@ -38,6 +41,13 @@ public class ReportController {
     @PostMapping
     public ResponseEntity<?> submit(@RequestBody Report r) {
         reportService.submit(r);
+
+        // 4) inquiry 동시 저장
+            Inquiry inq = new Inquiry();
+            inq.setAmount(null);                 // 신고는 금액 없음
+            inq.setCategory("신고");
+            inq.setUser_id(r.getReporter_id());
+        inquiryService.insert(inq);
 
         try{
             MDC.put("event_type", "report");

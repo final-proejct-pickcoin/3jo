@@ -57,6 +57,7 @@ function NewsSummaryCard() {
     }
   }
 
+
   useEffect(() => {
     fetchSummary()
     const id = setInterval(fetchSummary, 10 * 60 * 1000) // 10분 갱신
@@ -245,12 +246,8 @@ export const MarketAnalysis = () => {
 
     const fetchTopCap = async () => {
       try {
-        const url =
-          `https://api.coingecko.com/api/v3/coins/markets` +
-          `?vs_currency=${v}&order=market_cap_desc&per_page=10&page=1` +
-          `&sparkline=false&price_change_percentage=24h`
-
-        const res = await fetch(url) // cleanup에서 abort 안 함
+        const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+        const res = await fetch(`${base}/proxy/topcap?vs=${v}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const arr = await res.json()
 
@@ -314,7 +311,7 @@ export const MarketAnalysis = () => {
         <div className="inline-flex items-center gap-2 bg-muted/50 rounded px-3 py-1">
           <span className="text-xs font-medium">통화:</span>
           <button
-            className={`px-2 py-1 rounded text-xs font-semibold ${currency === "KRW" ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}
+            className={`px-2 py-1 bg-white rounded text-xs font-semibold ${currency === "KRW" ? "bg-primary text-black" : "bg-muted text-muted-foreground"}`}
             onClick={() => setCurrency("KRW")}
           >
             KRW

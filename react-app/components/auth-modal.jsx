@@ -147,7 +147,7 @@ export function AuthModal({ isOpen, onClose }) {
               <Card>
                 <CardHeader>
                   <CardTitle>로그인</CardTitle>
-                  <CardDescription>회원가입 시 입력한 회원 정보를 입력하세요</CardDescription>
+                  <CardDescription>회원가입 시 입력한 회원 정보를 입력하세요11</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">

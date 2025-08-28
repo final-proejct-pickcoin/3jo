@@ -54,7 +54,6 @@ export default function TradingInterface() {
 
   // 호가창 상태
   const [orderbook, setOrderbook] = useState({ bids: [], asks: [], timestamp: null });
-  const [tickSize, setTickSize] = useState(1);
 
   // 주문 가격/수량
   const [orderPrice, setOrderPrice] = useState(0);
@@ -265,6 +264,10 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
                     chgRate,
                     chgAmt: parseFloat(c.chgAmt) || 0,
                     value,
+                    // 추가 데이터들
+                    volume: parseFloat(c.volume) || parseFloat(c.unitsTraded) || 0,
+                    highPrice: parseFloat(c.highPrice) || parseFloat(c.high24h) || 0,
+                    lowPrice: parseFloat(c.lowPrice) || parseFloat(c.low24h) || 0,
                     timestamp: c.timestamp || Date.now(),
                     priceDirection: closePrice > prevPrice ? 'up' : closePrice < prevPrice ? 'down' : 'same',
                     lastUpdate: Date.now()
@@ -275,12 +278,13 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
               // 호가 데이터 처리
               const { symbol, bids, asks } = data.content;
               if (symbol === selectedCoin + '_KRW') {
+                console.log('Orderbook 데이터 수신:', { symbol, bids, asks });
                 setOrderbook({ bids, asks, timestamp: Date.now() });
               }
             }
           } catch {}
         };
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           setWsConnected(false);
           console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
           
@@ -340,51 +344,57 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         const response = await fetch(apiUrl);
         const data = await response.json();
         
-        if (data.status === 'success' && data.data && Array.isArray(data.data)) {
+      if (data?.status === 'success' && Array.isArray(data?.data)) {
           console.log(`✅ 원화 마켓 ${data.data.length}개 코인 로드 성공`);
                      const mappedCoins = data.data.map(coin => ({
              symbol: coin.symbol,
              name: coin.korean_name || coin.symbol,
              englishName: coin.english_name || coin.symbol,
-             price: coin.current_price || 0,
-             change: coin.change_rate || 0,
-             changeAmount: coin.change_amount || 0,
-             volume: coin.volume || 0,
-             trend: (coin.change_rate || 0) > 0 ? 'up' : 'down',
+          price: Number(coin.current_price) || 0,
+          change: Number(coin.change_rate) || 0,
+          changeAmount: Number(coin.change_amount) || 0,
+          volume: Number(coin.volume) || 0,
+          trend: (Number(coin.change_rate) || 0) > 0 ? 'up' : 'down',
              marketWarning: coin.market_warning || 'NONE',
-             marketCap: coin.market_cap || 0,
-             marketCapRank: coin.market_cap_rank || 0,
+          marketCap: Number(coin.market_cap) || 0,
+          marketCapRank: Number(coin.market_cap_rank) || 0,
              // 추가 정보들
-             circulatingSupply: coin.circulating_supply || 0,
-             high24h: coin.high_24h || 0,
-             low24h: coin.low_24h || 0,
-             unitsTraded: coin.units_traded || 0
+          circulatingSupply: Number(coin.circulating_supply) || 0,
+          high24h: Number(coin.high_24h) || 0,
+          low24h: Number(coin.low_24h) || 0,
+          unitsTraded: Number(coin.units_traded) || 0
            }));
           setCoinList(mappedCoins);
+      } else {
+        // ✅ 실패/빈 배열도 명확히 처리
+        setCoinList([]);
         }
       } catch (e) {
-        console.error(`❌ 원화 마켓 조회 실패:`, e);
+      console.error('❌ 원화 마켓 조회 실패:', e);
+      setCoinList([]); // 네트워크 에러도 비우기
       } finally {
-        setCoinListLoading(false);
+      setCoinListLoading(false); // 무조건 로딩 종료
       }
     };
+
     fetchCoins();
   }, []);
 
   // 실시간 데이터로 코인 목록 업데이트
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
-      const realtimeInfo = realTimeData[coin.symbol + '_KRW'];
-      if (realtimeInfo && !isNaN(realtimeInfo.closePrice)) {
-        const millionValue = Math.round(parseFloat(realtimeInfo.value) / 1000000);
-        const formattedVolume = millionValue.toLocaleString() + ' 백만';
+      const rt = realTimeData[coin.symbol + '_KRW'];
+      if (rt && !Number.isNaN(Number(rt.closePrice))) {
+        const millionValue = Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
+        const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
         return {
           ...coin,
-          price: parseInt(realtimeInfo.closePrice),
-          change: Number(realtimeInfo.chgRate),
-          changeAmount: parseInt(realtimeInfo.chgAmt),
-          trend: Number(realtimeInfo.chgRate) > 0 ? 'up' : 'down',
-          volume: millionValue.toLocaleString() + ' 백만'
+          price: Math.floor(Number(rt.closePrice)) || 0,
+          change: Number(rt.chgRate) || 0,
+          changeAmount: Math.floor(Number(rt.chgAmt)) || 0,
+          trend: Number(rt.chgRate) > 0 ? 'up' : Number(rt.chgRate) < 0 ? 'down' : 'same',
+          // 실시간 없으면 REST 값으로 안전하게 폴백
+          volume: formattedVolume || (Number(coin.volume) ? `${Math.round(Number(coin.volume)/1_000_000).toLocaleString()} 백만` : '')
         };
       }
       return {
@@ -393,7 +403,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         change: coin.change || 0,
         changeAmount: coin.changeAmount || 0,
         trend: coin.change > 0 ? 'up' : coin.change < 0 ? 'down' : 'same',
-        volume: coin.volume ? `${Math.round(coin.volume / 1_000_000).toLocaleString()} 백만` : ''
+        volume: Number(coin.volume) ? `${Math.round(Number(coin.volume) / 1_000_000).toLocaleString()} 백만` : ''
       };
     });
   }, [coinList, realTimeData]);
@@ -455,7 +465,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
   // 현재가 계산
   const currentPriceKRW = useMemo(() => {
     const rt = realTimeData[selectedCoin + "_KRW"];
-    if (rt?.closePrice) return parseInt(rt.closePrice, 10);
+    if (rt?.closePrice) return parseFloat(rt.closePrice); // parseInt → parseFloat로 변경하여 소수점 유지
     const fallback = updatedCoinList.find(c => c.symbol === selectedCoin)?.price;
     return typeof fallback === "number" ? fallback : 0;
   }, [selectedCoin, realTimeData, updatedCoinList]);
@@ -646,16 +656,16 @@ useEffect(() => {
   return (
     <div className="w-full p-0 space-y-4">
       {/* 연결 상태 */}
-      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
+       <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-3 rounded-lg mb-4">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-semibold ${wsConnected ? 'text-green-600' : 'text-red-600'}`}>
+           <span className={`text-sm font-semibold ${wsConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {wsConnected ? '🟢 거래소 실시간 연결됨' : '🔴 연결 끊어짐'}
           </span>
-          <span className="text-sm text-gray-500">
-            구독: {wsStats.active_subscriptions || 0}개 | 실시간: {Object.keys(realTimeData).length}개 | 총 코인: {coinList.length}개
+           <span className="text-sm text-gray-500 dark:text-gray-400">
+             실시간: {Object.keys(realTimeData).length}개 | 총 코인: {coinList.length}개
           </span>
         </div>
-        <div className="text-sm text-gray-500">마지막 업데이트: {new Date().toLocaleTimeString()}</div>
+         <div className="text-sm text-gray-500 dark:text-gray-400">마지막 업데이트: {new Date().toLocaleTimeString()}</div>
       </div>
 
       {/* 상세 화면 */}
@@ -672,17 +682,17 @@ useEffect(() => {
             <Card className="flex flex-col border-0" style={{ height: 1200 }}>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2.5 mb-2">
-                  <Search className="h-4 w-4 text-muted-foreground" />
+                   <Search className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
                   <input
                     placeholder="코인명/심볼검색"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-10 flex-1 border rounded px-2"
+                     className="h-10 flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     autoComplete="off"
                   />
                 </div>
-
-                <div className="flex bg-gray-100 rounded-lg p-1 w-full mb-4 shadow-sm">
+{/* 잠깐 주석 */}
+                {/* <div className="flex bg-gray-100 rounded-lg p-1 w-full mb-4 shadow-sm">
                   {[
                     { key: "won", label: "원화" },
                     { key: "hold", label: "보유" },
@@ -699,17 +709,17 @@ useEffect(() => {
                       {t.label}
                     </button>
                   ))}
-                </div>
+                </div> */}
               </CardHeader>
 
               <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
-                <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 px-2 py-2 text-sm font-bold text-muted-foreground border-b bg-gray-50 sticky top-0 z-10"
+                                 <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 px-2 py-2 text-sm font-bold text-muted-foreground dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 sticky top-0 z-10"
                   style={{ height: '40px', minHeight: '40px', maxHeight: '40px', flexShrink: 0, overflow: 'hidden' }}>
                   <div className="text-center gap-3" />
-                  <div className="flex items-center cursor-pointer text-left" onClick={() => handleSort('name')}>한글명{sortKey === 'name' ? (<span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300">△▽</span>)}</div>
-                  <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('price')}>현재가{sortKey === 'price' ? (<span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300">△▽</span>)}</div>
-                  <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('change')}>전일대비{sortKey === 'change' ? (<span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300">△▽</span>)}</div>
-                  <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('volume')}>거래대금{sortKey === 'volume' ? (<span className="text-[10px] text-blue-600">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300">△▽</span>)}</div>
+                   <div className="flex items-center cursor-pointer text-left" onClick={() => handleSort('name')}>한글명{sortKey === 'name' ? (<span className="text-[10px] text-blue-600 dark:text-blue-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300 dark:text-gray-500">△▽</span>)}</div>
+                   <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('price')}>현재가{sortKey === 'price' ? (<span className="text-[10px] text-blue-600 dark:text-blue-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300 dark:text-gray-500">△▽</span>)}</div>
+                   <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('change')}>전일대비{sortKey === 'change' ? (<span className="text-[10px] text-blue-600 dark:text-blue-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300 dark:text-gray-500">△▽</span>)}</div>
+                   <div className="text-right flex items-center gap-1 cursor-pointer" onClick={() => handleSort('volume')}>거래대금{sortKey === 'volume' ? (<span className="text-[10px] text-blue-600 dark:text-blue-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300 dark:text-gray-500">△▽</span>)}</div>
                 </div>
 
                 <div className="overflow-y-auto flex-1 min-h-0" style={{ height: combinedHeight, flexShrink: 0 }}>
@@ -780,10 +790,10 @@ useEffect(() => {
           <div className="flex flex-col min-h-0 gap-4 h-full w-3/5" ref={mainPanelRef}>
             {/* 차트/코인정보 탭 */}
             <div className="w-full" style={{ height: chartPanelExpanded ? combinedHeight : '120px' }}>
-              <div className={`flex justify-left border-b border-gray-200 ${chartPanelExpanded ? 'mb-4' : 'mb-1'}`}>
+               <div className={`flex justify-left border-b border-gray-200 dark:border-gray-700 ${chartPanelExpanded ? 'mb-4' : 'mb-1'}`}>
                 <button
-                  className={`w-32 px-6 py-3 text-xl font-semibold text-center border-2 border-gray-300 rounded-t-lg hover:bg-gray-50 transition-colors ${
-                    chartPanelExpanded && chartTab === "차트" ? 'text-blue-600 border-blue-500 bg-blue-100' : 'text-gray-500 bg-white'
+                   className={`w-32 px-6 py-3 text-xl font-semibold text-center border-2 border-gray-300 dark:border-gray-600 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                     chartPanelExpanded && chartTab === "차트" ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-blue-100 dark:bg-blue-900' : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800'
                   }`}
                   onClick={() => {
                     if (chartPanelExpanded && chartTab === "차트") setChartPanelExpanded(false);
@@ -792,8 +802,8 @@ useEffect(() => {
                 >차트</button>
 
                 <button
-                  className={`w-30 px-6 py-3 text-xl font-semibold text-center border-2 border-gray-300 rounded-t-lg hover:bg-gray-50 transition-colors border-l-0 rounded-l-none ${
-                    chartPanelExpanded && chartTab === "코인정보" ? 'text-blue-600 border-blue-500 bg-blue-100' : 'text-gray-500 bg-white'
+                   className={`w-30 px-6 py-3 text-xl font-semibold text-center border-2 border-gray-300 dark:border-gray-600 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-l-0 rounded-l-none ${
+                     chartPanelExpanded && chartTab === "코인정보" ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-blue-100 dark:bg-blue-900' : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800'
                   }`}
                   onClick={() => {
                     if (chartPanelExpanded && chartTab === "코인정보") setChartPanelExpanded(false);
@@ -803,14 +813,14 @@ useEffect(() => {
               </div>
 
               {chartPanelExpanded && chartTab === "차트" && (
-                <div className="p-2" style={{ height: '550px' }}>
-                  <div className="bg-white rounded h-full">
+                 <div className="p-2" style={{ height: '700px' }}>
+                   <div className="bg-white dark:bg-gray-800 rounded h-full">
                     <TradingChart
                       symbol={`${selectedCoin}/KRW`}
                       koreanName={selectedCoin === "BTC" ? "비트코인" : selectedCoin}
                       height={650}
                       theme="light"
-                      currentPrice={realTimeData[selectedCoin]?.close_price || 0}
+                       currentPrice={realTimeData[selectedCoin + '_KRW']?.closePrice || 0}
                       initialTimeframe="1h"
                       onPriceUpdate={(price) => {
                         if (price > 0) {
@@ -826,7 +836,7 @@ useEffect(() => {
               )}
 
               {chartPanelExpanded && chartTab === "코인정보" && (
-                <div className="p-4" style={{ height: '900px' }}>
+                 <div className="p-4 bg-white dark:bg-gray-800 rounded" style={{ height: '800px', overflowY: 'auto' }}>
                   <CoinInfoPanel
                     coin={coinList.find(c => c.symbol === selectedCoin) || coinList[0]}
                     realTimeData={realTimeData[selectedCoin + '_KRW']}
@@ -837,15 +847,23 @@ useEffect(() => {
 
               {/* 하단: 주문/호가/정보 */}
               {detailView === "chart" && (
-                <div className="w-full flex flex-row" style={{ height: chartPanelExpanded ? 600 : 800, marginTop: chartPanelExpanded ? '170px' : '20px' }}>
+                <div className="w-full flex flex-row" style={{ 
+                  height: chartPanelExpanded ? 'auto' : '800px', 
+                  minHeight: chartPanelExpanded ? '600px' : '800px',
+                  marginTop: chartPanelExpanded ? '20px' : '20px' 
+                }}>
                   {/* 주문 영역 */}
-                  <div className="flex-1 w-2/3 flex flex-col bg-white px-6 overflow-auto"
-                    style={{ minHeight: '800px', paddingTop: chartPanelExpanded ? '16px' : '28px', paddingBottom: '0' }}>
+                  <div className="flex-1 w-2/3 flex flex-col bg-white dark:bg-gray-800 px-6 overflow-auto"
+                    style={{ 
+                      minHeight: '600px', 
+                      paddingTop: '20px', 
+                      paddingBottom: '20px' 
+                    }}>
                     {/* 메인 탭 */}
-                    <div className="flex justify-center border-b border-gray-200 mb-4">
+                    <div className="flex justify-center border-b border-gray-200 dark:border-gray-700 mb-4">
                       <button
-                        className={`w-full px-6 py-3 text-3xl font-semibold text-center border-2 border-gray-300 rounded-t-lg transition-colors ${
-                          orderPanelExpanded ? 'text-blue-600 border-blue-500 bg-blue-50' : 'text-gray-500 bg-white hover:bg-gray-50'
+                        className={`w-full px-6 py-3 text-3xl font-semibold text-center border-2 border-gray-300 dark:border-gray-600 rounded-t-lg transition-colors ${
+                          orderPanelExpanded ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900' : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
                         }`}
                         onClick={() => setOrderPanelExpanded(!orderPanelExpanded)}
                       >거래</button>
@@ -891,9 +909,9 @@ useEffect(() => {
                           <>
                             {/* 주문유형 */}
                             <div className="flex items-center gap-4 mb-6">
-                              <span className="text-md font-semibold">주문유형</span>
+                              <span className="text-md font-semibold text-gray-900 dark:text-gray-100">주문유형</span>
 
-                              <label className="flex items-center gap-1 text-md font-semibold text-blue-600">
+                              <label className="flex items-center gap-1 text-md font-semibold text-blue-600 dark:text-blue-400">
                                 <input
                                   type="radio"
                                   name="orderType"
@@ -904,7 +922,7 @@ useEffect(() => {
                                 /> 지정가
                               </label>
 
-                              <label className="flex items-center gap-1 text-md text-gray-600">
+                              <label className="flex items-center gap-1 text-md text-gray-600 dark:text-gray-400">
                                 <input
                                   type="radio"
                                   name="orderType"
@@ -918,10 +936,10 @@ useEffect(() => {
 
                             {/* 가격 */}
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-md font-semibold">
+                              <span className="text-md font-semibold text-gray-900 dark:text-gray-100">
                                 {tradeSubTab === "매수" ? "매수가격 (KRW)" : "매도가격 (KRW)"}
                               </span>
-                              <div className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                                 현재가 {(() => {
                                   const r = realTimeData[selectedCoin + '_KRW']?.closePrice;
                                   let price = typeof r !== 'undefined' ? Number(r) : currentPriceKRW;
@@ -966,32 +984,32 @@ useEffect(() => {
     setOrderPrice(Number.isFinite(n) ? n : 0);
   }}
   disabled={orderType === "시장가"}
-  className="w-full border rounded h-16 px-2 mb-6 text-3xl font-semibold disabled:bg-gray-100"
+  className="w-full border border-gray-300 dark:border-gray-600 rounded h-16 px-2 mb-6 text-3xl font-semibold disabled:bg-gray-100 dark:disabled:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
   placeholder={orderType === "지정가" ? "지정가를 입력하세요" : "시장가(자동)"}
 />
 
 
                             {/* 수량 */}
                             <div className="mb-6">
-                              <div className="text-md font-semibold mb-1">주문수량</div>
+                              <div className="text-md font-semibold mb-1 text-gray-900 dark:text-gray-100">주문수량</div>
                               <input
                                 type="text"
                                 value={orderQty}
                                 onChange={(e) => setOrderQty(Number(e.target.value) || 0)}
-                                className="w-full border rounded h-16 px-2 mb-2 text-3xl font-semibold"
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded h-16 px-2 mb-2 text-3xl font-semibold bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                 placeholder="0"
                               />
                               <div className="flex gap-2">
-                                <button className="flex-1 border rounded py-1 text-md" onClick={() => setOrderQty(prev => Number((prev + 0.1).toFixed(8)))}>+0.1</button>
-                                <button className="flex-1 border rounded py-1 text-md" onClick={() => setOrderQty(prev => Number((prev + 0.25).toFixed(8)))}>+0.25</button>
-                                <button className="flex-1 border rounded py-1 text-md" onClick={() => setOrderQty(prev => Number((prev + 0.5).toFixed(8)))}>+0.5</button>
-                                <button className="flex-1 border rounded py-1 text-md" onClick={() => setOrderQty(0)}>초기화</button>
+                                <button className="flex-1 border border-gray-300 dark:border-gray-600 rounded py-1 text-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => setOrderQty(prev => Number((prev + 0.1).toFixed(8)))}>+0.1</button>
+                                <button className="flex-1 border border-gray-300 dark:border-gray-600 rounded py-1 text-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => setOrderQty(prev => Number((prev + 0.25).toFixed(8)))}>+0.25</button>
+                                <button className="flex-1 border border-gray-300 dark:border-gray-600 rounded py-1 text-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => setOrderQty(prev => Number((prev + 0.5).toFixed(8)))}>+0.5</button>
+                                <button className="flex-1 border border-gray-300 dark:border-gray-600 rounded py-1 text-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => setOrderQty(0)}>초기화</button>
                               </div>
                             </div>
 
                             {/* 총액 */}
                             <div className="mb-6">
-                              <div className="text-md font-semibold mb-1">주문총액 (KRW)</div>
+                              <div className="text-md font-semibold mb-1 text-gray-900 dark:text-gray-100">주문총액 (KRW)</div>
                               <input
                                 type="text"
                                 readOnly
@@ -1003,7 +1021,7 @@ useEffect(() => {
                                   if (totalAmount < 100) return totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                   return totalAmount.toLocaleString();
                                 })()}
-                                className="w-full border rounded h-16 px-2 bg-gray-50 text-3xl font-semibold"
+                                className="w-full border border-gray-300 dark:border-gray-600 rounded h-16 px-2 bg-gray-50 dark:bg-gray-700 text-3xl font-semibold text-gray-900 dark:text-gray-100"
                                 placeholder="0"
                               />
                             </div>
@@ -1036,8 +1054,8 @@ useEffect(() => {
           type="button"
           className={`px-3 py-1 rounded-md border text-md ${
             historyTab === "미체결"
-              ? "bg-blue-50 text-blue-600 border-blue-200"
-              : "text-gray-600 border-gray-200"
+              ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700"
+              : "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
           }`}
           onClick={() => setHistoryTab("미체결")}
         >
@@ -1047,8 +1065,8 @@ useEffect(() => {
           type="button"
           className={`px-3 py-1 rounded-md border text-md ${
             historyTab === "체결"
-              ? "bg-blue-50 text-blue-600 border-blue-200"
-              : "text-gray-600 border-gray-200"
+              ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700"
+              : "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
           }`}
           onClick={() => setHistoryTab("체결")}
         >
@@ -1059,7 +1077,7 @@ useEffect(() => {
       <div className="flex gap-2">
         <button
           type="button"
-          className="px-3 py-1 rounded-md border text-md bg-white hover:bg-gray-50"
+          className="px-3 py-1 rounded-md border text-md bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600"
           onClick={() => {
             if (historyTab === "체결") Concluded_orders();
             else Unconcluded_orders();
@@ -1079,7 +1097,7 @@ useEffect(() => {
 
       if (items.length === 0) {
         return (
-          <div className="border rounded p-4 text-center text-gray-400">
+          <div className="border border-gray-200 dark:border-gray-600 rounded p-4 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800">
             {historyTab} 내역이 없습니다.
           </div>
         );
@@ -1089,9 +1107,9 @@ useEffect(() => {
       const visible = items.slice(0, historyShowCount);
 
       return (
-        <div className="border rounded overflow-hidden">
+        <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800">
           {/* 헤더 */}
-          <div className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm font-semibold bg-gray-50 border-b">
+          <div className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm font-semibold bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
             <div className="text-left">체결시간</div>
             <div className="text-center">구분</div>
             <div className="text-right">수량</div>
@@ -1103,14 +1121,14 @@ useEffect(() => {
             {visible.map((r, idx) => (
               <div
                 key={r.id ?? idx}
-                className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm border-b hover:bg-gray-50"
+                className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <div className="text-left">{r.ts ?? "-"}</div>
                 <div
                   className={`text-center font-semibold ${
                     (r.side === "매수" || r.side === 0 || r.side === "0")
-                      ? "text-red-600"
-                      : "text-blue-600"
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-blue-600 dark:text-blue-400"
                   }`}
                 >
                   {r.side ?? "-"}
@@ -1123,9 +1141,9 @@ useEffect(() => {
 
           {/* 더보기 */}
           {items.length > historyShowCount && (
-            <div className="p-2 bg-white flex justify-center">
+            <div className="p-2 bg-white dark:bg-gray-800 flex justify-center">
               <button
-                className="px-3 py-1 text-sm border rounded hover:bg-gray-50"
+                className="px-3 py-1 text-sm border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700"
                 onClick={() => setHistoryShowCount((n) => n + 10)}
               >
                 더보기 (+10)
@@ -1143,27 +1161,52 @@ useEffect(() => {
                   </div>
 
                   {/* 호가/정보 */}
-                  <div className="w-1/3 flex flex-col bg-white border-l border-gray-200 pt-7">
+                  <div className="w-1/3 flex flex-col bg-white dark:bg-gray-800 pt-7">
                     {/* 호가 */}
-                    <div className="border-b border-gray-200">
+                    <div className="border-b border-gray-200 dark:border-gray-700">
                       <button
-                        className={`w-full px-6 py-3 text-3xl font-semibold text-center border-2 border-gray-300 rounded-t-lg bg-white hover:bg-gray-50 transition-colors ${
-                          expandedSections.호가 ? 'text-blue-600 border-blue-500 bg-blue-50' : 'text-gray-500'
+                        className={`w-full px-6 py-3 text-3xl font-semibold text-center border-2 border-gray-300 dark:border-gray-600 rounded-t-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                          expandedSections.호가 ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900' : 'text-gray-500 dark:text-gray-400'
                         }`}
                         onClick={() => toggleSection("호가")}
                       >호가</button>
 
                       {expandedSections.호가 && (
-                        <div className="p-4 border-t border-gray-200 bg-gray-50">
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
                           <OrderBook
                             selectedCoin={selectedCoin}
                             realTimeData={realTimeData[selectedCoin + '_KRW']}
                             orderbook={orderbook}
-                            tickSize={tickSize}
                             currentPriceKRW={currentPriceKRW}
                             onPriceSelect={(price) => {
                               // 호가 클릭 시: 지정가면 입력값으로 세팅, 시장가면 무시
-                              if (orderType === "지정가") setOrderPrice(price);
+                              if (orderType === "지정가") {
+                                setOrderPrice(price);
+                                setOrderPriceInput(String(price));
+                              }
+                              if (orderType === "지정가") {
+                                // JavaScript 부동소수점 오류 방지: 정확한 소수점 자릿수 유지
+                                const exactPrice = parseFloat(price);
+                                setOrderPrice(exactPrice);
+                                
+                                // 가격대별 정확한 소수점 자릿수로 표시
+                                let formattedPrice;
+                                if (exactPrice < 1) {
+                                  formattedPrice = exactPrice.toFixed(4); // 0.1234
+                                } else if (exactPrice < 10) {
+                                  formattedPrice = exactPrice.toFixed(4); // 1.5678
+                                } else if (exactPrice < 100) {
+                                  formattedPrice = exactPrice.toFixed(2); // 41.79
+                                } else if (exactPrice < 1000) {
+                                  formattedPrice = exactPrice.toFixed(2); // 123.45
+                                } else if (exactPrice < 10000) {
+                                  formattedPrice = exactPrice.toFixed(2); // 1234.56
+                                } else {
+                                  formattedPrice = exactPrice.toFixed(2); // 12345.67
+                                }
+                                
+                                setOrderPriceInput(formattedPrice);
+                              }
                             }}
                           />
                         </div>
@@ -1171,24 +1214,176 @@ useEffect(() => {
                     </div>
 
                     {/* 거래정보 */}
-                    <div className="border-b border-gray-200">
+                    <div className="border-b border-gray-200 dark:border-gray-700">
                       <button
-                        className={`w-full px-6 py-3 text-3xl font-semibold text-center border-2 border-gray-300 rounded-t-lg bg-white hover:bg-gray-50 transition-colors ${
-                          expandedSections.거래정보 ? 'text-blue-600 border-blue-500 bg-blue-50' : 'text-gray-500'
+                        className={`w-full px-6 py-3 text-3xl font-semibold text-center border-2 border-gray-300 dark:border-gray-600 rounded-t-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                          expandedSections.거래정보 ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900' : 'text-gray-500 dark:text-gray-400'
                         }`}
                         onClick={() => toggleSection("거래정보")}
                       >거래정보</button>
 
                       {expandedSections.거래정보 && (
-                        <div className="p-4 border-t border-gray-200 bg-gray-50">
-                          <div className="space-y-3 text-sm text-gray-700">
-                            <div className="flex justify-between"><span className="font-semibold">거래량</span><span>-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">거래대금</span><span>-</span></div>
-                            <div className="text-xs text-gray-400 mb-3">(최근24시간)</div>
-                            <div className="flex justify-between"><span className="font-semibold">24h 최고</span><span className="text-red-500">-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">24h 최저</span><span className="text-blue-500">-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">시가총액</span><span>-</span></div>
-                            <div className="flex justify-between"><span className="font-semibold">유통량</span><span>-</span></div>
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                          <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                            {/* 거래량 */}
+                            <div className="flex justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold text-gray-900 dark:text-gray-100">거래량</span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">(최근24시간)</span>
+                              </div>
+                              <span className="font-mono text-gray-900 dark:text-gray-100">
+                                {(() => {
+                                  // realTimeData에서 먼저 확인, 없으면 coinList에서
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  if (rt?.volume && rt.volume > 0) {
+                                    const vol = parseFloat(rt.volume);
+                                    if (vol >= 1000000) return (vol / 1000000).toFixed(2) + 'M';
+                                    if (vol >= 1000) return (vol / 1000).toFixed(2) + 'K';
+                                    return vol.toFixed(2);
+                                  } else if (coin?.unitsTraded) {
+                                    const vol = parseFloat(coin.unitsTraded);
+                                    if (vol >= 1000000) return (vol / 1000000).toFixed(2) + 'M';
+                                    if (vol >= 1000) return (vol / 1000).toFixed(2) + 'K';
+                                    return vol.toFixed(2);
+                                  }
+                                  return '-';
+                                })()} {selectedCoin}
+                              </span>
+                            </div>
+                            
+                            {/* 거래대금 */}
+                            <div className="flex justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-semibold text-gray-900 dark:text-gray-100">거래대금</span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">(최근24시간)</span>
+                              </div>
+                              <span className="font-mono text-gray-900 dark:text-gray-100">
+                                {(() => {
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  let vol = 0;
+                                  let price = 0;
+                                  
+                                  if (rt?.volume && rt.volume > 0) {
+                                    vol = parseFloat(rt.volume);
+                                    price = parseFloat(rt.closePrice);
+                                  } else if (coin?.unitsTraded && coin?.price) {
+                                    vol = parseFloat(coin.unitsTraded);
+                                    price = parseFloat(coin.price);
+                                  }
+                                  
+                                  if (vol > 0 && price > 0) {
+                                    const total = vol * price;
+                                    if (total >= 1000000000000) return (total / 1000000000000).toFixed(2) + 'T';
+                                    if (total >= 1000000000) return (total / 1000000000).toFixed(2) + 'B';
+                                    if (total >= 1000000) return (total / 1000000).toFixed(2) + 'M';
+                                    if (total >= 1000) return (total / 1000).toFixed(2) + 'K';
+                                    return total.toFixed(0);
+                                  }
+                                  return '-';
+                                })()} KRW
+                              </span>
+                            </div>
+                                                        
+                            {/* 24h 최고 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">24h 최고</span>
+                              <span className="font-mono text-red-500 dark:text-red-400">
+                                {(() => {
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  let price = 0;
+                                  if (rt?.highPrice && rt.highPrice > 0) {
+                                    price = parseFloat(rt.highPrice);
+                                  } else if (coin?.high24h) {
+                                    price = parseFloat(coin.high24h);
+                                  }
+                                  
+                                  if (price > 0) {
+                                    if (price < 1) return price.toFixed(4);
+                                    if (price < 10) return price.toFixed(4);
+                                    if (price < 100) return price.toFixed(2);
+                                    if (price < 1000) return Math.round(price).toLocaleString();
+                                    if (price < 10000) return Math.round(price).toLocaleString();
+                                    if (price < 100000) return (Math.round(price / 10) * 10).toLocaleString();
+                                    if (price < 1000000) return (Math.round(price / 100) * 100).toLocaleString();
+                                    return (Math.round(price / 1000) * 1000).toLocaleString();
+                                  }
+                                  return '-';
+                                })()}
+                              </span>
+                            </div>
+                            
+                            {/* 24h 최저 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">24h 최저</span>
+                              <span className="font-mono text-blue-500 dark:text-blue-400">
+                                {(() => {
+                                  const rt = realTimeData[selectedCoin + '_KRW'];
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  
+                                  let price = 0;
+                                  if (rt?.lowPrice && rt.lowPrice > 0) {
+                                    price = parseFloat(rt.lowPrice);
+                                  } else if (coin?.low24h) {
+                                    price = parseFloat(coin.low24h);
+                                  }
+                                  
+                                  if (price > 0) {
+                                    if (price < 1) return price.toFixed(4);
+                                    if (price < 10) return price.toFixed(4);
+                                    if (price < 100) return price.toFixed(2);
+                                    if (price < 1000) return Math.round(price).toLocaleString();
+                                    if (price < 10000) return Math.round(price).toLocaleString();
+                                    if (price < 100000) return (Math.round(price / 10) * 10).toLocaleString();
+                                    if (price < 1000000) return (Math.round(price / 100) * 100).toLocaleString();
+                                    return (Math.round(price / 1000) * 1000).toLocaleString();
+                                  }
+                                  return '-';
+                                })()}
+                              </span>
+                            </div>
+                            
+                            {/* 시가총액 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">시가총액</span>
+                              <span className="font-mono text-gray-900 dark:text-gray-100">
+                                {(() => {
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  if (coin?.marketCap) {
+                                    const cap = parseFloat(coin.marketCap);
+                                    if (cap >= 1000000000000) return (cap / 1000000000000).toFixed(1) + 'T';
+                                    if (cap >= 1000000000) return (cap / 1000000000).toFixed(1) + 'B';
+                                    if (cap >= 1000000) return (cap / 1000000).toFixed(1) + 'M';
+                                    if (cap >= 1000) return (cap / 1000).toFixed(1) + 'K';
+                                    return cap.toFixed(0);
+                                  }
+                                  return '-';
+                                })()} KRW
+                              </span>
+                            </div>
+                            
+                            {/* 유통량 */}
+                            <div className="flex justify-between">
+                              <span className="font-semibold text-gray-900 dark:text-gray-100">유통량</span>
+                              <span className="font-mono text-gray-900 dark:text-gray-100">
+                                {(() => {
+                                  const coin = coinList.find(c => c.symbol === selectedCoin);
+                                  if (coin?.circulatingSupply) {
+                                    const supply = parseFloat(coin.circulatingSupply);
+                                    if (supply >= 1000000000) return (supply / 1000000000).toFixed(2) + 'B';
+                                    if (supply >= 1000000) return (supply / 1000000).toFixed(2) + 'M';
+                                    if (supply >= 1000) return (supply / 1000).toFixed(2) + 'K';
+                                    return supply.toFixed(2);
+                                  }
+                                  return '-';
+                                })()}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
