@@ -52,13 +52,7 @@ const tradingData = [
   { time: "16:00", volume: 2100, users: 78 },
   { time: "20:00", volume: 1600, users: 56 },
 ];
-const coinData = [
-  { name: "BTC", value: 45, volume: "28,450" },
-  { name: "ETH", value: 25, volume: "15,230" },
-  { name: "ADA", value: 15, volume: "8,920" },
-  { name: "DOT", value: 10, volume: "5,670" },
-  { name: "Others", value: 5, volume: "2,340" },
-];
+
 const pendingWithdrawals = [
   { id: 1, user: "user123", amount: "1.2345 BTC", time: "5분 전", status: "대기" },
   { id: 2, user: "user456", amount: "15.67 ETH", time: "12분 전", status: "대기" },
@@ -72,7 +66,7 @@ const kycPending = [
 export default function DashboardOverview({ isDarkMode }) {
   const [stats, setStats] = useState({
     totalUsers: 15420,
-    onlineUsers: 1247,
+    onlineUsers: 0,
     dailyVolume: 28450.67,
     revenue: 847230,
     systemLoad: 68,
@@ -80,11 +74,51 @@ export default function DashboardOverview({ isDarkMode }) {
     pendingWithdrawals: 23,
     kycPending: 12,
   });
+
+// ✅ 여기 78번 줄 근처에 WebSocket useEffect 추가
+useEffect(() => {
+  const socket = new WebSocket("ws://localhost:8080/ws/stats");
+
+  socket.onopen = () => {
+    console.log("✅ Admin WebSocket 연결됨");
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      // console.log("📩 WebSocket 데이터:", data);
+
+      if (data.onlineNow !== undefined) {
+        setStats(prev => ({
+          ...prev,
+          onlineUsers: data.onlineNow,
+        }));
+      }
+    } catch (e) {
+      console.error("⚠️ WebSocket 메시지 파싱 오류:", e);
+    }
+  };
+
+  socket.onclose = () => {
+    console.log("❌ Admin WebSocket 연결 종료");
+  };
+
+  return () => {
+    socket.close();
+  };
+}, []);
+
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tradingEnabled, setTradingEnabled] = useState(true);
   const [dashboardInfo, setDashboardInfo] = useState({});
   const [interval, setInterval] = useState("month"); // 기본: 일별
+  const [txInterval, setTxInterval] = useState("month"); // 기본: 일별
   const [userTrend, setUserTrend] = useState([]);  // { date, count } 데이터 배열
+  const [tradingData, setTradingData] = useState([]);
+  const [latestVolume, setLatestVolume] = useState(0);
+  const [withDrawLogs, setWithDrawLogs] = useState([]);
+
   const [latestTotal, setLatestTotal] = useState(0);
   const INTERVAL_OPTIONS = [
     { label: "시간별", value: "hour" },
@@ -92,6 +126,14 @@ export default function DashboardOverview({ isDarkMode }) {
     { label: "주간별", value: "week" },
     { label: "월간별", value: "month" },
   ];
+
+  const [coinData, setCoinData] = useState([
+    { name: "BTC", value: 45, volume: "28,450" },
+    { name: "ETH", value: 25, volume: "15,230" },
+    { name: "ADA", value: 15, volume: "8,920" },
+    { name: "DOT", value: 10, volume: "5,670" },
+    { name: "Others", value: 5, volume: "2,340" },
+  ]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -109,14 +151,15 @@ export default function DashboardOverview({ isDarkMode }) {
     setTradingEnabled(!tradingEnabled);
   };
 
+  const getWithdrawLogs = async () => {
+    const res = await axios.get("http://localhost:8000/withdraws");
+    // console.log(res.data);
+    setWithDrawLogs(res.data)
+  }
+
   const handleWithdrawalApproval = (id, action) => {
     console.log(`Withdrawal ${id} ${action}ed`);
     // 실제로는 API 호출
-  };
-
-  const handleKycReview = (id) => {
-    console.log(`KYC ${id} review`);
-    // 실제로는 KYC 상세 페이지로 이동
   };
 
   // 대시보드 상단 정보 가져오기
@@ -131,9 +174,27 @@ export default function DashboardOverview({ isDarkMode }) {
       })
   }
 
+  // buy 거래대금 가져오기
+  async function fetchBuyLogs() {
+    try {
+      const response = await fetch("http://localhost:8000/buy-logs");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data; // 코인별 거래량 배열 [{coin, total_amount}, ...]
+    } catch (error) {
+      console.error("Failed to fetch buy logs:", error);
+      return null;
+    }
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("access_token")
     const fetchInterval = interval || "month";
+    const tradeInterval = txInterval || "month";
+
+    // 유저 추이 API 호출
     fetch(`http://localhost:8000/api/stats/users?interval=${fetchInterval}`)
       .then((res) => res.json())
       .then((data) => {
@@ -142,9 +203,31 @@ export default function DashboardOverview({ isDarkMode }) {
           setLatestTotal(data[data.length - 1].count); // 마지막 항목의 count
         }
       });
+
+    // 거래대금 추이 API 호출
+    fetch(`http://localhost:8000/api/stats/volume?interval=${tradeInterval}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setTradingData(data);
+        if (data && data.length > 0) {
+          setLatestVolume(data[data.length - 1].volume);
+        }
+      });
+
+    fetchBuyLogs().then((data) => {
+      if (data) {
+        // 예: 상태에 저장하거나 차트 데이터로 변환
+        setCoinData(data.map(item => ({
+          name: item.coin,
+          value: item.total_amount,
+          volume: item.total_amount
+        })));
+      }
+    });
     
+    getWithdrawLogs();
     getAdminInfo(token);
-  },[interval])
+  },[interval, txInterval])
 
   return (
     <div className="space-y-6">
@@ -224,12 +307,12 @@ export default function DashboardOverview({ isDarkMode }) {
                 <p className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
                   {stats.onlineUsers.toLocaleString()}
                 </p>
-                <div className="flex items-center mt-2">
+                {/* <div className="flex items-center mt-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
                   <span className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    1분 전
+            
                   </span>
-                </div>
+                </div> */}
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Activity className="h-6 w-6 text-blue-600" />
@@ -251,7 +334,7 @@ export default function DashboardOverview({ isDarkMode }) {
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">어제 {dashboardInfo.yesterday_tx?.toFixed(2)}원</span>
+                  <span className="text-sm text-green-600">어제 {Number(dashboardInfo.yesterday_tx?.toFixed(2)).toLocaleString("ko-KR")}원</span>
                 </div>
               </div>
               {/* <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -286,48 +369,79 @@ export default function DashboardOverview({ isDarkMode }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 거래량 추이 */}
+        {/* 거래대금 추이 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
-          <CardHeader>
-            <CardTitle className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              거래량 추이
+          {/* 헤더: 타이틀 + 셀렉트 */}
+          <CardHeader className="flex justify-between items-center">
+            <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
+              <TrendingUp className="h-5 w-5 mr-2 text-orange-500" />
+              거래대금 추이
             </CardTitle>
-            <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              24시간 거래량 및 사용자 현황
-            </CardDescription>
+            <select
+              value={txInterval}
+              onChange={(e) => setTxInterval(e.target.value)}
+              className={isDarkMode ? "bg-gray-700 text-white border-gray-500 rounded p-1" : "bg-gray-50 text-gray-900 rounded p-1"}
+            >
+              {INTERVAL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </CardHeader>
+
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={tradingData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={isDarkMode ? "#374151" : "#f0f0f0"}
-                />
-                <XAxis
-                  dataKey="time"
-                  stroke={isDarkMode ? "#9CA3AF" : "#666"}
-                  fontSize={12}
-                />
-                <YAxis stroke={isDarkMode ? "#9CA3AF" : "#666"} fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDarkMode ? "#1F2937" : "white",
-                    border: `1px solid ${isDarkMode ? "#374151" : "#e5e7eb"}`,
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                    color: isDarkMode ? "#F9FAFB" : "#111827",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="volume"
-                  stroke="#f97316"
-                  strokeWidth={2}
-                  dot={{ fill: "#f97316", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {/* KPI 영역 */}
+            <div className={`mb-4 text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+              최근 {txInterval === "day" ? "일별" : txInterval === "week" ? "주간별" : txInterval === "hour" ? "시간별" : "월별"} 거래대금(원)&nbsp;
+              
+            </div>
+
+            {/* 차트 영역 */}
+            {tradingData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={tradingData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#e5e7eb"} />
+                  <XAxis
+                    dataKey="date"
+                    stroke={isDarkMode ? "#9CA3AF" : "#666"}
+                    fontSize={12}
+                    tickFormatter={(tick) => {
+                      const d = new Date(tick);
+                      if (txInterval === "hour") {
+                        return `${d.getHours()}시`;
+                      } else if (txInterval === "day") {
+                        return `${(d.getMonth()+1).toString().padStart(2,"0")}-${d.getDate().toString().padStart(2,"0")}`;
+                      } else if (txInterval === "month") {
+                        return `${d.getMonth()+1}월`;
+                      }
+                      return d.toLocaleDateString();
+                    }}
+                  />
+                  <YAxis stroke={isDarkMode ? "#9CA3AF" : "#666"} fontSize={12} />
+                  <Tooltip
+                    labelFormatter={(label) => new Date(label).toLocaleString()}
+                    contentStyle={{
+                      backgroundColor: isDarkMode ? "#1F2937" : "white",
+                      border: `1px solid ${isDarkMode ? "#374151" : "#e5e7eb"}`,
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                      color: isDarkMode ? "#F9FAFB" : "#111827",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="volume"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    dot={{ fill: "#f97316", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className={`${isDarkMode ? "text-gray-400" : "text-gray-600"} text-center py-20`}>
+                데이터가 없습니다.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -335,12 +449,13 @@ export default function DashboardOverview({ isDarkMode }) {
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader>
             <CardTitle className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-              코인별 거래량 분포
+              코인별 거래 분포도
             </CardTitle>
             <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              24시간 거래량 기준
+              전체 거래대금 기준
             </CardDescription>
           </CardHeader>
+          
           <CardContent>
             <div className="flex items-center justify-center">
               <ResponsiveContainer width="100%" height={300}>
@@ -363,27 +478,38 @@ export default function DashboardOverview({ isDarkMode }) {
               </ResponsiveContainer>
             </div>
             <div className="mt-4 space-y-2">
-              {coinData.map((coin, index) => (
-                <div
-                  key={coin.name}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <div className="flex items-center">
-                    <div
-                      className="w-3 h-3 rounded-full mr-2"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                    <span
-                      className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
-                    >
-                      {coin.name}
+              {coinData
+                .slice() // 원본 훼손 방지용 복사
+                .sort((a, b) => b.volume - a.volume) // volume 내림차순 정렬
+                .slice(0, 5) // 상위 5개만 추출
+                .map((coin, index) => (
+                  <div
+                    key={coin.name}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <div className="flex items-center">
+                      <div
+                        className="w-3 h-3 rounded-full mr-2"
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span
+                        className={`font-medium ${isDarkMode ? "text-gray-200" : "text-gray-900"}`}
+                      >
+                        {coin.name}
+                      </span>
+                    </div>
+                    <span className={isDarkMode ? "text-gray-300" : "text-gray-600"}>
+                      {coin.volume.toLocaleString("ko-KR")}원
                     </span>
                   </div>
-                  <span className={isDarkMode ? "text-gray-300" : "text-gray-600"}>
-                    {coin.volume} BTC
-                  </span>
+                ))}
+
+              {/* 더 많은 코인이 있으면 아래 점 세 개 표시 */}
+              {coinData.length > 5 && (
+                <div className={`text-center cursor-default ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  (Volume 상위 5) &#8230;
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -391,13 +517,14 @@ export default function DashboardOverview({ isDarkMode }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 키바나 대시보드 테스트 */}
-        <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+        
+        {/* <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
           <CardHeader className="flex justify-between items-center">
             <CardTitle className={`${isDarkMode ? "text-white" : "text-gray-900"} text-lg font-semibold flex items-center`}>
               <Users className="h-5 w-5 mr-2 text-green-500" />
               기간별 사용자 수 추이
             </CardTitle>
-            {/* 기존의 집계 기준 선택은 iframe 임베드 시 외부에서 제어 불가하므로 비워두거나 제거 가능 */}
+            
           </CardHeader>
           <CardContent>
             <div style={{ width: '100%', height: 320 }}>
@@ -412,7 +539,7 @@ export default function DashboardOverview({ isDarkMode }) {
               />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
         
         {/* 총 사용자 추이 */}
         <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
@@ -480,14 +607,14 @@ export default function DashboardOverview({ isDarkMode }) {
               }`}
             >
               <Clock className="h-5 w-5 mr-2 text-orange-500" />
-              최근 1분
+              출금 요청
             </CardTitle>
             <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-              승인​이 필요한 출금요청 ({stats.pendingWithdrawals}건)
+              승인​이 필요한 출금요청 ({withDrawLogs.length}건)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {pendingWithdrawals.map((withdrawal) => (
+            {withDrawLogs.map((withdrawal) => (
               <div
                 key={withdrawal.id}
                 className={`flex items-center justify-between p-3 ${
@@ -496,10 +623,10 @@ export default function DashboardOverview({ isDarkMode }) {
               >
                 <div>
                   <p className={`font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`}>
-                    {withdrawal.user}
+                    {withdrawal.email}
                   </p>
                   <p className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                    {withdrawal.amount} &bull; {withdrawal.time}
+                    {Number(withdrawal.amount).toLocaleString()}원 &bull; {withdrawal.time.slice(0, 19).replace('T', ' ')}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">

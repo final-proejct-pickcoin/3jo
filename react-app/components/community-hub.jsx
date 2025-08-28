@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Heart, MessageCircle, Share, Plus, TrendingUp, Users, Award, Flag } from "lucide-react"
+import { useWebSocket } from "@/components/websocket-provider"
 
 // 더미 초기값 - user_id 추가
 const communityPosts = []
@@ -396,16 +397,13 @@ export const CommunityHub = () => {
   const [newPost, setNewPost] = useState("")
   const [selectedTags, setSelectedTags] = useState([])
   const [popularKeywords, setPopularKeywords] = useState([])
-  //통계 상태 
   const [stats, setStats] = useState({
-  activeUsers: 0,
-  postsToday: 0,
-  onlineNow: null,
-  totalPosts: 0,
-  })
-
-
-
+    activeUsers: 0,
+    postsToday: 0,
+    onlineNow: 0,
+    totalPosts: 0
+  });
+  
   //페이지네이션 상태
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 7
@@ -430,10 +428,11 @@ export const CommunityHub = () => {
   const fetchStats = useCallback(async () => {
     try {
       const { data } = await axios.get("http://localhost:8080/community/stats")
+      const activeRes = await axios.get("http://localhost:8080/users/active-users")
       setStats({
         activeUsers: Number(data.activeUsers ?? 0),
         postsToday: Number(data.postsToday ?? 0),
-        onlineNow: data.onlineNow ?? null,
+        onlineNow: activeRes.data.activeUsers ?? 0,
         totalPosts: Number(data.totalPosts ?? 0),
       })
     } catch (e) {
@@ -441,9 +440,14 @@ export const CommunityHub = () => {
     }
   }, [])
 
-  useEffect(() => {
-  fetchStats()
-}, [fetchStats])
+   useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000);
+
+    // 컴포넌트 언마운트 시 interval 정리
+    return () => clearInterval(interval);
+  }, [fetchStats])
+
   // 신고 기능
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [reportReason, setReportReason] = useState("")
@@ -667,7 +671,7 @@ export const CommunityHub = () => {
       setSelectedTags([])
       getPopularKeyword(true) //  성공 시에만 강제 새로고침
       fetchPosts()
-      fetchStats() //등록 후 통계 새로고침
+      
 
     } catch (error) {
       console.error("글 등록 실패:", error?.response?.data || error?.message)
@@ -688,7 +692,7 @@ export const CommunityHub = () => {
       setSelectedTags([])
       // 실패 시에는 서버 데이터가 갱신되지 않았으므로 키워드 강제 새로고침 불필요
     }
-  }, [newPost, selectedTags, currentUser.user_id, currentUser.name, fetchPosts, getPopularKeyword, fetchStats])
+  }, [newPost, selectedTags, currentUser.user_id, currentUser.name, fetchPosts, getPopularKeyword])
 
   const handleDelete = useCallback(async (postId, postUserId) => {
     const me = safeToNumber(currentUser.user_id)
@@ -701,14 +705,13 @@ export const CommunityHub = () => {
       await axios.delete(`http://localhost:8080/community/${postId}`, { params: { userId: me } })
       alert("삭제 완료되었습니다.")
       fetchPosts()
-      fetchStats()
     } catch (err) {
       console.error("삭제 실패:", err)
       setPosts(prev => prev.filter(p => p.post_id !== postId))
       alert("삭제 완료되었습니다.")
-      fetchStats()
+      
     }
-  }, [currentUser.user_id, fetchPosts, fetchStats])
+  }, [currentUser.user_id, fetchPosts])
 
   const handleUpdate = useCallback(async (postId, currentContent, postUserId) => {
     const me = safeToNumber(currentUser.user_id)
@@ -899,21 +902,19 @@ export const CommunityHub = () => {
           <div className="space-y-4">
             <div className="flex justify-between">
               <span className="text-muted-foreground">활동 회원</span>
-              <span className="font-semibold">{stats.activeUsers.toLocaleString()}</span>
+              <span className="font-semibold">{stats.activeUsers}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">오늘의 게시글</span>
-              <span className="font-semibold">{stats.postsToday.toLocaleString()}</span>
+              <span className="font-semibold">{stats.postsToday}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">현재 접속자</span>
-              <span className="font-semibold text-green-500">
-                {stats.onlineNow == null ? "-" : Number(stats.onlineNow).toLocaleString()}
-              </span>
+              <span className="font-semibold text-green-500">{stats.onlineNow}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">누적 게시글</span>
-              <span className="font-semibold">{stats.totalPosts.toLocaleString()}</span>
+              <span className="font-semibold">{stats.totalPosts}</span>
             </div>
           </div>
         </CardContent>

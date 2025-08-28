@@ -2,6 +2,7 @@ package com.finalproject.pickcoin.service;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import com.finalproject.pickcoin.domain.Community;
 import com.finalproject.pickcoin.domain.KeywordCount;

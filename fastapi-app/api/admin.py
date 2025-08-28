@@ -3,11 +3,17 @@ import pymysql
 from pymysql.cursors import DictCursor
 from pydantic import BaseModel
 from typing import List
-from .elasticsearch import get_user_trend
+from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_from_es, fetch_buy_logs_aggregation, get_user_krw, get_withdraws
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.responses import JSONResponse
+import logging
+
 
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 class User(BaseModel):
     user_id: int
@@ -80,7 +86,7 @@ def getuser(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
                 user_id = user['user_id']
                 user['tx_count'] = tx_counts_map.get(user_id, 0)
 
-            print(">>>>>>>>>유저쿼리문 결과: ", users)
+            # print(">>>>>>>>>유저쿼리문 결과: ", users)
     except Exception as e:
         print("Error in /admin/getuser:", e)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(e))
@@ -113,7 +119,7 @@ def getinq(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
             cursor.execute(sql, (limit, offset))
             inquiries = cursor.fetchall()
 
-            print(inquiries)
+            # print(inquiries)
     except Exception as err:
         print("Error in /admin/getinq:", err)  # 콘솔에 예외 출력
         raise HTTPException(status_code=500, detail=str(err))
@@ -131,7 +137,7 @@ def userStatus(user_id: int, is_verified: bool):
         with conn.cursor() as cursor:            
             new_verified = 0 if is_verified == 1 else 1
             data = (new_verified, user_id)
-            print("백에서 받은 유저데이터:", data)
+            # print("백에서 받은 유저데이터:", data)
             sql = """
                     UPDATE users
                     SET is_verified = %s
@@ -182,9 +188,25 @@ def getAdminInfo(token: str = Depends(oauth2_scheme)):
         cursor.execute(sql)
         result = cursor.fetchone()
         conn.close()
-        print(result)
+        # print(result)
     
     return result
+
+@router.get("/admin/gettradeamount")
+def get_trade_amount():
+    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    with conn.cursor() as cursor:
+        query = """
+        SELECT
+        SUM(CASE WHEN DATE(created_at) = CURDATE() - INTERVAL 1 DAY THEN price * amount ELSE 0 END) AS yesterday,
+        SUM(CASE WHEN DATE(created_at) = CURDATE() THEN price * amount ELSE 0 END) AS today,
+        SUM(CASE WHEN YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1) THEN price * amount ELSE 0 END) AS this_week,
+        SUM(CASE WHEN YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()) THEN price * amount ELSE 0 END) AS this_month
+        FROM transaction;
+        """
+        cursor.execute(query)
+        result = cursor.fetchone()
+        return result
 
 
 # 엘라스틱서치에서 유저 추이 가져오기.
@@ -196,3 +218,52 @@ def stats_users(interval: str = Query("day", enum=["hour", "day", "week", "month
     result = get_user_trend(interval)
     return result
 
+# 엘라스틱 서치 거래대금 추이
+@router.get("/api/stats/volume")
+def stats_volume(interval: str = Query("day", enum=["hour", "day", "week", "month"])):
+    try:
+        result = get_trading_volume_trend(interval)
+        return result
+    except Exception as e:
+        logger.error(f"Volume stats error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# 전체 로그 가져오기    
+@router.get("/logs")
+def get_logs():
+    try:
+        result = fetch_logs_from_es()
+        return result
+    except Exception as e:
+        logger.error(f"logs error: {e}")
+        raise HTTPException(status_code=500, detail="get logs error")
+    
+# 매수 로그 가져오기
+@router.get("/buy-logs")
+def get_buy_logs():
+    try:
+        result = fetch_buy_logs_aggregation()
+        return result
+    except Exception as e:
+        logger.error(f"buy-logs error: {e}")
+        raise HTTPException(status_code=500, detail="get buy-logs error")
+    
+# 입출금 로그 가져오기
+@router.get("/users/{user_id}/transactions")
+def get_deposit_logs(user_id: int):
+    try:
+        result = get_user_krw(user_id)
+        return result
+    except Exception as e:
+        logger.error(f"krw-logs error: {e}")
+        raise HTTPException(status_code=500, detail="get krw-logs error")
+    
+# 출금신청 로그
+@router.get("/withdraws")
+def get_withdraws_logs():
+    try:
+        result = get_withdraws()
+        return result
+    except Exception as e:
+        logger.error(f"withdraw-logs error: {e}")
+        raise HTTPException(status_code=500, detail="get withdraw-logs error")

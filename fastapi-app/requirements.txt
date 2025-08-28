@@ -18,6 +18,7 @@ webdriver_manager
 lxml
 python-logstash
 aiohttp
+httpx
 
 websockets
 broadcaster
@@ -30,3 +31,5 @@ google-generativeai
 sqlalchemy
 APScheduler==3.10.4
 
+requests
+httpx>=0.24

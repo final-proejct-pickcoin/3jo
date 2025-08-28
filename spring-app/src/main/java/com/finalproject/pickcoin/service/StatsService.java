@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.finalproject.pickcoin.controller.StatsController;
 import com.finalproject.pickcoin.repository.CommunityRepository;
 import com.finalproject.pickcoin.repository.UsersRepository;
 
@@ -24,16 +25,18 @@ public class StatsService {
      * - totalPosts  : community 총 글 수
      * - onlineNow   : 현재 접속자(미집계이므로 null)
      */
-    public Map<String, Object> getCommunityStats() {
+     public Map<String, Object> getCommunityStats() {
         long activeUsers = usersRepository.count();                // 활동 회원
         int  postsToday  = communityRepository.countPostsToday();  // 오늘의 게시글
         long totalPosts  = communityRepository.countTotalPosts();  // 누적 게시글
+        int  onlineNow   = StatsController.StatsWebSocket.getOnlineNow(); // ✅ 현재 접속자
 
-        Map<String, Object> m = new HashMap<>();
-        m.put("activeUsers", activeUsers);
-        m.put("postsToday", postsToday);
-        m.put("onlineNow", null);   // 접속자 수는 비움(나중에 구현)
-        m.put("totalPosts", totalPosts);
-        return m;
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("activeUsers", activeUsers);   // 현재 회원 수
+        stats.put("postsToday", postsToday);     // 오늘 게시글 수
+        stats.put("totalPosts", totalPosts);     // 전체 누적 게시글 수
+        stats.put("onlineNow", onlineNow);       // ✅ 접속자 수
+
+        return stats;
     }
 }

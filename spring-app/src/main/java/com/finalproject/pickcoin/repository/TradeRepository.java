@@ -37,4 +37,9 @@ public interface TradeRepository {
     // 자산별 체결 거래 내역
     List<Map<String,Object>> asset_concluded_orders(Long user_id, Long asset_id);
     
+    //지정가 매수
+    List<Map<String,Object>> limit_buys(Long asset_id, BigDecimal current_price);
+    //지정가 매도
+    List<Map<String,Object>> limit_sells(Long asset_id, BigDecimal current_price);
+
 }

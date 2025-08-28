@@ -209,13 +209,20 @@ const tradingVolumeData = [
   },
 ];
 
-export default function AdvancedDashboard() {
+export default function AdvancedDashboard({ currentUsers }) {
   const [realTimeData, setRealTimeData] = useState({
-    onlineUsers: 1247,
+    onlineUsers: currentUsers ?? 0,  // 처음은 props로 설정
     activeTrades: 342,
     systemLoad: 68,
     responseTime: 15,
   });
+
+// props가 바뀔 때마다 실시간 업데이트
+  useEffect(() => {
+    if (typeof currentUsers === "number") {
+      setRealTimeData((prev) => ({ ...prev, onlineUsers: currentUsers }));
+    }
+  }, [currentUsers]);  
 
   const { latestTotal } = useContext(StatsContext);
   
@@ -223,7 +230,7 @@ export default function AdvancedDashboard() {
   useEffect(() => {
     const interval = setInterval(() => {
       setRealTimeData((prev) => ({
-        onlineUsers: prev.onlineUsers + Math.floor(Math.random() * 20 - 10),
+        //onlineUsers: prev.onlineUsers + Math.floor(Math.random() * 20 - 10),
         activeTrades: prev.activeTrades + Math.floor(Math.random() * 10 - 5),
         systemLoad: Math.max(
           0,

@@ -99,7 +99,7 @@
     LIMIT 1
 </select>
 
-<!-- 거래내역(최근 200건) -->
+<!-- 거래내역(최근 100건) -->
 <select id="find_trades" resultType="map">
     SELECT
     t.tx_id      AS txId,
@@ -116,7 +116,7 @@
     JOIN orders o ON o.order_id = t.order_id
     WHERE o.user_id = #{param1}
     ORDER BY t.tx_id DESC
-    LIMIT 200
+    LIMIT 100
 </select>
 
 <!-- 자산별 미체결 거래 내역 -->
@@ -141,6 +141,32 @@
     and user_id = #{user_id}
     ORDER BY order_date DESC
     LIMIT 20
+</select>
+
+
+<!-- 지정가 매수: 현재가 <= 지정가 주문들 -->
+<select id="limit_buys" resultType="map">
+    SELECT order_id, user_id, asset_id, amount, price
+    FROM orders
+    WHERE status = 0              -- UNCONCLUDED
+    AND order_type = 0          -- BUY
+    AND asset_id = #{asset_id}
+    AND price >= #{current_price}
+    ORDER BY order_date ASC
+    LIMIT 100
+</select>
+
+<!-- 지정가 매도: 현재가 >= 지정가 주문들 -->
+<select id="limit_sells" resultType="map">
+    SELECT order_id, user_id, asset_id, amount, price
+    FROM orders
+    WHERE status = 0              -- UNCONCLUDED
+    AND order_type = 1          -- SELL
+    AND asset_id = #{asset_id}
+    <!-- 이부분 < 기호가 에러나 &lt;로 변경 -->
+    AND price &lt;= #{current_price}
+    ORDER BY order_date ASC
+    LIMIT 100
 </select>
 
 

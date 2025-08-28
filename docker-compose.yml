@@ -16,8 +16,14 @@ services:
       - MYSQL_PASSWORD=Admin1234!
       - MYSQL_DATABASE=coindb
       - REDIS_HOST=redis
+      - KIBANA_URL=http://kibana:5601
+      - ES_ENABLED=1
+      - ES_MAX_WAIT=120
+      - ES_WAIT_INTERVAL=3
     depends_on:
       - redis
+      - elasticsearch
+      - kibana
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     networks:
     - elastic-net
@@ -62,6 +68,7 @@ services:
       - APP_BASE_URL=http://localhost:8080
     depends_on:
       - redis
+      - elasticsearch
     command: ./gradlew bootRun
     networks:
     - elastic-net
@@ -99,6 +106,11 @@ services:
       - xpack.security.http.ssl.enabled=false
     volumes:
       - ./elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/ > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30  
     networks:
       - elastic-net
       
@@ -125,6 +137,11 @@ services:
       - xpack.security.http.ssl.enabled=false
     depends_on:
       - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
     networks:
       - elastic-net
   
