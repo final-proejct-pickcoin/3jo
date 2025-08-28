@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect,useMemo,useRef } from "react"
+import { useState, useEffect,useMemo } from "react"
 import axios from "axios";
 import { getKrwRate } from "@/lib/get-krw-rate"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -124,7 +124,7 @@ export const PortfolioManager = () => {
     deposit_logs(user_id);
     // console.log("입출금 로그",logs)
 
-  }, [user_id]);
+  }, [user_id]); //logs
 
   useEffect(() => {
     // 캐시 우선
@@ -351,54 +351,41 @@ const fmt = (v) =>
 const [trades, setTrades] = useState([])
 const [loadingTrades, setLoadingTrades] = useState(false)
 
-
 useEffect(() => {
-  if (!user_id) return;
+  if (!user_id) return
   const loadTrades = async () => {
     try {
-      setLoadingTrades(true);
-      const res = await axios.get(`${PORTFOLIO_API}/trades`, { params: { user_id } });
+      setLoadingTrades(true)
+      const res = await axios.get(`${PORTFOLIO_API}/trades`, { params: { user_id } })
+      //console.log("TRADES raw response:", res.data);
+      // 백엔드 응답 예: [{ symbol, orderType, notional, assetId, price, createdAt, ... }, ...]
       const rows = Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
       const trades = rows.map((r) => {
-        // side: 0/1 또는 "BUY"/"SELL" 모두 허용
-        const sideRaw = r.orderType ?? r.side;
-        const isBuy =
-          typeof sideRaw === "string"
-            ? sideRaw.toUpperCase() === "BUY"
-            : Number(sideRaw) === 0;
-
-        const priceKRW =
-          Number(r.price ?? r.priceKRW ?? 0);
-
-        // qty/amount가 없으면 notional/price로 역산
-        const qtyRaw = Number(r.amount ?? r.qty ?? 0);
-        const notionalRaw = Number(
-          r.notional ?? (qtyRaw && priceKRW ? qtyRaw * priceKRW : 0)
-        );
-
-        // 심볼 표시는 단순/안정적으로
-        const sym = String(r.symbol || "").toUpperCase();
+        const isBuy = Number(r.orderType) === 0;
+        const priceKRW = Number(r.price ?? 0);             // 단가(원)
+        const valueKRW = Number(r.notional ?? 0);          // 체결금액(원) — 백엔드가 notional 제공
+        const amount   = priceKRW ? valueKRW / priceKRW : 0; // 수량 = 금액/단가
 
         return {
-          isBuy,
-          side: isBuy ? "buy" : "sell",
-          symbol: sym,
-          amount: qtyRaw || (priceKRW ? notionalRaw / priceKRW : 0),
+          isBuy,                                   // true/false
+          side: isBuy ? "buy" : "sell",            // "buy"/"sell"도 제공(원하면 사용)
+          symbol: String(r.symbol || "").toUpperCase(),
+          amount,
           priceKRW,
-          valueKRW: notionalRaw,
-          pnlKRW: Number(r.pnl_krw ?? r.pnl ?? 0),
-          date: r.createdAt ?? r.ts ?? r.filledAt ?? r.date ?? "",
+          valueKRW,
+          pnlKRW: Number(r.pnl_krw ?? r.pnl ?? 0), // 있으면 표시, 없으면 0
+          date: r.createdAt ?? r.ts ?? r.date ?? r.filledAt??"", // 백엔드 키 중 있는 걸 사용
         };
       });
 
       setTrades(trades);
     } finally {
-      setLoadingTrades(false);
+      setLoadingTrades(false)
     }
-  };
-  loadTrades();
-}, [user_id]);
+  }
+  loadTrades()
+}, [user_id])
 
 
 function withRunningTotals(trades) {
@@ -440,32 +427,41 @@ function withRunningTotals(trades) {
 
 const tradesWithRun = useMemo(() => {
   if (!Array.isArray(trades) || trades.length === 0) return [];
-  const list = [...trades];
-  const acc = new Map(); // symbol -> { buy, sell }
 
+  // 화면에 현재 쓰는 순서(최신→과거라고 가정)를 *그대로* 기준 삼음
+  const list = [...trades];
+
+  // 누적용 버퍼 (심볼별)
+  const acc = new Map(); // symbol -> { buy: number, sell: number }
+
+  // 리스트의 "아래줄"까지 합계를 보여주려면, 아래에서부터 위로 누적해서 위로 올림
+  // (보이는 순서가 최신→과거라면, 뒤에서 앞으로 누적해야 "이 줄까지" after 가 맞음)
   for (let i = list.length - 1; i >= 0; i--) {
     const t = list[i];
-    const key = t.symbol;                // 단순 키
-    if (!acc.has(key)) acc.set(key, { buy: 0, sell: 0 });
-    const a = acc.get(key);
+    const s = t.symbol;
+    if (!acc.has(s)) acc.set(s, { buy: 0, sell: 0 });
+    const a = acc.get(s);
 
+    // 이번 트랜잭션 반영 "후" 상태 저장
     const after = {
-      buyKRW:  a.buy  + (t.isBuy ? Number(t.valueKRW || 0) : 0),
+      buyKRW: a.buy + (t.isBuy ? Number(t.valueKRW || 0) : 0),
       sellKRW: a.sell + (!t.isBuy ? Number(t.valueKRW || 0) : 0),
     };
     after.netKRW = after.buyKRW - after.sellKRW;
 
-    list[i] = {
-      ...t,
-      runningBefore: { ...a, netKRW: a.buy - a.sell },
-      runningAfter: after,
-    };
+    // 반영 전 상태도 원하면 이렇게
+    const before = { ...a, netKRW: a.buy - a.sell };
 
-    if (t.isBuy) a.buy = after.buyKRW; else a.sell = after.sellKRW;
+    // 이 줄에 누적값 달아놓기
+    list[i] = { ...t, runningBefore: before, runningAfter: after };
+
+    // 누적 버퍼 갱신
+    if (t.isBuy) a.buy = after.buyKRW;
+    else a.sell = after.sellKRW;
   }
+
   return list;
 }, [trades]);
-
 
 // 화면에 보여줄 거래 행 개수 
 const [visibleTrades, setVisibleTrades] = useState(10);
@@ -477,611 +473,603 @@ const pagedTrades = useMemo(() => {
 //==여기까지 거래내역
 
   const portfolioData = [
+    {
+      symbol: "BTC",
+      name: "Bitcoin",
+      amount: 0.5,
+      avgPrice: 42000,
+      currentPrice: 43000,
+      allocation: 45,
+      pnl: 500,
+      pnlPercent: 2.38,
+    },
+    {
+      symbol: "ETH",
+      name: "Ethereum",
+      amount: 8.2,
+      avgPrice: 1600,
+      currentPrice: 1580,
+      allocation: 28,
+      pnl: -164,
+      pnlPercent: -1.25,
+    },
+    {
+      symbol: "ADA",
+      name: "Cardano",
+      amount: 5000,
+      avgPrice: 0.45,
+      currentPrice: 0.48,
+      allocation: 12,
+      pnl: 150,
+      pnlPercent: 6.67,
+    },
+    {
+      symbol: "DOT",
+      name: "Polkadot",
+      amount: 200,
+      avgPrice: 7.5,
+      currentPrice: 7.2,
+      allocation: 8,
+      pnl: -60,
+      pnlPercent: -4.0,
+    },
+    {
+      symbol: "LINK",
+      name: "Chainlink",
+      amount: 100,
+      avgPrice: 14.8,
+      currentPrice: 15.2,
+      allocation: 7,
+      pnl: 40,
+      pnlPercent: 2.7,
+    },
   ]
 
+  useEffect(() => {
+    const symbols = portfolioData.map((p) => p.symbol)
+    subscribe(symbols)
+    getKrwRate().then((rate) => setKrwRate(rate))
+  }, [subscribe])
 
+  const totalValue = portfolioData.reduce((sum, asset) => {
+    const currentPrice = marketData[asset.symbol]?.price || asset.currentPrice
+    return sum + asset.amount * currentPrice
+  }, 0)
+  const totalPnL = portfolioData.reduce((sum, asset) => sum + asset.pnl, 0)
+  const totalPnLPercent = (totalPnL / (totalValue - totalPnL)) * 100
 
-
-
-// ── 심볼/마켓 정규화 (있으면 기존 것 사용해도 OK)
-const normalizePair = (symbol, market) => {
-  const Q = ["KRW","BTC","USDT","USD"];
-  const S = (v) => (v||"").toString().trim().toUpperCase();
-  let s = S(symbol), m = S(market);
-  if (s.includes("_")||s.includes("-")||s.includes("/")) {
-    const d = s.includes("_") ? "_" : s.includes("-") ? "-" : "/";
-    const [a,b] = s.split(d); if (Q.includes(b)) return { base:a, quote:b };
-  }
-  if (s && Q.includes(m)) return { base:s, quote:m };
-  return { base:s||"UNKNOWN", quote:"KRW" };
-};
-
-// ── 보유자산 상태
-const [holdings, setHoldings] = useState([]);
-
-// ── 구독 토픽: pair + base (둘 다 구독해서 키 포맷 상관없이 잡기)
-const topics = useMemo(() => {
-  if (!holdings?.length) return [];
-  const s = new Set();
-  holdings
-    .filter(h => h.symbol !== "KRW")
-    .forEach(h => {
-      const { base, quote } = normalizePair(h.symbol, h.market);
-      s.add(`${base}_${quote}`); // e.g. ETH_KRW
-      s.add(base);               // e.g. ETH
-    });
-  return [...s];
-}, [holdings]);
-
-// ── 페이지 전용 머지된 시세 저장
-const [mergedMD, setMergedMD] = useState({});
-
-// ── (중요) subscribe 호출 형식 단일화: 항상 "배열"로 호출
-const safeSubscribe = (listish) => {
-  const arr = Array.isArray(listish) ? listish : [listish];
-  if (!arr.length) return;
-  try {
-    subscribe(arr);
-  } catch (e) {
-    console.warn("[SUB] subscribe 실패:", e);
-  }
-};
-
-// ── 순환 단건 구독 (마지막 호출만 유지하는 구현 대비)
-//    topics 변경 시 인덱스 초기화
-const idxRef = useRef(0);
-useEffect(() => { idxRef.current = 0; }, [topics.join("|")]);
-
-useEffect(() => {
-  if (!topics.length) return;
-
-  const INTERVAL = 1500; // 너무 짧게 하지 말자
-  let timer;
-
-  const tick = () => {
-    const sym = topics[idxRef.current];
-    if (sym) {
-      safeSubscribe([sym]); // ← 항상 배열
-      // 디버그
-      console.debug("[SUB] tick ->", sym, `(${idxRef.current + 1}/${topics.length})`);
-    }
-    idxRef.current = (idxRef.current + 1) % topics.length;
-    timer = setTimeout(tick, INTERVAL);
-  };
-
-  tick(); // 즉시 1회
-  return () => clearTimeout(timer);
-}, [topics, subscribe]);
-
-// ── 들어오는 marketData를 mergedMD에 누적 (보유 토픽만 유지)
-//    topics가 비어있으면 '필터링하지 않고' 모두 받아서 키가 보이게 함
-useEffect(() => {
-  const raw = marketData || {};
-  const rawKeys = Object.keys(raw);
-  if (rawKeys.length) {
-    console.debug("[WS] raw keys:", rawKeys.slice(0, 20));
-  }
-
-  setMergedMD(prev => {
-    const next = { ...prev };
-
-    // 새 틱 반영
-    for (const k of rawKeys) next[k] = raw[k];
-
-    // 보유 토픽이 있으면 그때만 정리(필터)
-    if (topics.length) {
-      const allow = new Set(topics);
-      for (const k of Object.keys(next)) {
-        if (!allow.has(k)) delete next[k];
-      }
-    }
-    return next;
-  });
-}, [marketData, topics]);
-
-// ── 가격 읽기: mergedMD 우선, 없으면 marketData도 폴백
-const getLivePrice = (symbol, market) => {
-  const { base, quote } = normalizePair(symbol, market);
-  const keys = [`${base}_${quote}`, `${base}-${quote}`, `${base}/${quote}`, base];
-
-  for (const k of keys) {
-    const md =
-      mergedMD[k] ||
-      (marketData ? marketData[k] : undefined); // ← 폴백
-    if (!md) continue;
-
-    const v =
-      md.trade_price ??
-      md.closePrice ??
-      md.price ??
-      md.last ??
-      md.c ??
-      md.p;
-
-    if (typeof v === "number" && isFinite(v) && v > 0) {
-      return v;
-    }
-  }
-  return 0;
-};
-
-
-const money = (vKRW) =>
-  currency === "KRW"
-    ? `₩${Math.round(vKRW).toLocaleString()}`
-    : `$${Math.round(vKRW / (krwRate || 1350)).toLocaleString()}`;
-
-
-
-// 보유자산 로드
-useEffect(() => {
-  if (!user_id) return;
-  (async () => {
-    const { data } = await axios.get(`${PORTFOLIO_API}/holdings`, {
-      params: { user_id },
-      headers: { Accept: "application/json" },
-    });
-    setHoldings(Array.isArray(data) ? data : []);
-  })();
-}, [user_id]);
-
-// 환율 1회 로드
-useEffect(() => { getKrwRate().then(setKrwRate); }, []);
-
-
-const uiHoldings = useMemo(() => {
-  const rows = holdings.filter(h => h.symbol !== "KRW").map(h => {
-    const { base, quote } = normalizePair(h.symbol, h.market)
-    const amount = Number(h.amount) || 0
-    const avg    = Number(h.avgPrice) || 0
-    // const live   = wsPrice(base, quote)   // ← 페어로 읽기
-    const live   = getLivePrice(h.symbol, h.market);
-    const mv     = amount * live
-    const pnl    = amount * (live - avg)
-    const pnlPct = avg > 0 && live > 0 ? ((live - avg) / avg) * 100 : 0
-    return {
-      assetId: h.assetId, symbol: `${base}-${quote}`, name: h.assetName,
-      amount, avgPrice: avg, livePrice: live, marketValueKRW: mv,
-      pnlKRW: pnl, pnlPct
-    }
-  })
-  const total = rows.reduce((s, r) => s + r.marketValueKRW, 0)
-  return rows
-    .map(r => ({ ...r, allocation: total>0 ? Math.round((r.marketValueKRW/total)*100) : 0 }))
-    .sort((a,b) => b.marketValueKRW - a.marketValueKRW)
-// }, [holdings, marketData])
-}, [holdings, mergedMD])
-
-
-const costBasisKRW  = uiHoldings.reduce((s,a)=> s + a.amount * a.avgPrice, 0);
-const totalValueKRW = uiHoldings.reduce((s,a)=> s + a.marketValueKRW, 0);
-const totalPnLKRW   = uiHoldings.reduce((s,a)=> s + a.pnlKRW, 0);
-const totalPnLPct   = costBasisKRW > 0 ? (totalPnLKRW / costBasisKRW) * 100 : 0;
-
-
-useEffect(() => {
-  console.log("[MD] keys:", Object.keys(mergedMD));
-}, [mergedMD]);
-
-
- const renderContent = () => {
-  switch (activeSection) {
-    case "krw-account":
-      return (
-        <div className="space-y-6">
-          {/* 내 계좌 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">내 계좌 정보</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* 보유 원화 */}
-                <div className="text-center p-6 bg-blue-50 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">
-                    {formatKRW(krw)}
+  const renderContent = () => {
+    switch (activeSection) {
+      case "krw-account":
+        return (
+          <div className="space-y-6">
+            {/* 내 계좌 정보 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">내 계좌 정보</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* 보유 원화 */}
+                  <div className="text-center p-6 bg-blue-50 rounded-lg">
+                    <div className="text-3xl font-bold text-blue-600 mb-2">
+                      {formatKRW(krw)}
+                    </div>
+                    <div className="text-sm text-gray-600">보유 원화</div>
                   </div>
-                  <div className="text-sm text-gray-600">보유 원화</div>
+
+                  {/* 일일 한도 */}
+                  <div className="text-center p-6 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-semibold text-gray-900 mb-2">
+                      ₩1,200,000 / ₩50,000,000
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">일일 한도</div>
+                    <Progress value={24} className="h-2" />
+                  </div>
+
+                  {/* 월간 한도 */}
+                  <div className="text-center p-6 bg-gray-50 rounded-lg">
+                    <div className="text-lg font-semibold text-gray-900 mb-2">
+                      ₩8,500,000 / ₩200,000,000
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">월간 한도</div>
+                    <Progress value={4.25} className="h-2" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 원화 입출금 */}
+            <Card id="krw-deposit-section">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">원화 입출금</CardTitle>
+                <p className="text-gray-600">한국 원화 입금 및 출금 서비스</p>
+              </CardHeader>
+              <CardContent>
+                {/* 입출금 탭 */}
+                <div className="flex border-b border-gray-200 mb-6">
+                  <button
+                    className={`px-6 py-3 text-lg font-medium transition-colors ${
+                      activeTab === "deposit" 
+                        ? "border-b-2 border-blue-500 text-blue-600" 
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    onClick={() => setActiveTab("deposit")}
+                  >
+                    입금
+                  </button>
+                  <button
+                    className={`px-6 py-3 text-lg font-medium transition-colors ${
+                      activeTab === "withdrawal" 
+                        ? "border-b-2 border-blue-500 text-blue-600" 
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                    onClick={() => setActiveTab("withdrawal")}
+                  >
+                    출금
+                  </button>
                 </div>
 
-                {/* 일일 한도 (샘플 표시) */}
-                <div className="text-center p-6 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-semibold text-gray-900 mb-2">
-                    ₩1,200,000 / ₩50,000,000
-                  </div>
-                  <div className="text-sm text-gray-600 mb-2">일일 한도</div>
-                  <Progress value={24} className="h-2" />
-                </div>
-
-                {/* 월간 한도 (샘플 표시) */}
-                <div className="text-center p-6 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-semibold text-gray-900 mb-2">
-                    ₩8,500,000 / ₩200,000,000
-                  </div>
-                  <div className="text-sm text-gray-600 mb-2">월간 한도</div>
-                  <Progress value={4.25} className="h-2" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 원화 입출금 */}
-          <Card id="krw-deposit-section">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">원화 입출금</CardTitle>
-              <p className="text-gray-600">한국 원화 입금 및 출금 서비스</p>
-            </CardHeader>
-            <CardContent>
-              {/* 입출금 탭 */}
-              <div className="flex border-b border-gray-200 mb-6">
-                <button
-                  className={`px-6 py-3 text-lg font-medium transition-colors ${
-                    activeTab === "deposit"
-                      ? "border-b-2 border-blue-500 text-blue-600"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                  onClick={() => setActiveTab("deposit")}
-                >
-                  입금
-                </button>
-                <button
-                  className={`px-6 py-3 text-lg font-medium transition-colors ${
-                    activeTab === "withdrawal"
-                      ? "border-b-2 border-blue-500 text-blue-600"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                  onClick={() => setActiveTab("withdrawal")}
-                >
-                  출금
-                </button>
-              </div>
-
-              {activeTab === "deposit" && (
-                <div className="space-y-6">
-                  {/* 입금 전용 계좌 */}
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">입금 전용 계좌</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">은행:</span>
-                        <span className="font-medium">KB국민은행</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">계좌번호:</span>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">123-456-789012</span>
-                          <Button size="sm" variant="outline" className="h-8 px-3">
-                            복사
-                          </Button>
+                {activeTab === "deposit" && (
+                  <div className="space-y-6">
+                    {/* 입금 전용 계좌 */}
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">입금 전용 계좌</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">은행:</span>
+                          <span className="font-medium">KB국민은행</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">계좌번호:</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">123-456-789012</span>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-8 px-3"
+                            >
+                              복사
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">예금주:</span>
+                          <span className="font-medium">예금주: (주)픽코인</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">예금주:</span>
-                        <span className="font-medium">예금주: (주)픽코인</span>
+                    </div>
+
+                    {/* 입금 예정 금액 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        입금 예정 금액
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="입금할 금액을 입력하세요"
+                          className="h-12 text-lg pr-12"
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <span className="text-gray-500 text-lg">원</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        최소 입금액: ₩10,000 / 최대 입금액: ₩50,000,000
+                      </p>
+                        <p className="text-sm mt-2">
+                          예상 보유 원화: <b>{formatKRW(krw + toNumber(depositAmount))}</b>
+                        </p>
+                    </div>
+
+                    {/* 입금 버튼 */}
+                    <div className="mt-4">
+                      <Button className="w-full h-12 text-lg font-semibold"
+                        disabled={isBusy || toNumber(depositAmount) <= 0}
+                        onClick={handleDeposit}>
+                        입금 실행
+                      </Button>
+                    </div>
+
+                    {/* 입금 안내사항 */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-2">
+                        <div className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0">ℹ</div>
+                        <div className="text-sm text-blue-800">
+                          <h4 className="font-semibold mb-2">입금 안내사항</h4>
+                          <ul className="space-y-1 text-xs">
+                            <li>• 위 계좌로 입금하시면 실시간으로 반영됩니다.</li>
+                            <li>• 입금자명은 반드시 본인 명의로 입금해주세요.</li>
+                            <li>• 최소 입금액: ₩10,000</li>
+                            <li>• 입금 수수료: 무료 (단, 은행 이체 수수료는 고객 부담)</li>
+                            <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
+                )}
 
-                  {/* 입금 예정 금액 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      입금 예정 금액
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type="text"
-                        placeholder="입금할 금액을 입력하세요"
-                        className="h-12 text-lg pr-12"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <span className="text-gray-500 text-lg">원</span>
-                      </div>
+                {activeTab === "withdrawal" && (
+                  <div className="space-y-6">
+                    {/* 출금 계좌 선택 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        출금 계좌 선택
+                      </label>
+                      <select className="w-full h-12 text-lg border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">계좌를 선택해주세요</option>
+                        <option value="account1">KB국민은행 - 123-456-789012 (픽코인 출금 전용)</option>
+                        <option value="account2">신한은행 - 987-654-321098 (픽코인 출금 전용)</option>
+                        <option value="account3">우리은행 - 112-233-445566 (픽코인 출금 전용)</option>
+                      </select>
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      최소 입금액: ₩10,000 / 최대 입금액: ₩50,000,000
-                    </p>
-                    <p className="text-sm mt-2">
-                      예상 보유 원화: <b>{formatKRW(krw + toNumber(depositAmount))}</b>
-                    </p>
-                  </div>
 
-                  {/* 입금 버튼 */}
-                  <div className="mt-4">
-                    <Button
-                      className="w-full h-12 text-lg font-semibold"
-                      disabled={isBusy || toNumber(depositAmount) <= 0}
-                      onClick={handleDeposit}
-                    >
-                      입금 실행
-                    </Button>
-                  </div>
-
-                  {/* 안내 */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-2">
-                      <div className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0">ℹ</div>
-                      <div className="text-sm text-blue-800">
-                        <h4 className="font-semibold mb-2">입금 안내사항</h4>
-                        <ul className="space-y-1 text-xs">
-                          <li>• 위 계좌로 입금하시면 실시간으로 반영됩니다.</li>
-                          <li>• 입금자명은 반드시 본인 명의로 입금해주세요.</li>
-                          <li>• 최소 입금액: ₩10,000</li>
-                          <li>• 입금 수수료: 무료 (은행 이체 수수료는 고객 부담)</li>
-                          <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
-                        </ul>
+                    {/* 출금 금액 입력 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        출금 금액
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="출금할 금액을 입력하세요"
+                          className="h-12 text-lg pr-12"
+                          value={withdrawAmount}
+                          onChange={(e) => setWithdrawAmount(e.target.value)}
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <span className="text-gray-500 text-lg">원</span>
+                        </div>
                       </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        최소 출금액: ₩10,000 / 최대 출금액: ₩50,000,000
+                      </p>
+                      <span className="text-sm font-medium">예상 보유 원화:</span>
+                      <span className="text-sm font-bold">{formatKRW(afterWithdraw)}</span>
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {activeTab === "withdrawal" && (
-                <div className="space-y-6">
-                  {/* 출금 계좌 선택 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      출금 계좌 선택
-                    </label>
-                    <select className="w-full h-12 text-lg border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="">계좌를 선택해주세요</option>
-                      <option value="account1">KB국민은행 - 123-456-789012 (픽코인 출금 전용)</option>
-                      <option value="account2">신한은행 - 987-654-321098 (픽코인 출금 전용)</option>
-                      <option value="account3">우리은행 - 112-233-445566 (픽코인 출금 전용)</option>
-                    </select>
-                  </div>
-
-                  {/* 출금 금액 입력 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      출금 금액
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type="text"
-                        placeholder="출금할 금액을 입력하세요"
-                        className="h-12 text-lg pr-12"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <span className="text-gray-500 text-lg">원</span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      최소 출금액: ₩10,000 / 최대 출금액: ₩50,000,000
-                    </p>
-                    <span className="text-sm font-medium">예상 보유 원화: </span>
-                    <span className="text-sm font-bold">{formatKRW(afterWithdraw)}</span>
-                  </div>
-
-                  {/* 출금 버튼 */}
-                  <div className="mt-4">
-                    <Button
-                      className="w-full h-12 text-lg font-semibold"
+                    {/* 출금 요청 버튼 */}
+                    <div className="mt-4">
+                      <Button className="w-full h-12 text-lg font-semibold"
+                      //disabled={isBusy || !selectedBank || !accountNumber || !accountHolder || toNumber(withdrawAmount) <= 0}
                       disabled={isBusy || toNumber(withdrawAmount) <= 0}
-                      onClick={handleWithdraw}
-                    >
-                      원화 출금
-                    </Button>
-                  </div>
+                      onClick={handleWithdraw}>
+                        원화 출금
+                      </Button>
+                    </div>
 
-                  {/* 안내 */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-2">
-                      <div className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0">ℹ</div>
-                      <div className="text-sm text-blue-800">
-                        <h4 className="font-semibold mb-2">출금 안내사항</h4>
-                        <ul className="space-y-1 text-xs">
-                          <li>• 위 계좌로 출금하시면 실시간으로 반영됩니다.</li>
-                          <li>• 출금자명은 반드시 본인 명의로 출금해주세요.</li>
-                          <li>• 최소 출금액: ₩10,000</li>
-                          <li>• 출금 수수료: 무료 (은행 이체 수수료는 고객 부담)</li>
-                          <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
-                        </ul>
+                    {/* 출금 안내사항 */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-2">
+                        <div className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0">ℹ</div>
+                        <div className="text-sm text-blue-800">
+                          <h4 className="font-semibold mb-2">출금 안내사항</h4>
+                          <ul className="space-y-1 text-xs">
+                            <li>• 위 계좌로 출금하시면 실시간으로 반영됩니다.</li>
+                            <li>• 출금자명은 반드시 본인 명의로 출금해주세요.</li>
+                            <li>• 최소 출금액: ₩10,000</li>
+                            <li>• 출금 수수료: 무료 (단, 은행 이체 수수료는 고객 부담)</li>
+                            <li>• 처리 시간: 실시간 (은행 영업시간 내)</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* 원화 거래 내역 */}
-          <Card id="krw-history-section">
-            <CardHeader>
-              <CardTitle
-                className="text-xl font-semibold cursor-pointer hover:text-blue-600 transition-colors"
-                onClick={() => setActiveTab("")}
-              >
-                원화 입출금 내역
-              </CardTitle>
-              <p className="text-gray-600">최근 원화 입금 및 출금 내역</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                    {visibleLogs.map((log, idx) => {
-                  const isDeposit = log.action === "deposit";
-                  const ts = new Date(log.timestamp);
-                  const when = Number.isNaN(ts.getTime())
-                    ? String(log.timestamp).replace("T", " ").slice(0, 19)
-                    : ts.toLocaleString();
+            {/* 원화 거래 내역 */}
+            <Card id="krw-history-section">
+              <CardHeader>
+                <CardTitle 
+                  className="text-xl font-semibold cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => setActiveTab("")}
+                >
+                  원화 입출금 내역
+                </CardTitle>
+                <p className="text-gray-600">최근 원화 입금 및 출금 내역</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {visibleLogs.map((log, idx) => {
+                    const isDeposit = log.action === "deposit";
 
-                    // ✅ 키 폴백
-                  const logKey =
-                    log.id ??
-                    log._id ??
-                    log.txId ??
-                    `${log.action}-${log.timestamp}-${idx}`;
                     return (
                       <div
-                        key={logKey}
+                        key={idx}
                         className={`flex items-center justify-between p-4 border rounded-lg ${
                           isDeposit ? "bg-green-50" : "bg-red-50"
                         }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            isDeposit ? "bg-green-100" : "bg-red-100"
-                          }`}
-                        >
-                          <span
-                            className={`${isDeposit ? "text-green-600" : "text-red-600"} text-lg`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              isDeposit ? "bg-green-100" : "bg-red-100"
+                            }`}
                           >
-                            {isDeposit ? "↑" : "↓"}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {isDeposit ? "입금" : "출금"}
+                            <span
+                              className={`${isDeposit ? "text-green-600" : "text-red-600"} text-lg`}
+                            >
+                              {isDeposit ? "↑" : "↓"}
+                            </span>
                           </div>
-                          <div className="text-sm text-gray-500">{when}</div>
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {isDeposit ? "입금" : "출금"}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {log.timestamp.toLocaleString().slice(0, 19).replace('T', ' ')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-gray-900">
+                            ₩{Number(log.amount).toLocaleString()}
+                          </div>
+                          { !isDeposit && log.fee && (
+                            <div className="text-sm text-gray-500">수수료: ₩{Number(log.fee).toLocaleString()}</div>
+                          )}
+                          <div
+                            className={`text-sm font-medium px-2 py-1 rounded-full inline-block ${
+                              log.status === "완료"
+                                ? "bg-green-50 text-green-600"
+                                : log.status === "처리중"
+                                ? "bg-blue-50 text-blue-600"
+                                : "bg-gray-50 text-gray-600"
+                            }`}
+                          >
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-gray-900">
-                          ₩{Number(log.amount).toLocaleString()}
-                        </div>
-                        {!isDeposit && log.fee && (
-                          <div className="text-sm text-gray-500">
-                            수수료: ₩{Number(log.fee).toLocaleString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {visibleCount < logs.length && (
-                <div className="flex justify-center mt-4">
-                  <Button onClick={handleLoadMore}>더보기</Button>
+                    );
+                  })}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      );
 
-    case "crypto-holdings":
-      return (
-        <div className="space-y-6">
-          <Tabs defaultValue="holdings" className="space-y-4">
-            <TabsContent value="holdings" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>현재 보유자산</CardTitle>
-                  <CardDescription>보유 자산 상세 보기</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {uiHoldings.length === 0 && (
-                      <div className="text-sm text-muted-foreground">보유 자산이 없습니다.</div>
-                    )}
-
-
-                      {uiHoldings.map((asset, i) => {
-                      const livePrice = asset.livePrice;
-                      const livePnL = asset.pnlKRW;
-                      const livePnLPercent = asset.pnlPct;
-
-                      // ✅ 키 폴백
-                      const assetKey =
-                        asset.assetId ??
-                        asset.id ??
-                        `${asset.symbol}-${asset.name ?? ""}-${asset.avgPrice}-${i}`;
-
-                      return (
-                        <div key={assetKey} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                                <span className="font-bold">{asset.symbol}</span>
-                              </div>
-                              <div>
-                                <h3 className="font-semibold">{asset.name}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {hideBalances ? "••••••" : `${asset.amount} ${asset.symbol.split("-")[0]}`}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="text-right">
-                              <p className="font-semibold">
-                                {hideBalances ? "••••••" : `${livePnL >= 0 ? "+" : ""}${money(Math.abs(livePnL))}`}
-                              </p>
-                              <Badge variant={livePnL >= 0 ? "default" : "destructive"}>
-                                {livePnL >= 0 ? "+" : ""}
-                                {hideBalances ? "••••" : `${livePnLPercent.toFixed(2)}%`}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                            <div>
-                              <p className="text-muted-foreground">평균 매입가</p>
-                              <p className="font-medium">{hideBalances ? "••••••" : money(asset.avgPrice)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">현재가</p>
-                              <p className="font-medium">{hideBalances ? "••••••" : money(livePrice)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">손익</p>
-                              <p className={`font-medium ${livePnL >= 0 ? "text-green-500" : "text-red-500"}`}>
-                                {hideBalances ? "••••••" : `${livePnL >= 0 ? "+" : ""}${money(Math.abs(livePnL))}`}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">비중</p>
-                              <p className="font-medium">{asset.allocation}%</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span>포트폴리오 비중</span>
-                              <span>{asset.allocation}%</span>
-                            </div>
-                            <Progress value={asset.allocation} className="h-2" />
-                          </div>
-
-                          <div className="flex gap-2 mt-4">
-                            <Button size="sm" variant="outline"><Plus className="h-3 w-3 mr-1" />추가 매수</Button>
-                            <Button size="sm" variant="outline"><Minus className="h-3 w-3 mr-1" />매도</Button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                {visibleCount < logs.length && (
+                  <div className="flex justify-center mt-4">
+                    <Button onClick={handleLoadMore}>더보기</Button>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      );
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
 
-    case "crypto-history":
-      return (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>거래 내역</CardTitle>
-              <CardDescription>나의 매매 활동 및 실적</CardDescription>
-            </CardHeader>
+             case "crypto-holdings":
+         return (
+           <div className="space-y-6">
+             <Tabs defaultValue="holdings" className="space-y-4">
+               <TabsContent value="holdings" className="space-y-4">
+                 <Card>
+                   <CardHeader>
+                     <CardTitle>현재 보유자산</CardTitle>
+                     <CardDescription>보유 자산 상세 보기</CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                     <div className="space-y-4">
+                       {portfolioData.map((asset) => {
+                         const livePrice = marketData[asset.symbol]?.price || asset.currentPrice
+                         const currentValue = asset.amount * livePrice
+                         const livePnL = (livePrice - asset.avgPrice) * asset.amount
+                         const livePnLPercent = ((livePrice - asset.avgPrice) / asset.avgPrice) * 100
+                         return (
+                           <div key={asset.symbol} className="border rounded-lg p-4">
+                             <div className="flex items-center justify-between mb-4">
+                               <div className="flex items-center space-x-3">
+                                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                   <span className="font-bold">{asset.symbol}</span>
+                                 </div>
+                                 <div>
+                                   <h3 className="font-semibold">{asset.name}</h3>
+                                   <p className="text-sm text-muted-foreground">
+                                     {hideBalances ? "••••••" : `${asset.amount} ${asset.symbol}`}
+                                   </p>
+                                 </div>
+                               </div>
+                               <div className="text-right">
+                                 <p className="font-semibold">
+                                   {hideBalances
+                                     ? "••••••"
+                                     : `${livePnL >= 0 ? "+" : ""}${formatValue(Math.abs(livePnL), currency, krwRate, false)}`}
+                                 </p>
+                                 <span className="text-xs text-muted-foreground">
+                                   {hideBalances ? null : formatValue(Math.abs(livePnL), currency, krwRate, false)}
+                                 </span>
+                                 <Badge variant={livePnL >= 0 ? "default" : "destructive"}>
+                                   {livePnL >= 0 ? "+" : ""}
+                                   {hideBalances ? "••••" : `${livePnLPercent.toFixed(2)}%`}
+                                 </Badge>
+                               </div>
+                             </div>
+                             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                               <div>
+                                 <p className="text-muted-foreground">평균 매입가</p>
+                                 <p className="font-medium">{formatValue(asset.avgPrice, currency, krwRate, false)}</p>
+                               </div>
+                               <div>
+                                 <p className="text-muted-foreground">현재가</p>
+                                 <p className="font-medium">{formatValue(livePrice, currency, krwRate, false)}</p>
+                               </div>
+                               <div>
+                                 <p className="text-muted-foreground">손익</p>
+                                 <p className={`font-medium ${livePnL >= 0 ? "text-green-500" : "text-red-500"}`}> 
+                                   {hideBalances
+                                     ? "••••••"
+                                     : `${livePnL >= 0 ? "+" : ""}${formatValue(Math.abs(livePnL), currency, krwRate, false)}`}
+                                 </p>
+                               </div>
+                               <div>
+                                 <p className="text-muted-foreground">비중</p>
+                                 <p className="font-medium">{asset.allocation}%</p>
+                               </div>
+                             </div>
+                             <div className="space-y-2">
+                               <div className="flex justify-between text-sm">
+                                 <span>포트폴리오 비중</span>
+                                 <span>{asset.allocation}%</span>
+                               </div>
+                               <Progress value={asset.allocation} className="h-2" />
+                             </div>
+                             <div className="flex gap-2 mt-4">
+                               <Button size="sm" variant="outline">
+                                 <Plus className="h-3 w-3 mr-1" />
+                                 추가 매수
+                               </Button>
+                               <Button size="sm" variant="outline">
+                                 <Minus className="h-3 w-3 mr-1" />
+                                 매도
+                               </Button>
+                             </div>
+                           </div>
+                         )
+                       })}
+                     </div>
+                   </CardContent>
+                 </Card>
+               </TabsContent>
 
-            <CardContent>
-              {loadingTrades ? (
-                <div className="text-sm text-muted-foreground">불러오는 중…</div>
-              ) : (
-                <div className="space-y-3">
-                  {trades.length === 0 && (
-                    <div className="text-sm text-muted-foreground">거래 내역이 없습니다.</div>
-                  )}
+                <TabsContent value="history" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>거래 내역</CardTitle>
+                    <CardDescription>나의 매매 활동 및 실적</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {trades.length === 0 && (
+                        <div className="text-sm text-muted-foreground">
+                          거래 내역이 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                  {pagedTrades.map((tx, index) => (
+               <TabsContent value="analytics">
+                 {/* 포트폴리오 요약 */}
+                 <Card className="mb-6">
+                   <CardHeader>
+                     <CardTitle>포트폴리오 요약</CardTitle>
+                     <CardDescription>전체 자산 현황 및 수익률</CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                       <div className="text-center">
+                         <p className="text-2xl font-bold text-green-600">
+                           {hideBalances ? "••••••" : "+₩2,450,000"}
+                         </p>
+                         <p className="text-sm text-muted-foreground">총 수익</p>
+                       </div>
+                       <div className="text-center">
+                         <p className="text-2xl font-bold">
+                           {hideBalances ? "••••••" : "₩52,450,000"}
+                         </p>
+                         <p className="text-sm text-muted-foreground">총 자산</p>
+                       </div>
+                       <div className="text-center">
+                         <p className="text-2xl font-bold text-green-600">
+                           {hideBalances ? "••••••" : "+4.9%"}
+                         </p>
+                         <p className="text-sm text-muted-foreground">수익률</p>
+                       </div>
+                       <div className="text-center">
+                         <p className="text-2xl font-bold">
+                           {hideBalances ? "••••••" : "5"}
+                         </p>
+                         <p className="text-sm text-muted-foreground">보유 코인</p>
+                       </div>
+                     </div>
+                   </CardContent>
+                 </Card>
+
+                 {/* 자산 비중 및 성과 지표 */}
+                 <div className="grid md:grid-cols-2 gap-6">
+                   <Card>
+                     <CardHeader>
+                       <CardTitle>자산 비중</CardTitle>
+                       <CardDescription>포트폴리오 내 자산별 분포</CardDescription>
+                     </CardHeader>
+                     <CardContent>
+                       <div className="space-y-4">
+                         {portfolioData.map((asset) => (
+                           <div key={asset.symbol} className="space-y-2">
+                             <div className="flex justify-between text-sm">
+                               <span className="flex items-center space-x-2">
+                                 <div className="w-3 h-3 bg-primary rounded-full" />
+                                 <span>{asset.symbol}</span>
+                               </span>
+                               <span>{asset.allocation}%</span>
+                             </div>
+                             <Progress value={asset.allocation} className="h-2" />
+                           </div>
+                         ))}
+                       </div>
+                     </CardContent>
+                   </Card>
+
+                   <Card>
+                     <CardHeader>
+                       <CardTitle>성과 지표</CardTitle>
+                       <CardDescription>주요 포트폴리오 통계</CardDescription>
+                     </CardHeader>
+                     <CardContent>
+                       <div className="space-y-4">
+                         <div className="flex justify-between">
+                           <span className="text-muted-foreground">최고 수익 자산</span>
+                           <span className="font-medium text-green-500">ADA (+6.67%)</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-muted-foreground">최저 수익 자산</span>
+                           <span className="text-muted-foreground">최저 수익 자산</span>
+                           <span className="font-medium text-red-500">DOT (-4.0%)</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-muted-foreground">수익 거래 비율</span>
+                           <span className="font-medium">60%</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-muted-foreground">평균 보유 기간</span>
+                           <span className="font-medium">12일</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-muted-foreground">리스크 점수</span>
+                           <span className="font-medium text-orange-500">80</span>
+                         </div>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 </div>
+               </TabsContent>
+             </Tabs>
+           </div>
+         )
+
+             case "crypto-history":
+         return (
+          
+           <div className="space-y-6">
+             <Card>
+               <CardHeader>
+                 <CardTitle>거래 내역</CardTitle>
+                 <CardDescription>나의 매매 활동 및 실적</CardDescription>
+               </CardHeader>
+
+               <CardContent>
+                  {loadingTrades ? (
+                    <div className="text-sm text-muted-foreground">불러오는 중…</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {trades.length === 0 && (
+                        <div className="text-sm text-muted-foreground">거래 내역이 없습니다.</div>
+                      )}
+                      {/* {tradesWithRun.map((tx, index) => ( */}
+                      {pagedTrades.map((tx, index) => (
                         <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div
@@ -1134,257 +1122,270 @@ useEffect(() => {
                         </div>
                       ))}
 
-                  {/* 하단 – 더보기/접기 */}
-                  {tradesWithRun.length > 10 && (
-                    <div className="pt-2">
-                      {visibleTrades < tradesWithRun.length ? (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => setVisibleTrades(v => Math.min(v + 10, tradesWithRun.length))}
-                        >
-                          더보기 ( {visibleTrades} / {tradesWithRun.length} )
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          className="w-full"
-                          onClick={() => setVisibleTrades(10)}
-                        >
-                          접기
-                        </Button>
+                      {/* 하단 – 더보기/접기 */}
+                      {tradesWithRun.length > 10 && (
+                        <div className="pt-2">
+                          {visibleTrades < tradesWithRun.length ? (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() =>
+                                setVisibleTrades(v => Math.min(v + 10, tradesWithRun.length))
+                              }
+                            >
+                              더보기 ( {visibleTrades} / {tradesWithRun.length} )
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              className="w-full"
+                              onClick={() => setVisibleTrades(10)}
+                            >
+                              접기
+                            </Button>
+                          )}
+                        </div>
                       )}
+
                     </div>
                   )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      );
+                </CardContent>
+             </Card>
+           </div>
+         )
 
-    case "crypto-analysis":
-      return (
-        <div className="space-y-6">
-          {/* 포트폴리오 요약 (실데이터 반영) */}
-          <Card className="mb-6">
+       case "crypto-analysis":
+         return (
+           <div className="space-y-6">
+             {/* 포트폴리오 요약 */}
+             <Card className="mb-6">
+               <CardHeader>
+                 <CardTitle>포트폴리오 요약</CardTitle>
+                 <CardDescription>전체 자산 현황 및 수익률</CardDescription>
+               </CardHeader>
+               <CardContent>
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                   <div className="text-center">
+                     <p className="text-2xl font-bold text-green-600">
+                       {hideBalances ? "••••••" : "+₩2,450,000"}
+                     </p>
+                     <p className="text-sm text-muted-foreground">총 수익</p>
+                   </div>
+                   <div className="text-center">
+                     <p className="text-2xl font-bold">
+                       {hideBalances ? "••••••" : "₩52,450,000"}
+                     </p>
+                     <p className="text-sm text-muted-foreground">총 자산</p>
+                   </div>
+                   <div className="text-center">
+                     <p className="text-2xl font-bold text-green-600">
+                       {hideBalances ? "••••••" : "+4.9%"}
+                     </p>
+                     <p className="text-sm text-muted-foreground">수익률</p>
+                   </div>
+                   <div className="text-center">
+                     <p className="text-2xl font-bold">
+                       {hideBalances ? "••••••" : "5"}
+                     </p>
+                     <p className="text-sm text-muted-foreground">보유 코인</p>
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
+
+             {/* 자산 비중 및 성과 지표 */}
+             <div className="grid md:grid-cols-2 gap-6">
+               <Card>
+                 <CardHeader>
+                   <CardTitle>자산 비중</CardTitle>
+                   <CardDescription>포트폴리오 내 자산별 분포</CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                   <div className="space-y-4">
+                     {portfolioData.map((asset) => (
+                       <div key={asset.symbol} className="space-y-2">
+                         <div className="flex justify-between text-sm">
+                           <span className="flex items-center space-x-2">
+                             <div className="w-3 h-3 bg-primary rounded-full" />
+                             <span>{asset.symbol}</span>
+                           </span>
+                           <span>{asset.allocation}%</span>
+                         </div>
+                         <Progress value={asset.allocation} className="h-2" />
+                       </div>
+                     ))}
+                   </div>
+                 </CardContent>
+               </Card>
+
+               <Card>
+                 <CardHeader>
+                   <CardTitle>성과 지표</CardTitle>
+                   <CardDescription>주요 포트폴리오 통계</CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                   <div className="space-y-4">
+                     <div className="flex justify-between">
+                       <span className="text-muted-foreground">최고 수익 자산</span>
+                       <span className="font-medium text-green-500">ADA (+6.67%)</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-muted-foreground">최저 수익 자산</span>
+                       <span className="font-medium text-red-500">DOT (-4.0%)</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-muted-foreground">수익 거래 비율</span>
+                       <span className="font-medium">60%</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-muted-foreground">평균 보유 기간</span>
+                       <span className="font-medium">12일</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-muted-foreground">리스크 점수</span>
+                       <span className="font-medium text-orange-500">80</span>
+                     </div>
+                   </div>
+                 </CardContent>
+               </Card>
+             </div>
+           </div>
+         )
+
+ 
+
+      case "profile":
+        return (
+          <Card>
             <CardHeader>
-              <CardTitle>포트폴리오 요약</CardTitle>
-              <CardDescription>전체 자산 현황 및 수익률</CardDescription>
+              <CardTitle className="text-xl font-semibold">회원정보</CardTitle>
+              <p className="text-gray-600">개인정보 및 계정 설정</p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {hideBalances ? "••••••" : (totalPnLKRW >= 0 ? "+" : "") + money(Math.abs(totalPnLKRW))}
-                  </p>
-                  <p className="text-sm text-muted-foreground">총 수익</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold">
-                    {hideBalances ? "••••••" : money(totalValueKRW)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">총 자산</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {hideBalances ? "••••••" : `${totalPnLPct.toFixed(2)}%`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">수익률</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold">
-                    {hideBalances ? "••••••" : String(uiHoldings.length)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">보유 코인</p>
-                </div>
+              <div className="flex flex-col items-center justify-center py-8">
+                                 <div className="mb-6">
+                   <Avatar className="h-36 w-36">
+                     {editAvatar ? (
+                       <AvatarImage
+                         src={editAvatar}
+                         alt={editNickname}
+                         className="object-cover"
+                       />
+                     ) : null}
+                     <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-4xl flex items-center justify-center min-h-[144px] min-w-[144px]">
+                       <span className="font-bold text-white text-5xl">{editNickname?.charAt(0).toUpperCase() || "U"}</span>
+                     </AvatarFallback>
+                   </Avatar>
+                 </div>
+                
+                  <form className="w-full max-w-md flex flex-col gap-4">
+                                         <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진</label>
+                       <input
+                         type="file"
+                         accept="image/*"
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         onChange={e => {
+                           const file = e.target.files?.[0]
+                           if (file) {
+                             const reader = new FileReader()
+                             reader.onload = (ev) => {
+                               setEditAvatar(ev.target.result)
+                               // 파일 선택 즉시 프로필에 반영
+                               setAvatar(ev.target.result)
+                             }
+                             reader.readAsDataURL(file)
+                           }
+                         }}
+                       />
+                     </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">닉네임</label>
+                      <input
+                        className="border rounded px-3 py-2 text-sm w-full"
+                        value={editNickname}
+                        onChange={e => setEditNickname(e.target.value)}
+                        placeholder="닉네임 입력"
+                      />
+                    </div>
+                    
+                                         <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">현재 비밀번호</label>
+                       <input
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         type="password"
+                         placeholder="현재 비밀번호 입력"
+                         value={currentPassword}
+                         onChange={e => setCurrentPassword(e.target.value)}
+                       />
+                     </div>
+                     
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호</label>
+                       <input
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         type="password"
+                         placeholder="새 비밀번호 입력"
+                         value={newPassword}
+                         onChange={e => setNewPassword(e.target.value)}
+                       />
+                     </div>
+                     
+                     <div>
+                       <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 확인</label>
+                       <input
+                         className="border rounded px-3 py-2 text-sm w-full"
+                         type="password"
+                         placeholder="새 비밀번호 재입력"
+                         value={confirmPassword}
+                         onChange={e => setConfirmPassword(e.target.value)}
+                       />
+                     </div>
+                    
+                                         <div className="mt-4">
+                                               <Button 
+                          className="w-full" 
+                          variant="default" 
+                          type="button" 
+                                                     onClick={() => {
+                             // 비밀번호 변경 로직
+                             if (newPassword !== confirmPassword) {
+                               alert("새 비밀번호가 일치하지 않습니다.")
+                               return
+                             }
+                             if (newPassword.length < 6) {
+                               alert("새 비밀번호는 최소 6자 이상이어야 합니다.")
+                               return
+                             }
+                             
+                             // 여기에 실제 비밀번호 변경 API 호출 로직을 추가할 수 있습니다
+                             alert("비밀번호가 성공적으로 변경되었습니다.")
+                             
+                             // 입력 필드 초기화
+                             setCurrentPassword("")
+                             setNewPassword("")
+                             setConfirmPassword("")
+                             
+                             // 프로필 정보 저장 (이미 즉시 반영되어 있음)
+                             setIsEditingProfile(false)
+                             
+                             alert("프로필 정보가 성공적으로 저장되었습니다.")
+                           }}
+                        >
+                          저장
+                        </Button>
+                     </div>
+                  </form>
+                
               </div>
             </CardContent>
           </Card>
+        )
 
-          {/* 자산 비중 및 성과 지표 */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>자산 비중</CardTitle>
-                <CardDescription>포트폴리오 내 자산별 분포</CardDescription>
-              </CardHeader>
-              {/* uiHoldings로 교체 */}
-              <CardContent>
-                <div className="space-y-4">
-                  {uiHoldings.length === 0 && (
-                    <div className="text-sm text-muted-foreground">표시할 자산이 없습니다.</div>
-                  )}
-                  {uiHoldings.map((asset) => (
-                    <div key={`${asset.assetId}-${asset.symbol}`} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="flex items-center space-x-2">
-                          <div className="w-3 h-3 bg-primary rounded-full" />
-                          <span>{asset.symbol}</span>
-                        </span>
-                        <span>{asset.allocation}%</span>
-                      </div>
-                      <Progress value={asset.allocation} className="h-2" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>성과 지표</CardTitle>
-                <CardDescription>주요 포트폴리오 통계</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">최고 수익 자산</span>
-                    {/* 샘플: 실제로는 uiHoldings에서 max/min 찾아 표시 가능 */}
-                    <span className="font-medium text-green-500">—</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">최저 수익 자산</span>
-                    <span className="font-medium text-red-500">—</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">수익 거래 비율</span>
-                    <span className="font-medium">—</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">평균 보유 기간</span>
-                    <span className="font-medium">—</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">리스크 점수</span>
-                    <span className="font-medium text-orange-500">—</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      );
-
-    case "profile":
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold">회원정보</CardTitle>
-            <p className="text-gray-600">개인정보 및 계정 설정</p>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-8">
-              <div className="mb-6">
-                <Avatar className="h-36 w-36">
-                  {editAvatar ? (
-                    <AvatarImage src={editAvatar} alt={editNickname} className="object-cover" />
-                  ) : null}
-                  <AvatarFallback className="bg-gray-400 border border-gray-300 text-white text-4xl flex items-center justify-center min-h-[144px] min-w-[144px]">
-                    <span className="font-bold text-white text-5xl">
-                      {editNickname?.charAt(0).toUpperCase() || "U"}
-                    </span>
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              <form className="w-full max-w-md flex flex-col gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">프로필 사진</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="border rounded px-3 py-2 text-sm w-full"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          setEditAvatar(ev.target.result);
-                          setAvatar(ev.target.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">닉네임</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm w-full"
-                    value={editNickname}
-                    onChange={(e) => setEditNickname(e.target.value)}
-                    placeholder="닉네임 입력"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">현재 비밀번호</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm w-full"
-                    type="password"
-                    placeholder="현재 비밀번호 입력"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm w-full"
-                    type="password"
-                    placeholder="새 비밀번호 입력"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">새 비밀번호 확인</label>
-                  <input
-                    className="border rounded px-3 py-2 text-sm w-full"
-                    type="password"
-                    placeholder="새 비밀번호 재입력"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <Button
-                    className="w-full"
-                    variant="default"
-                    type="button"
-                    onClick={() => {
-                      if (newPassword !== confirmPassword) {
-                        alert("새 비밀번호가 일치하지 않습니다.");
-                        return;
-                      }
-                      if (newPassword.length < 6) {
-                        alert("새 비밀번호는 최소 6자 이상이어야 합니다.");
-                        return;
-                      }
-                      alert("비밀번호가 성공적으로 변경되었습니다.");
-                      setCurrentPassword("");
-                      setNewPassword("");
-                      setConfirmPassword("");
-                      setIsEditingProfile(false);
-                      alert("프로필 정보가 성공적으로 저장되었습니다.");
-                    }}
-                  >
-                    저장
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </CardContent>
-        </Card>
-      );
+    }
   }
-};
-
 
   return (
     <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
@@ -1407,8 +1408,7 @@ useEffect(() => {
                 <CardContent>
                   <div className="space-y-4">
                     {portfolioData.map((asset) => {
-                      //const livePrice = marketData[asset.symbol]?.price || asset.currentPrice
-                      const livePrice = getLivePrice(asset.symbol, asset.market);
+                      const livePrice = marketData[asset.symbol]?.price || asset.currentPrice
                       const currentValue = asset.amount * livePrice
                       const livePnL = (livePrice - asset.avgPrice) * asset.amount
                       const livePnLPercent = ((livePrice - asset.avgPrice) / asset.avgPrice) * 100
@@ -1435,15 +1435,10 @@ useEffect(() => {
                               <span className="text-xs text-muted-foreground">
                                 {hideBalances ? null : formatValue(Math.abs(livePnL), currency, krwRate, false)}
                               </span>
-                              {/* <Badge variant={livePnL >= 0 ? "default" : "destructive"}>
-                                {livePnL >= 0 ? "+" : ""}
-                                {hideBalances ? "••••" : `${livePnLPercent.toFixed(2)}%`}
-                              </Badge> */}
                               <Badge variant={livePnL >= 0 ? "default" : "destructive"}>
                                 {livePnL >= 0 ? "+" : ""}
                                 {hideBalances ? "••••" : `${livePnLPercent.toFixed(2)}%`}
                               </Badge>
-
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-sm mb-4">
