@@ -4,10 +4,10 @@ import torch
 import os
 from sklearn.metrics import mean_squared_error
 
-from data_collector import get_all_coins_historical_data, get_recent_news_data
-from text_processor import process_news_for_sentiment
+from ml.data_collector import get_all_coins_historical_data, get_recent_news_data
+from ml.text_processor import process_news_for_sentiment
 
-from coin_model_trainer import CoinPredictor, prepare_single_coin_data, load_coin_model, SEQUENCE_LENGTH
+from ml.coin_model_trainer import CoinPredictor, prepare_single_coin_data, load_coin_model, SEQUENCE_LENGTH
 
 
 def evaluate_single_model_with_data(coin_name, all_coins_df, sentiment_df, test_days=30):

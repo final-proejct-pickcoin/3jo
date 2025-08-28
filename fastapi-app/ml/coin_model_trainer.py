@@ -9,8 +9,8 @@ import joblib
 import os
 from datetime import datetime, timedelta
 
-from data_collector import get_all_coins_historical_data, get_recent_news_data
-from text_processor import process_news_for_sentiment
+from ml.data_collector import get_all_coins_historical_data, get_recent_news_data, get_historical_crypto_prices
+from ml.text_processor import process_news_for_sentiment
 
 # 하이퍼파라미터
 SEQUENCE_LENGTH = 15
@@ -118,6 +118,59 @@ def prepare_single_coin_data(all_coins_df, sentiment_df, coin):
 
     return coin_merged
 
+def prepare_single_coin_data_direct(coin_df, sentiment_df, coin_name):
+    """단일 코인 DataFrame을 직접 처리하는 함수"""
+    
+    # coin_df는 이미 해당 코인 데이터만 있으므로 필터링 불필요
+    coin_data = coin_df.copy()
+    
+    print(f"    원본 데이터: {len(coin_data)}일")
+
+    # 날짜별 감성 점수 집계
+    sentiment_df = sentiment_df.copy()
+    sentiment_df['date'] = sentiment_df['timestamp'].dt.date
+    daily_sentiment_avg = sentiment_df.groupby('date')['sentiment_score'].mean().reset_index()
+    daily_sentiment_avg.rename(columns={'sentiment_score': 'daily_sentiment_avg'}, inplace=True)
+
+    # 감성 데이터 병합
+    coin_merged = pd.merge(coin_data, daily_sentiment_avg, on='date', how='left')
+    coin_merged['daily_sentiment_avg'] = coin_merged['daily_sentiment_avg'].fillna(0)
+
+    # 나머지 기술적 지표 계산은 prepare_single_coin_data()와 동일
+    coin_merged['price_change_rate'] = coin_merged['close'].pct_change().fillna(0)
+    coin_merged['log_volume'] = np.log1p(coin_merged['volume'])
+    
+    # 이동평균
+    coin_merged['ma_5'] = coin_merged['close'].rolling(window=5).mean()
+    coin_merged['ma_20'] = coin_merged['close'].rolling(window=20).mean()
+    
+    # 볼린저 밴드
+    rolling_mean = coin_merged['close'].rolling(window=20).mean()
+    rolling_std = coin_merged['close'].rolling(window=20).std()
+    coin_merged['bb_upper'] = rolling_mean + (rolling_std * 2)
+    coin_merged['bb_lower'] = rolling_mean - (rolling_std * 2)
+    coin_merged['bb_position'] = (coin_merged['close'] - coin_merged['bb_lower']) / (
+            coin_merged['bb_upper'] - coin_merged['bb_lower'])
+
+    # RSI
+    delta = coin_merged['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    coin_merged['rsi'] = 100 - (100 / (1 + rs))
+
+    # 타겟 변수 (다음날 종가)
+    coin_merged['target_close'] = coin_merged['close'].shift(-1)
+
+    # 결측치 제거
+    coin_merged.dropna(inplace=True)
+
+    print(f"    처리 후 데이터: {len(coin_merged)}일")
+
+    if len(coin_merged) < MIN_TRAINING_DAYS:
+        raise ValueError(f"{coin_name}: 처리 후 데이터 부족 ({len(coin_merged)}일 < {MIN_TRAINING_DAYS}일)")
+
+    return coin_merged
 
 def train_single_coin_model(coin_data, coin_name):
     """단일 코인 모델 학습"""
@@ -248,7 +301,7 @@ def train_single_coin_model(coin_data, coin_name):
 
 def save_coin_model(coin_name, model, scaler_features, scaler_target):
     """코인별 모델 저장"""
-    model_dir = f"models/{coin_name}"
+    model_dir = f"ml/models/{coin_name}"
     os.makedirs(model_dir, exist_ok=True)
 
     torch.save(model.state_dict(), f"{model_dir}/model.pt")
@@ -258,7 +311,7 @@ def save_coin_model(coin_name, model, scaler_features, scaler_target):
 
 def load_coin_model(coin_name):
     """코인별 모델 로드"""
-    model_dir = f"models/{coin_name}"
+    model_dir = f"ml/models/{coin_name}"
 
     if not os.path.exists(model_dir):
         raise FileNotFoundError(f"{coin_name} 모델을 찾을 수 없습니다: {model_dir}")
@@ -285,11 +338,11 @@ def predict_coin_price(coin_name, days_ahead=1):
         # 모델 로드
         model, scaler_features, scaler_target = load_coin_model(coin_name)
 
-        # 최근 데이터 수집 및 준비 (충분한 데이터 확보)
-        all_coins_df = get_all_coins_historical_data(days=100)  # 100일로 증가
+        # 단일 코인 데이터 수집
+        coin_df = get_historical_crypto_prices(coin=coin_name, days=70) # 50일치만 수집
         sentiment_df = process_news_for_sentiment(get_recent_news_data(days=100))  # 100일로 증가
 
-        coin_data = prepare_single_coin_data(all_coins_df, sentiment_df, coin_name)
+        coin_data = prepare_single_coin_data_direct(coin_df, sentiment_df, coin_name)
 
         feature_columns = [
             'close', 'daily_sentiment_avg', 'price_change_rate',
@@ -320,6 +373,29 @@ def predict_coin_price(coin_name, days_ahead=1):
         print(f"예측 중 오류 발생: {e}")
         return None
 
+'''
+def predict_coin_price(coin_name):
+    """학습된 모델로 즉시 예측"""
+    try:
+        model, scaler_features, scaler_target = load_coin_model(coin_name)
+        
+        # 현재가만 가져오기 (빠름)
+        from api.voice_router import get_realtime_price
+        current_data = get_realtime_price(coin_name)
+        current_price = float(current_data["closing_price"])
+        
+        # 모델 입력 형태로 변환
+        input_tensor = prepare_model_input(current_price, scaler_features)
+        
+        # 예측
+        with torch.no_grad():
+            prediction_scaled = model(input_tensor)
+            prediction = scaler_target.inverse_transform(prediction_scaled)
+        
+        return prediction[0][0]
+    except:
+        return None
+'''    
 
 def train_all_individual_models():
     """모든 코인에 대해 개별 모델 학습"""

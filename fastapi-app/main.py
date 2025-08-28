@@ -34,7 +34,7 @@ from api.ml_router import router as ml_router
 # 스케줄링 관련 [news schedule] 크롤링 주기 설정
 from apscheduler.schedulers.background import BackgroundScheduler
 from service.news_service import crawl_and_save
-from datetime import datetimes
+from datetime import datetime
 from repository.news_repository import delete_news_older_than, trim_news_by_count
 
 # 음성 AI 관련 모듈
