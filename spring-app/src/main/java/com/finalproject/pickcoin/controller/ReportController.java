@@ -47,6 +47,7 @@ public class ReportController {
             inq.setAmount(null);                 // 신고는 금액 없음
             inq.setCategory("신고");
             inq.setUser_id(r.getReporter_id());
+            inq.setStatus("신규");
         inquiryService.insert(inq);
 
         try{

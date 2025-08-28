@@ -1101,28 +1101,28 @@ async def realtime_ws(websocket: WebSocket):
            print(f"📋 초기 코인 목록 전송: {len(last_coin_list)}개")
 
        # 코인 목록 실시간 감시 태스크 (30초마다 체크)
-       async def coin_list_watcher():
-           nonlocal last_coin_list
-           while True:
-               await asyncio.sleep(30)
-               try:
-                   new_resp = await get_coin_list()
-                   if new_resp["status"] == "success":
-                       new_list = new_resp["data"]
-                       # 코인 심볼 기준으로만 비교 (순서, 개수, 심볼)
-                       old_symbols = set(c['symbol'] for c in last_coin_list)
-                       new_symbols = set(c['symbol'] for c in new_list)
-                       if old_symbols != new_symbols:
-                           await websocket.send_text(json.dumps({
-                               "type": "update_coins",
-                               "data": new_list
-                           }))
-                           print(f"🔄 코인 목록 변경 감지 및 전송: {len(new_list)}개")
-                           last_coin_list = new_list[:]
-               except Exception as e:
-                   print(f"⚠️ 코인 목록 실시간 감시 오류: {e}")
+    #    async def coin_list_watcher():
+    #        nonlocal last_coin_list
+    #        while True:
+    #            await asyncio.sleep(30)
+    #            try:
+    #                new_resp = await get_coin_list()
+    #                if new_resp["status"] == "success":
+    #                    new_list = new_resp["data"]
+    #                    # 코인 심볼 기준으로만 비교 (순서, 개수, 심볼)
+    #                    old_symbols = set(c['symbol'] for c in last_coin_list)
+    #                    new_symbols = set(c['symbol'] for c in new_list)
+    #                    if old_symbols != new_symbols:
+    #                        await websocket.send_text(json.dumps({
+    #                            "type": "update_coins",
+    #                            "data": new_list
+    #                        }))
+    #                        print(f"🔄 코인 목록 변경 감지 및 전송: {len(new_list)}개")
+    #                        last_coin_list = new_list[:]
+    #            except Exception as e:
+    #                print(f"⚠️ 코인 목록 실시간 감시 오류: {e}")
 
-       watcher_task = asyncio.create_task(coin_list_watcher())
+    #    watcher_task = asyncio.create_task(coin_list_watcher())
 
        # ✅ 실제 빗썸 WebSocket 연결 (개선된 버전)
        await connect_to_bithumb_websocket(websocket, last_coin_list)
