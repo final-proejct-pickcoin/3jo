@@ -12,6 +12,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import io.github.cdimascio.dotenv.Dotenv;
+
 // reactive 말고 MVC용 import
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -20,8 +22,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
-    private String base_url = "localhost";
+    
+    // .env 파일을 로드합니다.
+    Dotenv dotenv = Dotenv.load();
+    private String base_url = dotenv.get("JAVA_SERVICE_URL");
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
