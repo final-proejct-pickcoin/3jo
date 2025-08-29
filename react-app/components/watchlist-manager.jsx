@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import axios from "axios"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +14,11 @@ import {
   StarOff
 } from "lucide-react"
 
-const API_BASE = "http://localhost:8080/api/mypage";
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
+const API_BASE = `${clean(springUrl)}/api/mypage`;
+//const API_BASE = "http://localhost:8080/api/mypage";
 
 
 
@@ -35,7 +40,7 @@ function parseJwt(token) {
 // AuthController 만들고 나서
 async function fetchUserIdFromToken(token) {
   try {
-    const res = await fetch("http://localhost:8080/api/auth/me", {
+    const res = await fetch(`${clean(springUrl)}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     // 200이더라도 ok=false일 수 있으니 JSON을 보고 판단
@@ -70,7 +75,7 @@ function getEmailFromToken(t) {
 
 //=====================
 async function fetchUserIdByEmail(email) {
-  const res = await fetch(`http://localhost:8080/api/users/user-id?email=${encodeURIComponent(email)}`);
+  const res = await fetch(`${clean(springUrl)}/api/users/user-id?email=${encodeURIComponent(email)}`);
   const data = await res.json().catch(() => ({}));
   if (data?.ok && data?.user_id != null) return Number(data.user_id);
   return null;

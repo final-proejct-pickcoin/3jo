@@ -11,6 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Heart, MessageCircle, Share, Plus, TrendingUp, Users, Award, Flag } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
 
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
+
 // 더미 초기값 - user_id 추가
 const communityPosts = []
 
@@ -62,7 +66,7 @@ const PostCard = memo(function PostCard({
   // 댓글 목록 로드
   const fetchReplies = useCallback(async () => {
     try {
-      const res  = await axios.get(`http://localhost:8080/community/${post.post_id}/replies`)
+      const res  = await axios.get(`${clean(springUrl)}/community/${post.post_id}/replies`)
       const list = Array.isArray(res.data) ? res.data : []
       setReplies(list)
       // 댓글창 열 때 하위 상태 초기화
@@ -80,7 +84,7 @@ const PostCard = memo(function PostCard({
     if (!newReply.trim()) return
     if (!currentUserId) return alert("로그인 후 이용해주세요.")
     try {
-      await axios.post(`http://localhost:8080/community/${post.post_id}/replies`, {
+      await axios.post(`${clean(springUrl)}/community/${post.post_id}/replies`, {
         post_id: post.post_id,
         user_id: currentUserId,
         content: newReply
@@ -96,7 +100,7 @@ const PostCard = memo(function PostCard({
   const fetchChildren = useCallback(async (parentId) => {
     if (childrenMap[parentId] && Array.isArray(childrenMap[parentId])) return
     try {
-      const res = await axios.get(`http://localhost:8080/community/replies/${parentId}/children`)
+      const res = await axios.get(`${clean(springUrl)}/community/replies/${parentId}/children`)
       const list = Array.isArray(res.data) ? res.data : []
       setChildrenMap(prev => ({ ...prev, [parentId]: list }))
     } catch (e) {
@@ -110,7 +114,7 @@ const PostCard = memo(function PostCard({
     if (!text) return
     if (!currentUserId) return alert("로그인 후 이용해주세요.")
     try {
-      await axios.post(`http://localhost:8080/community/replies/${parentId}`, {
+      await axios.post(`${clean(springUrl)}/community/replies/${parentId}`, {
         post_id: post.post_id,
         user_id: currentUserId,
         content: text
@@ -136,7 +140,7 @@ const PostCard = memo(function PostCard({
     const text = editReplyText.trim()
     if (!text) return
     try {
-      await axios.put(`http://localhost:8080/community/replies/${replyId}`, null, {
+      await axios.put(`${clean(springUrl)}/community/replies/${replyId}`, null, {
         params: { userId: currentUserId, content: text }
       })
       setEditingReplyId(null)
@@ -152,7 +156,7 @@ const PostCard = memo(function PostCard({
   const removeReply = useCallback(async (replyId, parentId) => {
     if (!window.confirm("삭제하시겠습니까?")) return
     try {
-      await axios.delete(`http://localhost:8080/community/replies/${replyId}`, {
+      await axios.delete(`${clean(springUrl)}/community/replies/${replyId}`, {
         params: { userId: currentUserId }
       })
       await fetchReplies()
@@ -427,8 +431,8 @@ export const CommunityHub = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data } = await axios.get("http://localhost:8080/community/stats")
-      const activeRes = await axios.get("http://localhost:8080/users/active-users")
+      const { data } = await axios.get(`${clean(springUrl)}/community/stats`)
+      const activeRes = await axios.get(`${clean(springUrl)}/users/active-users`)
       setStats({
         activeUsers: Number(data.activeUsers ?? 0),
         postsToday: Number(data.postsToday ?? 0),
@@ -471,7 +475,7 @@ export const CommunityHub = () => {
     kwCacheRef.current.loading = true
 
     try {
-      const res = await axios.get("http://localhost:8080/community/popular-keword")
+      const res = await axios.get(`${clean(springUrl)}/community/popular-keword`)
       const data = Array.isArray(res.data) ? res.data : []
       kwCacheRef.current = { ts: now, data, loading: false }
       setPopularKeywords(data)
@@ -484,7 +488,7 @@ export const CommunityHub = () => {
   // 신고 여부 체크
   const checkReported = useCallback(async (postId) => {
     try {
-      const res = await axios.get("http://localhost:8080/report/exists", {
+      const res = await axios.get(`${clean(springUrl)}/report/exists`, {
         params: {
           reporter_id: currentUser.user_id,
           reported_type: "POST",
@@ -508,7 +512,7 @@ export const CommunityHub = () => {
     }
 
     // 신고게시글 작성자 가져오기*************************
-    axios.get(`http://localhost:8080/community/${postId}`)
+    axios.get(`${clean(springUrl)}/community/${postId}`)
       .then((res)=>{
         console.log("게시글 작성자:", res.data.user_id)
         setReportTargetId(res.data.user_id)
@@ -520,7 +524,7 @@ export const CommunityHub = () => {
   const handleSubmitReport = useCallback(async () => {
     if (!reportReason) return alert("신고 사유를 선택해주세요.")
     try {
-      await axios.post("http://localhost:8080/report", {
+      await axios.post(`${clean(springUrl)}/report`, {
         reporter_id: currentUser.user_id,
         reported_id: reportTargetId,
         reported_type: "POST",
@@ -555,7 +559,7 @@ export const CommunityHub = () => {
   // 내가 좋아요 누른 게시글 목록 불러오기
   const fetchLikedPosts = useCallback(async (userId) => {
     try {
-      const res = await axios.get(`http://localhost:8080/community/liked`, {
+      const res = await axios.get(`${clean(springUrl)}/community/liked`, {
         params: { userId }
       })
       if (Array.isArray(res.data)) {
@@ -577,7 +581,7 @@ export const CommunityHub = () => {
     const controller = new AbortController()
     ;(async () => {
       try {
-        const res = await axios.get("http://localhost:8080/community/findAll", {
+        const res = await axios.get(`${clean(springUrl)}/community/findAll`, {
           signal: controller.signal,
         })
         if (Array.isArray(res.data)) {
@@ -645,7 +649,7 @@ export const CommunityHub = () => {
     if (!postId) return
     if (currentUser.user_id == null) return alert("로그인 후 이용해주세요.")
     try {
-      const res = await axios.put(`http://localhost:8080/community/${postId}/like/${currentUser.user_id}`)
+      const res = await axios.put(`${clean(springUrl)}/community/${postId}/like/${currentUser.user_id}`)
       const { liked, like_count } = res.data
       setPosts((prev) =>
         prev.map((p) => p.post_id === postId ? { ...p, like_count, isLiked: liked } : p)
@@ -660,7 +664,7 @@ export const CommunityHub = () => {
     if (!newPost.trim()) return
     if (currentUser.user_id == null) return alert("로그인 후 글을 작성해주세요.")
     try {
-      await axios.post("http://localhost:8080/community/insert", {
+      await axios.post(`${clean(springUrl)}/community/insert`, {
         user_id: currentUser.user_id,
         coin_id: null,
         title: newPost,
@@ -702,7 +706,7 @@ export const CommunityHub = () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return
 
     try {
-      await axios.delete(`http://localhost:8080/community/${postId}`, { params: { userId: me } })
+      await axios.delete(`${clean(springUrl)}/community/${postId}`, { params: { userId: me } })
       alert("삭제 완료되었습니다.")
       fetchPosts()
     } catch (err) {
@@ -723,7 +727,7 @@ export const CommunityHub = () => {
     if (!newContent?.trim()) return
 
     try {
-      await axios.put(`http://localhost:8080/community/${postId}`, {
+      await axios.put(`${clean(springUrl)}/community/${postId}`, {
         user_id: me,
         coin_id: null,
         title: newContent,

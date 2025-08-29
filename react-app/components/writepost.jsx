@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { useState } from 'react';
 
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
 function WritePost() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -9,7 +12,7 @@ function WritePost() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:8080/community', {
+      const res = await axios.post(`${clean(springUrl)}/community`, {
         title,
         content,
         writer,

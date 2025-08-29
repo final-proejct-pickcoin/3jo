@@ -3,6 +3,9 @@
 import axios from "axios"
 import { createContext, useContext, useState, useEffect } from "react"
 
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
 // JWT 파서 유틸 함수
 function parseJwt(token) {
   try {
@@ -72,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       formData.append("email", email)
       formData.append("password", password)
 
-      const res = await fetch("http://localhost:8080/users/login", {
+      const res = await fetch(`${clean(springUrl)}/users/login`, {
         method: "POST",
         body: formData,
       })
@@ -118,7 +121,7 @@ export const AuthProvider = ({ children }) => {
     const isKakaoUser = userData?.provider === "kakao"
 
     console.log("로그아웃 유저 정보:",userData)
-    axios.delete("http://localhost:8080/users/logout", {
+    axios.delete(`${clean(springUrl)}/users/logout`, {
       params : {email : userData.email}
     })
 
@@ -151,7 +154,7 @@ export const AuthProvider = ({ children }) => {
       //formData.append("phone", phone)
       formData.append("phone", normalizedPhone)
 
-      const res = await fetch("http://localhost:8080/users/register", {
+      const res = await fetch(`${clean(springUrl)}/users/register`, {
         method: "POST",
         // headers: {
         //   "Content-Type": "application/x-www-form-urlencoded",
@@ -194,7 +197,7 @@ export const AuthProvider = ({ children }) => {
     params.append("email", phoneLinkRequest.email)
     params.append("phone", normalized)
 
-    const res = await fetch("http://localhost:8080/users/phone/request-otp", {
+    const res = await fetch(`${clean(springUrl)}/users/phone/request-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params,
@@ -223,7 +226,7 @@ export const AuthProvider = ({ children }) => {
     body.append("otp", otp)
     if (phoneLinkRequest.tempToken) body.append("temp_token", phoneLinkRequest.tempToken)
 
-    const res = await fetch("http://localhost:8080/users/link-social", {
+    const res = await fetch(`${clean(springUrl)}/users/link-social`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -253,7 +256,7 @@ export const AuthProvider = ({ children }) => {
     formData.append("email", email)
     if (providerId) formData.append("providerId", providerId)
 
-    const res = await fetch("http://localhost:8080/users/social-login", {
+    const res = await fetch(`${clean(springUrl)}/users/social-login`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: formData,
