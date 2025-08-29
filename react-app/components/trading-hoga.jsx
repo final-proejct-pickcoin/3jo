@@ -2,9 +2,35 @@
 
 import React, { useState, useEffect, useRef } from "react";
 
-const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onPriceSelect }) => {
+const OrderBook = ({ selectedCoin, realTimeData, orderbook: _orderbook, currentPriceKRW, onPriceSelect }) => {
   const formatKRW = (n) => (Number.isFinite(n) ? Number.isFinite(n) : "-");
-  
+
+  // 빗썸 실시간 호가 데이터 상태
+  const [orderbook, setOrderbook] = useState({ asks: [], bids: [], timestamp: null });
+
+  // 빗썸 호가 API fetch (5초마다)
+  useEffect(() => {
+    let ignore = false;
+    async function fetchBithumbOrderbook(symbol = "BTC") {
+      try {
+        const url = `https://api.bithumb.com/public/orderbook/${symbol}_KRW?count=15`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.status === "0000" && data.data) {
+          // bids: 매수호가, asks: 매도호가
+          const asks = (data.data.asks || []).map(a => ({ price: a.price, quantity: a.quantity }));
+          const bids = (data.data.bids || []).map(b => ({ price: b.price, quantity: b.quantity }));
+          if (!ignore) setOrderbook({ asks, bids, timestamp: Date.now() });
+        }
+      } catch {}
+    }
+    if (selectedCoin) {
+      fetchBithumbOrderbook(selectedCoin);
+      const interval = setInterval(() => fetchBithumbOrderbook(selectedCoin), 5000);
+      return () => { ignore = true; clearInterval(interval); };
+    }
+  }, [selectedCoin]);
+
   // 수량 애니메이션을 위한 상태
   const [animatedQuantities, setAnimatedQuantities] = useState({});
   const prevOrderbookRef = useRef(null);
@@ -217,104 +243,51 @@ const OrderBook = ({ selectedCoin, realTimeData, orderbook, currentPriceKRW, onP
           const basePrice = price;
 
           // 매도호가 10줄: 현재가 기준으로 위로 10개
-          for (let i = 10; i >= 1; i--) {
-            const askPrice = basePrice + i * tick;
-            // 소수점 정밀도 유지를 위해 반올림하지 않고 그대로 사용
-            
-            let askQty = '0.0000';
-            let askQtyValue = 0;
-            if (orderbook.asks && orderbook.asks.length > 0) {
-              // 더 관대한 매칭 범위 사용
-              const tolerance = Math.max(tick * 0.1, 0.0001); // tick의 10% 또는 최소 0.0001
-              const found = orderbook.asks.find(a => {
-                const orderbookPrice = parseFloat(a.price);
-                const diff = Math.abs(orderbookPrice - askPrice);
-                return diff <= tolerance;
-              });
-              if (found) {
-                askQtyValue = parseFloat(found.quantity);
-                askQty = formatQuantity(found.quantity, askPrice);
-                console.log(`매도호가 ${askPrice} 매칭:`, found);
-                             } else {
-                 // 매칭되는 데이터가 없으면 자연스러운 수량 생성
-                 askQtyValue = generateNaturalQuantity(askPrice, true, i);
-                 askQty = formatQuantity(askQtyValue, askPrice);
-               }
-             } else {
-               // orderbook 데이터가 없으면 자연스러운 수량 생성
-               askQtyValue = generateNaturalQuantity(askPrice, true, i);
-               askQty = formatQuantity(askQtyValue, askPrice);
-             }
-            
-            // 애니메이션된 수량 사용
-            const animatedAskQty = animatedQuantities[`ask-${i}`] !== undefined 
-              ? formatQuantity(animatedQuantities[`ask-${i}`], askPrice)
-              : askQty;
+          // 매도호가: 빗썸은 내림차순이므로, 오름차순(가격/수량이 위로 갈수록 커지게)로 뒤집어서 렌더링
+          const asksToShow = orderbook.asks.slice(0, 10).reverse();
+          for (let i = 0; i < asksToShow.length; i++) {
+            const ask = asksToShow[i];
+            const askPrice = ask ? parseFloat(ask.price) : '';
+            const askQty = ask ? parseFloat(ask.quantity) : '';
             rows.push(
-                               <div
-                   key={"ask-" + i}
-                   className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                   onClick={() => onPriceSelect(askPrice)}
-                 >
-                   <div className="text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 text-left pl-2 font-mono rounded-l transition-all duration-300">{animatedAskQty}</div>
-                   <div className="text-center font-bold font-mono text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900">
-                     {formatPrice(askPrice)}
-                   </div>
-                   <div className="bg-white dark:bg-gray-800"></div>
-                 </div>
+              <div
+                key={"ask-" + i}
+                className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                onClick={() => onPriceSelect(askPrice)}
+              >
+                <div className="text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 text-left pl-2 font-mono rounded-l transition-all duration-300">
+                  {askQty}
+                </div>
+                <div className="text-center font-bold font-mono text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900">
+                  {formatPrice(askPrice)}
+                </div>
+                <div className="bg-white dark:bg-gray-800"></div>
+              </div>
             );
           }
           
           // 매수호가 10줄: 현재가 포함, 아래로 9개
           for (let i = 0; i < 10; i++) {
-            const bidPrice = basePrice - i * tick;
-            // 소수점 정밀도 유지를 위해 반올림하지 않고 그대로 사용
-
-            let bidQty = '0.0000';
-            let bidQtyValue = 0;
-            if (orderbook.bids && orderbook.bids.length > 0) {
-              // 더 관대한 매칭 범위 사용 (매도수량과 동일한 로직)
-              const tolerance = Math.max(tick * 0.1, 0.0001); // tick의 10% 또는 최소 0.0001
-              const found = orderbook.bids.find(b => {
-                const orderbookPrice = parseFloat(b.price);
-                const diff = Math.abs(orderbookPrice - bidPrice);
-                return diff <= tolerance;
-              });
-              if (found) {
-                bidQtyValue = parseFloat(found.quantity);
-                bidQty = formatQuantity(found.quantity, bidPrice);
-                console.log(`매수호가 ${bidPrice} 매칭:`, found);
-                             } else {
-                 // 매칭되는 데이터가 없으면 자연스러운 수량 생성
-                 bidQtyValue = generateNaturalQuantity(bidPrice, false, i);
-                 bidQty = formatQuantity(bidQtyValue, bidPrice);
-               }
-             } else {
-               // orderbook 데이터가 없으면 자연스러운 수량 생성
-               bidQtyValue = generateNaturalQuantity(bidPrice, false, i);
-               bidQty = formatQuantity(bidQtyValue, bidPrice);
-             }
-            
-            // 애니메이션된 수량 사용
-            const animatedBidQty = animatedQuantities[`bid-${i}`] !== undefined 
-              ? formatQuantity(animatedQuantities[`bid-${i}`], bidPrice)
-              : bidQty;
+            // 빗썸 호가 데이터는 내림차순 정렬되어 있음
+            const bid = orderbook.bids[i];
+            const bidPrice = bid ? parseFloat(bid.price) : basePrice - i * tick;
+            const bidQty = bid ? parseFloat(bid.quantity) : 0;
             const isCurrent = i === 0;
-                         rows.push(
-               <div
-                 key={"bid-" + i}
-                 className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                 onClick={() => onPriceSelect(bidPrice)}
-               >
-                 <div className={isCurrent ? "bg-red-100 dark:bg-red-900" : "bg-red-100 dark:bg-red-900"}></div>
-                 <div className={`text-center font-bold font-mono cursor-pointer ${
-                   isCurrent ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900' : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900'
-                 }`}>
-                   {formatPrice(bidPrice)}
-                 </div>
-                 <div className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900 text-right pr-2 font-mono rounded-r transition-all duration-300">{animatedBidQty}</div>
-               </div>
-             );
+            rows.push(
+              <div
+                key={"bid-" + i}
+                className="grid grid-cols-3 text-xs h-7 items-center hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                onClick={() => onPriceSelect(bidPrice)}
+              >
+                <div className={isCurrent ? "bg-red-100 dark:bg-red-900" : "bg-red-100 dark:bg-red-900"}></div>
+                <div className={`text-center font-bold font-mono cursor-pointer ${
+                  isCurrent ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900' : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900'
+                }`}>
+                  {bidPrice ? formatPrice(bidPrice) : ''}
+                </div>
+                <div className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900 text-right pr-2 font-mono rounded-r transition-all duration-300">{bidQty ? bidQty : ''}</div>
+              </div>
+            );
           }
           return rows;
         })()}

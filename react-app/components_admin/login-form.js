@@ -21,6 +21,10 @@ export default function LoginForm({
     password: ""
   });
 
+  const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+  const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+  const clean = (u) => (u || "").replace(/\/$/, "");
+
   const [modalOpen, setModalOpen] = useState(false);
   const [isOpenSignUp, setIsOpenSignUp] = useState(false);
   
@@ -50,7 +54,7 @@ export default function LoginForm({
     setError("");
 
     // FastAPI에 로그인 정보 요청
-    await axios.post("http://localhost:8000/admin/login", formData, {
+    await axios.post(`${clean(fastapiUrl)}/admin/login`, formData, {
       headers: {
         "Content-Type": "multipart/form-data"
       }

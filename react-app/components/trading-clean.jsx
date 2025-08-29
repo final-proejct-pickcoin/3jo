@@ -9,8 +9,16 @@ import OrderBook from "./trading-hoga.jsx";
 import CoinInfoPanel from "@/components/trading-coininfo";
 import { toast } from "sonner";
 
-// ======================= 상수 =======================
-const TRADE_API = "http://localhost:8080/api/trade";
+
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
+// Spring 거래 API BASE
+const TRADE_API = `${clean(springUrl)}/api/trade`;
+
+// WebSocket(FastAPI) 실시간 URL
+const REALTIME_WS = `${clean(fastapiUrl).replace(/^http/, "ws")}/api/realtime`;
 
 // ======================= 유틸/아이콘 =======================
 function StarIcon({ filled = false, size = 18, className = "" }) {
@@ -97,8 +105,8 @@ export default function TradingInterface() {
   // Responsive height
   const mainPanelRef = useRef(null);
   const [combinedHeight, setCombinedHeight] = useState(600);
-    // 체결/미체결 리스트 “더보기”용 개수
-const [historyShowCount, setHistoryShowCount] = useState(10);
+  // 체결/미체결 리스트 “더보기”용 개수
+  const [historyShowCount, setHistoryShowCount] = useState(10);
 
   // 관심 코인 토글 함수
   const toggleFavorite = (symbol, e) => {
@@ -121,8 +129,6 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
       [section]: !prev[section]
     }));
   };
-
-
 
   // ======== 사용자 ID 가져오기 ========
   useEffect(() => {
@@ -148,7 +154,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     idle(async () => {
       if (!mounted) return;
       try {
-        const res = await fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`, {
+        const res = await fetch(`${clean(springUrl)}/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`, {
           signal: controller.signal, headers: { Accept: "application/json" }
         });
         if (res.ok) {
@@ -171,7 +177,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
   // ======================= asset_id 가져오기 =======================
   async function fetchAssetId(assetSymbol) {
     try {
-      const url = `http://localhost:8080/api/Market_assets/asset-id?asset_symbol=${encodeURIComponent(assetSymbol)}`;
+      const url = `${clean(springUrl)}/api/Market_assets/asset-id?asset_symbol=${encodeURIComponent(assetSymbol)}`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) return null;
       const arr = await res.json();
@@ -213,7 +219,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     };
   }, []);
 
-  // 빗썸 WebSocket 연결
+  // 빗썸 WebSocket 연결 (FastAPI)
   useEffect(() => {
     console.log('🚀 빗썸 실시간 데이터 연결 시작...');
     let ws;
@@ -221,7 +227,7 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     let heartbeatInterval;
 
     const connectWebSocket = () => {
-      const wsUrl = 'ws://localhost:8000/api/realtime';
+      const wsUrl = REALTIME_WS;
       console.log(`🔌 연결 시도: ${wsUrl}`);
 
       try {
@@ -274,11 +280,9 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
                   }
                 };
               });
-            } else if (data.type === 'orderbook' && data.content) {  // 이 부분 추가
-              // 호가 데이터 처리
+            } else if (data.type === 'orderbook' && data.content) {
               const { symbol, bids, asks } = data.content;
               if (symbol === selectedCoin + '_KRW') {
-                console.log('Orderbook 데이터 수신:', { symbol, bids, asks });
                 setOrderbook({ bids, asks, timestamp: Date.now() });
               }
             }
@@ -314,17 +318,17 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     };
   }, [selectedCoin]);
 
-  // WebSocket 통계 가져오기
+  // WebSocket 통계 가져오기 (FastAPI)
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/websocket/stats');
+        const response = await fetch(`${clean(fastapiUrl)}/api/websocket/stats`);
         if (response.ok) {
           const data = await response.json();
           setWsStats(data.subscription_stats || data || {});
         }
       } catch (error) {
-        // 오류 로그 제거
+        // 오류 로그 생략
       }
     };
     if (wsConnected) {
@@ -334,46 +338,44 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
     }
   }, [wsConnected]);
 
-  // 코인 목록 가져오기
+  // 코인 목록 가져오기 (FastAPI)
   useEffect(() => {
     const fetchCoins = async () => {
       try {
         setCoinListLoading(true);
         console.log(`🔄 원화 마켓 코인 목록 요청...`);
-        const apiUrl = 'http://localhost:8000/api/coins';
+        const apiUrl = `${clean(fastapiUrl)}/api/coins`;
         const response = await fetch(apiUrl);
         const data = await response.json();
         
-      if (data?.status === 'success' && Array.isArray(data?.data)) {
+        if (data?.status === 'success' && Array.isArray(data?.data)) {
           console.log(`✅ 원화 마켓 ${data.data.length}개 코인 로드 성공`);
-                     const mappedCoins = data.data.map(coin => ({
-             symbol: coin.symbol,
-             name: coin.korean_name || coin.symbol,
-             englishName: coin.english_name || coin.symbol,
-          price: Number(coin.current_price) || 0,
-          change: Number(coin.change_rate) || 0,
-          changeAmount: Number(coin.change_amount) || 0,
-          volume: Number(coin.volume) || 0,
-          trend: (Number(coin.change_rate) || 0) > 0 ? 'up' : 'down',
-             marketWarning: coin.market_warning || 'NONE',
-          marketCap: Number(coin.market_cap) || 0,
-          marketCapRank: Number(coin.market_cap_rank) || 0,
-             // 추가 정보들
-          circulatingSupply: Number(coin.circulating_supply) || 0,
-          high24h: Number(coin.high_24h) || 0,
-          low24h: Number(coin.low_24h) || 0,
-          unitsTraded: Number(coin.units_traded) || 0
-           }));
+          const mappedCoins = data.data.map(coin => ({
+            symbol: coin.symbol,
+            name: coin.korean_name || coin.symbol,
+            englishName: coin.english_name || coin.symbol,
+            price: Number(coin.current_price) || 0,
+            change: Number(coin.change_rate) || 0,
+            changeAmount: Number(coin.change_amount) || 0,
+            volume: Number(coin.volume) || 0,
+            trend: (Number(coin.change_rate) || 0) > 0 ? 'up' : 'down',
+            marketWarning: coin.market_warning || 'NONE',
+            marketCap: Number(coin.market_cap) || 0,
+            marketCapRank: Number(coin.market_cap_rank) || 0,
+            circulatingSupply: Number(coin.circulating_supply) || 0,
+            high24h: Number(coin.high_24h) || 0,
+            low24h: Number(coin.low_24h) || 0,
+            unitsTraded: Number(coin.units_traded) || 0
+          }));
           setCoinList(mappedCoins);
-      } else {
-        // ✅ 실패/빈 배열도 명확히 처리
-        setCoinList([]);
+        } else {
+          setCoinList([]);
         }
       } catch (e) {
-      console.error('❌ 원화 마켓 조회 실패:', e);
-      setCoinList([]); // 네트워크 에러도 비우기
+        console.error('❌ 원화 마켓 조회 실패:', e);
+        setCoinList([]);
       } finally {
-      setCoinListLoading(false); // 무조건 로딩 종료
+        setCoinListLoading(false);
       }
     };
 
@@ -384,26 +386,22 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
       const rt = realTimeData[coin.symbol + '_KRW'];
+      let change = coin.change || 0;
+      let changeAmount = coin.changeAmount || 0;
+      let trend = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
+      let price = coin.price || 0;
       if (rt && !Number.isNaN(Number(rt.closePrice))) {
-        const millionValue = Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
-        const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
-        return {
-          ...coin,
-          price: Math.floor(Number(rt.closePrice)) || 0,
-          change: Number(rt.chgRate) || 0,
-          changeAmount: Math.floor(Number(rt.chgAmt)) || 0,
-          trend: Number(rt.chgRate) > 0 ? 'up' : Number(rt.chgRate) < 0 ? 'down' : 'same',
-          // 실시간 없으면 REST 값으로 안전하게 폴백
-          volume: formattedVolume || (Number(coin.volume) ? `${Math.round(Number(coin.volume)/1_000_000).toLocaleString()} 백만` : '')
-        };
+        price = Math.floor(Number(rt.closePrice)) || 0;
       }
+      const millionValue = rt && Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
+      const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
       return {
         ...coin,
-        price: coin.price || 0,
-        change: coin.change || 0,
-        changeAmount: coin.changeAmount || 0,
-        trend: coin.change > 0 ? 'up' : coin.change < 0 ? 'down' : 'same',
-        volume: Number(coin.volume) ? `${Math.round(Number(coin.volume) / 1_000_000).toLocaleString()} 백만` : ''
+        price,
+        change,
+        changeAmount,
+        trend,
+        volume: formattedVolume || (Number(coin.volume) ? `${Math.round(Number(coin.volume)/1_000_000).toLocaleString()} 백만` : '')
       };
     });
   }, [coinList, realTimeData]);
@@ -452,12 +450,6 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
         if (aValue < bValue) return 1;
         return 0;
       }
-      if (typeof av === 'string') av = av.toLowerCase();
-      if (typeof bv === 'string') bv = bv.toLowerCase();
-      if (av === undefined) return 1;
-      if (bv === undefined) return -1;
-      if (sortOrder === 'asc') return av < bv ? -1 : av > bv ? 1 : 0;
-      return av > bv ? -1 : av < bv ? 1 : 0;
     });
     return sorted;
   }, [searchTerm, updatedCoinList, sortKey, sortOrder]);
@@ -465,52 +457,43 @@ const [historyShowCount, setHistoryShowCount] = useState(10);
   // 현재가 계산
   const currentPriceKRW = useMemo(() => {
     const rt = realTimeData[selectedCoin + "_KRW"];
-    if (rt?.closePrice) return parseFloat(rt.closePrice); // parseInt → parseFloat로 변경하여 소수점 유지
+    if (rt?.closePrice) return parseFloat(rt.closePrice);
     const fallback = updatedCoinList.find(c => c.symbol === selectedCoin)?.price;
     return typeof fallback === "number" ? fallback : 0;
   }, [selectedCoin, realTimeData, updatedCoinList]);
 
-  // ✅ 시장가일 때만 현재가로 orderPrice 자동 동기화
-  // useEffect(() => {
-  //   if (orderType !== "시장가") return; // 지정가면 건드리지 않음
-  //   setOrderPrice(currentPriceKRW);
-  // }, [orderType, currentPriceKRW, selectedCoin]);
-
-
   // 시장가일 때만 현재가로 세팅
-useEffect(() => {
-  if (orderType !== "시장가") return;
-  setOrderPrice(currentPriceKRW);
-  setOrderPriceInput(String(currentPriceKRW ?? "")); // 시장가 화면엔 쓰이진 않지만 동기화만
-}, [orderType, currentPriceKRW, selectedCoin]);
+  useEffect(() => {
+    if (orderType !== "시장가") return;
+    setOrderPrice(currentPriceKRW);
+    setOrderPriceInput(String(currentPriceKRW ?? ""));
+  }, [orderType, currentPriceKRW, selectedCoin]);
 
-// 지정가로 전환될 때 초기값(한 번) 세팅: 비어있으면 현재가를 복사
-useEffect(() => {
-  if (orderType === "지정가") {
-    // 이미 입력한 값이 없을 때만 기본값 채움
-    if (!orderPrice && !orderPriceInput) {
-      const seed = Number.isFinite(currentPriceKRW) ? currentPriceKRW : 0;
-      setOrderPrice(seed);
-      setOrderPriceInput(seed ? String(seed) : "");
+  // 지정가로 전환될 때 초기값 세팅
+  useEffect(() => {
+    if (orderType === "지정가") {
+      if (!orderPrice && !orderPriceInput) {
+        const seed = Number.isFinite(currentPriceKRW) ? currentPriceKRW : 0;
+        setOrderPrice(seed);
+        setOrderPriceInput(seed ? String(seed) : "");
+      }
     }
-  }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [orderType]);
+  }, [orderType]);
 
-// 선택 코인 바뀔 때: 시장가면 따라가고, 지정가면 건드리지 않음
-useEffect(() => {
-  if (orderType !== "시장가") return;
-  setOrderPrice(currentPriceKRW);
-  setOrderPriceInput(String(currentPriceKRW ?? ""));
-}, [selectedCoin, currentPriceKRW, orderType]);
+  // 선택 코인 바뀔 때: 시장가면 따라가고, 지정가면 건드리지 않음
+  useEffect(() => {
+    if (orderType !== "시장가") return;
+    setOrderPrice(currentPriceKRW);
+    setOrderPriceInput(String(currentPriceKRW ?? ""));
+  }, [selectedCoin, currentPriceKRW, orderType]);
 
-
-  // 초기/주기적 호가 조회 (WS 외 보조)
+  // 초기/주기적 호가 조회 (WS 외 보조, FastAPI)
   useEffect(() => {
     if (!selectedCoin) return;
     const fetchOrderbook = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/orderbook/${selectedCoin}_KRW`);
+        const res = await fetch(`${clean(fastapiUrl)}/api/orderbook/${selectedCoin}_KRW`);
         if (res.ok) setOrderbook(await res.json());
       } catch (e) {}
     };
@@ -597,7 +580,6 @@ useEffect(() => {
   useEffect(() => {
     setHistoryShowCount(10);
   }, [historyTab]);
-
 
   // ======================= 주문 API 래퍼 & 핸들러 =======================
   const api = {
@@ -691,29 +673,10 @@ useEffect(() => {
                     autoComplete="off"
                   />
                 </div>
-{/* 잠깐 주석 */}
-                {/* <div className="flex bg-gray-100 rounded-lg p-1 w-full mb-4 shadow-sm">
-                  {[
-                    { key: "won", label: "원화" },
-                    { key: "hold", label: "보유" },
-                    { key: "star", label: "관심" },
-                  ].map((t, i) => (
-                    <button
-                      key={t.key}
-                      onClick={() => setTab(t.key)}
-                      className={`flex-1 py-2 px-3 text-center text-sm font-medium transition-all duration-200 rounded-md flex flex-col justify-end
-                        ${t.key === tab ? "bg-white text-gray-800 shadow-sm font-semibold" : "text-gray-500 hover:text-gray-700"}
-                        ${i === 0 ? "rounded-l-md" : ""} ${i === 2 ? "rounded-r-md" : ""}`}
-                      style={{ minWidth: 0 }}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div> */}
               </CardHeader>
 
               <CardContent className="p-0 flex-1 flex flex-col min-h-0" style={{ height: 600 }}>
-                                 <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 px-2 py-2 text-sm font-bold text-muted-foreground dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 sticky top-0 z-10"
+                <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-6 px-2 py-2 text-sm font-bold text-muted-foreground dark:text-gray-400 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 sticky top-0 z-10"
                   style={{ height: '40px', minHeight: '40px', maxHeight: '40px', flexShrink: 0, overflow: 'hidden' }}>
                   <div className="text-center gap-3" />
                    <div className="flex items-center cursor-pointer text-left" onClick={() => handleSort('name')}>한글명{sortKey === 'name' ? (<span className="text-[10px] text-blue-600 dark:text-blue-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>) : (<span className="text-[10px] text-gray-300 dark:text-gray-500">△▽</span>)}</div>
@@ -768,9 +731,15 @@ useEffect(() => {
 
                         <div className={`text-right font-semibold flex flex-col justify-center ${coin.trend === 'up' ? 'text-red-600' : 'text-blue-600'}`}
                           style={{ height: '100%', flexShrink: 0, overflow: 'hidden' }}>
-                          <div style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>{coin.trend === 'up' ? '+' : ''}{coin.change !== 0 ? coin.change.toFixed(2) : '0.00'}%</div>
+                          {/* 전일대비(%) */}
+                          <div style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>
+                            {coin.change > 0 ? '+' : coin.change < 0 ? '' : ''}
+                            {typeof coin.change === 'number' ? coin.change.toFixed(2) : '0.00'}%
+                          </div>
+                          {/* 전일대비(금액) */}
                           <div className="text-sm" style={{ lineHeight: '1.2', verticalAlign: 'baseline' }}>
-                            {coin.changeAmount > 0 ? '+' : ''}{coin.changeAmount !== 0 ? coin.changeAmount.toLocaleString() : '0'}
+                            {coin.changeAmount > 0 ? '+' : coin.changeAmount < 0 ? '' : ''}
+                            {typeof coin.changeAmount === 'number' ? Math.abs(coin.changeAmount).toLocaleString() : '0'}
                           </div>
                         </div>
 
@@ -876,15 +845,12 @@ useEffect(() => {
                           <div className="flex border-b border-gray-200 mb-4">
                             {["매수", "매도", "거래내역"].map((t) => {
                               let activeClass = "";
-                              if (tradeSubTab === t) {
+                              if (t === tradeSubTab) {
                                 if (t === "매수") activeClass = "border-b-2 border-red-500 text-red-600 font-semibold";
                                 else if (t === "매도") activeClass = "border-b-2 border-blue-500 text-blue-600 font-semibold";
                                 else if (t === "거래내역") activeClass = "border-b-2 border-black text-black font-semibold";
                               } else activeClass = "text-gray-500";
                               return (
-                                // <button key={t} className={`flex-1 py-2 text-lg ${activeClass}`} onClick={() => setTradeSubTab(t)}>
-                                //   {t}
-                                // </button>
                                 <button
                                   key={t}
                                   className={`flex-1 py-2 text-lg ${activeClass}`}
@@ -898,7 +864,6 @@ useEffect(() => {
                                 >
                                   {t}
                                 </button>
-
                               );
                             })}
                           </div>
@@ -951,43 +916,36 @@ useEffect(() => {
                               </div>
                             </div>
                             <input
-  type="text"
-  inputMode="decimal"
-  pattern="[0-9]*[.]?[0-9]*"
-  value={
-    orderType === "시장가"
-      // 시장가: 화면에 보기 좋게만 표시(입력 불가)
-      ? (() => {
-          const n = Number(orderPrice);
-          if (!Number.isFinite(n)) return "0";
-          if (n < 10) return n.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 });
-          if (n < 100) return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          return Math.floor(n).toLocaleString();
-        })()
-      // 지정가: 사용자가 타이핑한 원문 그대로(포맷 금지!)
-      : orderPriceInput
-  }
-  onChange={(e) => {
-    if (orderType !== "지정가") return; // 시장가는 입력 막음
-    const raw = e.target.value;
-    // 숫자/점만 허용
-    if (!/^[0-9]*\.?[0-9]*$/.test(raw)) return;
-
-    setOrderPriceInput(raw);
-
-    // 공백 또는 점만 있는 경우는 숫자 세팅 보류
-    if (raw === "" || raw === ".") {
-      setOrderPrice(0);
-      return;
-    }
-    const n = Number(raw);
-    setOrderPrice(Number.isFinite(n) ? n : 0);
-  }}
-  disabled={orderType === "시장가"}
-  className="w-full border border-gray-300 dark:border-gray-600 rounded h-16 px-2 mb-6 text-3xl font-semibold disabled:bg-gray-100 dark:disabled:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-  placeholder={orderType === "지정가" ? "지정가를 입력하세요" : "시장가(자동)"}
-/>
-
+                              type="text"
+                              inputMode="decimal"
+                              pattern="[0-9]*[.]?[0-9]*"
+                              value={
+                                orderType === "시장가"
+                                  ? (() => {
+                                      const n = Number(orderPrice);
+                                      if (!Number.isFinite(n)) return "0";
+                                      if (n < 10) return n.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 8 });
+                                      if (n < 100) return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                      return Math.floor(n).toLocaleString();
+                                    })()
+                                  : orderPriceInput
+                              }
+                              onChange={(e) => {
+                                if (orderType !== "지정가") return;
+                                const raw = e.target.value;
+                                if (!/^[0-9]*\.?[0-9]*$/.test(raw)) return;
+                                setOrderPriceInput(raw);
+                                if (raw === "" || raw === ".") {
+                                  setOrderPrice(0);
+                                  return;
+                                }
+                                const n = Number(raw);
+                                setOrderPrice(Number.isFinite(n) ? n : 0);
+                              }}
+                              disabled={orderType === "시장가"}
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded h-16 px-2 mb-6 text-3xl font-semibold disabled:bg-gray-100 dark:disabled:bg-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              placeholder={orderType === "지정가" ? "지정가를 입력하세요" : "시장가(자동)"}
+                            />
 
                             {/* 수량 */}
                             <div className="mb-6">
@@ -1046,116 +1004,112 @@ useEffect(() => {
 
                         {/* 거래내역 탭 */}
                         {orderTab === "거래" && tradeSubTab === "거래내역" && (
-  <div className="text-md">
-    {/* 상단 토글 + 새로고침 */}
-    <div className="flex justify-between items-center mb-3">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className={`px-3 py-1 rounded-md border text-md ${
-            historyTab === "미체결"
-              ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700"
-              : "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
-          }`}
-          onClick={() => setHistoryTab("미체결")}
-        >
-          미체결
-        </button>
-        <button
-          type="button"
-          className={`px-3 py-1 rounded-md border text-md ${
-            historyTab === "체결"
-              ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700"
-              : "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
-          }`}
-          onClick={() => setHistoryTab("체결")}
-        >
-          체결
-        </button>
-      </div>
+                          <div className="text-md">
+                            {/* 상단 토글 + 새로고침 */}
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  className={`px-3 py-1 rounded-md border text-md ${
+                                    historyTab === "미체결"
+                                      ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700"
+                                      : "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
+                                  }`}
+                                  onClick={() => setHistoryTab("미체결")}
+                                >
+                                  미체결
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`px-3 py-1 rounded-md border text-md ${
+                                    historyTab === "체결"
+                                      ? "bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700"
+                                      : "text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
+                                  }`}
+                                  onClick={() => setHistoryTab("체결")}
+                                >
+                                  체결
+                                </button>
+                              </div>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className="px-3 py-1 rounded-md border text-md bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600"
-          onClick={() => {
-            if (historyTab === "체결") Concluded_orders();
-            else Unconcluded_orders();
-          }}
-        >
-          새로고침
-        </button>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  className="px-3 py-1 rounded-md border text-md bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600"
+                                  onClick={() => {
+                                    if (historyTab === "체결") Concluded_orders();
+                                    else Unconcluded_orders();
+                                  }}
+                                >
+                                  새로고침
+                                </button>
+                              </div>
+                            </div>
 
-      </div>
-    </div>
+                            {/* 리스트 본문 */}
+                            {(() => {
+                              const src = historyTab === "체결" ? concluded_orders : unconcluded_orders;
+                              const items = Array.isArray(src) ? src : [];
 
-    {/* 리스트 본문 */}
-    {(() => {
-      // 백에서 받은 원본 배열 선택
-      const src = historyTab === "체결" ? concluded_orders : unconcluded_orders;
-      const items = Array.isArray(src) ? src : [];
+                              if (items.length === 0) {
+                                return (
+                                  <div className="border border-gray-200 dark:border-gray-600 rounded p-4 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800">
+                                    {historyTab} 내역이 없습니다.
+                                  </div>
+                                );
+                              }
 
-      if (items.length === 0) {
-        return (
-          <div className="border border-gray-200 dark:border-gray-600 rounded p-4 text-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-800">
-            {historyTab} 내역이 없습니다.
-          </div>
-        );
-      }
+                              const visible = items.slice(0, historyShowCount);
 
-      // 화면에 보일 개수
-      const visible = items.slice(0, historyShowCount);
+                              return (
+                                <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800">
+                                  {/* 헤더 */}
+                                  <div className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm font-semibold bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                                    <div className="text-left">체결시간</div>
+                                    <div className="text-center">구분</div>
+                                    <div className="text-right">수량</div>
+                                    <div className="text-right">가격(KRW)</div>
+                                  </div>
 
-      return (
-        <div className="border border-gray-200 dark:border-gray-600 rounded overflow-hidden bg-white dark:bg-gray-800">
-          {/* 헤더 */}
-          <div className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm font-semibold bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-            <div className="text-left">체결시간</div>
-            <div className="text-center">구분</div>
-            <div className="text-right">수량</div>
-            <div className="text-right">가격(KRW)</div>
-          </div>
+                                  {/* 로우 */}
+                                  <div className="max-h-[420px] overflow-y-auto">
+                                    {visible.map((r, idx) => (
+                                      <div
+                                        key={r.id ?? idx}
+                                        className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                      >
+                                        <div className="text-left">{r.ts ?? "-"}</div>
+                                        <div
+                                          className={`text-center font-semibold ${
+                                            (r.side === "매수" || r.side === 0 || r.side === "0")
+                                              ? "text-red-600 dark:text-red-400"
+                                              : "text-blue-600 dark:text-blue-400"
+                                          }`}
+                                        >
+                                          {r.side ?? "-"}
+                                        </div>
+                                        <div className="text-right">{r.qty ?? "-"}</div>
+                                        <div className="text-right">{r.price ?? "-"}</div>
+                                      </div>
+                                    ))}
+                                  </div>
 
-          {/* 로우 */}
-          <div className="max-h-[420px] overflow-y-auto">
-            {visible.map((r, idx) => (
-              <div
-                key={r.id ?? idx}
-                className="grid grid-cols-[1.1fr_0.6fr_0.6fr_0.8fr] px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100"
-              >
-                <div className="text-left">{r.ts ?? "-"}</div>
-                <div
-                  className={`text-center font-semibold ${
-                    (r.side === "매수" || r.side === 0 || r.side === "0")
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-blue-600 dark:text-blue-400"
-                  }`}
-                >
-                  {r.side ?? "-"}
-                </div>
-                <div className="text-right">{r.qty ?? "-"}</div>
-                <div className="text-right">{r.price ?? "-"}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* 더보기 */}
-          {items.length > historyShowCount && (
-            <div className="p-2 bg-white dark:bg-gray-800 flex justify-center">
-              <button
-                className="px-3 py-1 text-sm border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700"
-                onClick={() => setHistoryShowCount((n) => n + 10)}
-              >
-                더보기 (+10)
-              </button>
-            </div>
-          )}
-        </div>
-      );
-    })()}
-  </div>
-)}
-
+                                  {/* 더보기 */}
+                                  {items.length > historyShowCount && (
+                                    <div className="p-2 bg-white dark:bg-gray-800 flex justify-center">
+                                      <button
+                                        className="px-3 py-1 text-sm border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700"
+                                        onClick={() => setHistoryShowCount((n) => n + 10)}
+                                      >
+                                        더보기 (+10)
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1179,32 +1133,23 @@ useEffect(() => {
                             orderbook={orderbook}
                             currentPriceKRW={currentPriceKRW}
                             onPriceSelect={(price) => {
-                              // 호가 클릭 시: 지정가면 입력값으로 세팅, 시장가면 무시
                               if (orderType === "지정가") {
-                                setOrderPrice(price);
-                                setOrderPriceInput(String(price));
-                              }
-                              if (orderType === "지정가") {
-                                // JavaScript 부동소수점 오류 방지: 정확한 소수점 자릿수 유지
                                 const exactPrice = parseFloat(price);
                                 setOrderPrice(exactPrice);
-                                
-                                // 가격대별 정확한 소수점 자릿수로 표시
                                 let formattedPrice;
                                 if (exactPrice < 1) {
-                                  formattedPrice = exactPrice.toFixed(4); // 0.1234
+                                  formattedPrice = exactPrice.toFixed(4);
                                 } else if (exactPrice < 10) {
-                                  formattedPrice = exactPrice.toFixed(4); // 1.5678
+                                  formattedPrice = exactPrice.toFixed(4);
                                 } else if (exactPrice < 100) {
-                                  formattedPrice = exactPrice.toFixed(2); // 41.79
+                                  formattedPrice = exactPrice.toFixed(2);
                                 } else if (exactPrice < 1000) {
-                                  formattedPrice = exactPrice.toFixed(2); // 123.45
+                                  formattedPrice = exactPrice.toFixed(2);
                                 } else if (exactPrice < 10000) {
-                                  formattedPrice = exactPrice.toFixed(2); // 1234.56
+                                  formattedPrice = exactPrice.toFixed(2);
                                 } else {
-                                  formattedPrice = exactPrice.toFixed(2); // 12345.67
+                                  formattedPrice = exactPrice.toFixed(2);
                                 }
-                                
                                 setOrderPriceInput(formattedPrice);
                               }
                             }}
@@ -1233,7 +1178,6 @@ useEffect(() => {
                               </div>
                               <span className="font-mono text-gray-900 dark:text-gray-100">
                                 {(() => {
-                                  // realTimeData에서 먼저 확인, 없으면 coinList에서
                                   const rt = realTimeData[selectedCoin + '_KRW'];
                                   const coin = coinList.find(c => c.symbol === selectedCoin);
                                   

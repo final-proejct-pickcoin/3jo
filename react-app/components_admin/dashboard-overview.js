@@ -41,6 +41,12 @@ import {
 import { createContext } from "vm";
 import axios from "axios";
 
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+
+const makeWsUrl = (base) =>
+  `${base.replace(/\/$/, "").replace(/^http/, "ws")}/ws/stats`;
+
 const COLORS = ["#f97316", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
 // Mock data
@@ -77,7 +83,7 @@ export default function DashboardOverview({ isDarkMode }) {
 
 // ✅ 여기 78번 줄 근처에 WebSocket useEffect 추가
 useEffect(() => {
-  const socket = new WebSocket("ws://localhost:8080/ws/stats");
+  const socket = new WebSocket(makeWsUrl(springUrl));
 
   socket.onopen = () => {
     console.log("✅ Admin WebSocket 연결됨");
@@ -152,7 +158,7 @@ useEffect(() => {
   };
 
   const getWithdrawLogs = async () => {
-    const res = await axios.get("http://localhost:8000/withdraws");
+    const res = await axios.get(`${fastapiUrl}/withdraws`);
     // console.log(res.data);
     setWithDrawLogs(res.data)
   }
@@ -164,7 +170,7 @@ useEffect(() => {
 
   // 대시보드 상단 정보 가져오기
   const getAdminInfo = (tkn) => {
-    axios.get("http://localhost:8000/admin/info", {headers:{Authorization:`Bearer ${tkn}`}})
+    axios.get(`${fastapiUrl}/admin/info`, { headers:{ Authorization:`Bearer ${tkn}` } })
       .then((res) => {
         // console.log("대시보드정보:",res.data)
         setDashboardInfo(res.data)
@@ -177,7 +183,7 @@ useEffect(() => {
   // buy 거래대금 가져오기
   async function fetchBuyLogs() {
     try {
-      const response = await fetch("http://localhost:8000/buy-logs");
+      const response = await fetch(`${fastapiUrl}/buy-logs`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -195,7 +201,7 @@ useEffect(() => {
     const tradeInterval = txInterval || "month";
 
     // 유저 추이 API 호출
-    fetch(`http://localhost:8000/api/stats/users?interval=${fetchInterval}`)
+    fetch(`${fastapiUrl}/api/stats/users?interval=${fetchInterval}`)
       .then((res) => res.json())
       .then((data) => {
         setUserTrend(data);
@@ -205,7 +211,7 @@ useEffect(() => {
       });
 
     // 거래대금 추이 API 호출
-    fetch(`http://localhost:8000/api/stats/volume?interval=${tradeInterval}`)
+    fetch(`${fastapiUrl}/api/stats/volume?interval=${tradeInterval}`)
       .then((res) => res.json())
       .then((data) => {
         setTradingData(data);
