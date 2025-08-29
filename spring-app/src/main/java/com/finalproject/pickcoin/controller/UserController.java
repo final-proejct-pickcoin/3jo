@@ -26,7 +26,7 @@ import org.springframework.http.ResponseEntity;
 import java.time.LocalDateTime;
 import java.util.*;
 
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${FRONTEND_APP_URL}")
 @RestController
 @RequestMapping("/users")
 @Transactional

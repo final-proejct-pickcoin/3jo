@@ -20,7 +20,7 @@ public class EmailServiceImpl implements EmailService {
     this.mailSender = mailSender;
 
     }
-    @Value("${APP_BASE_URL:http://localhost:8080}")
+    @Value("${SPRING_APP_URL")
     private String baseUrl;
 
     Logger logger = LoggerFactory.getLogger(EmailServiceImpl.class);

@@ -10,7 +10,7 @@ import com.finalproject.pickcoin.service.ReplyService;
 
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${FRONTEND_APP_URL}")
 @RestController
 @RequestMapping("/community")
 @RequiredArgsConstructor
