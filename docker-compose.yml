@@ -66,7 +66,7 @@ services:
       - MYSQL_PASSWORD=Admin1234!
       - MYSQL_DATABASE=coindb
       # 아래 base_url은 배포시 수정
-      - APP_BASE_URL=http://localhost:8080
+      - APP_BASE_URL=http://34.47.79.222:8080
     depends_on:
       - redis
       - elasticsearch
@@ -107,7 +107,7 @@ services:
     volumes:
       - ./elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/ > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://34.47.79.222:9200/ > /dev/null || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 30  
@@ -138,7 +138,7 @@ services:
     depends_on:
       - elasticsearch
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://34.47.79.222:5601/api/status > /dev/null || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 30
