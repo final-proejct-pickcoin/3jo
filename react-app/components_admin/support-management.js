@@ -84,12 +84,21 @@ export default function SupportManagement({ isDarkMode }) {
     return pages;
   };
 
+  // 먼저 필터링된 tickets 계산
   const filteredTickets = tickets.filter((ticket) => {
-    const matchesSearch =      
-      (ticket.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (ticket.email?.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
-    const matchesCategory = categoryFilter === "all" || ticket.category === categoryFilter;
+    // 1) 검색어 (이름, 이메일, 카테고리, 상태 등 원하는 필드에 적용)
+    const matchesSearch =
+      ticket.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // 2) 상태 필터 (all이면 무시)
+    const matchesStatus =
+      statusFilter === "all" || ticket.status === statusFilter;
+
+    // 3) 카테고리 필터 (all이면 무시)
+    const matchesCategory =
+      categoryFilter === "all" || ticket.category === categoryFilter;
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -380,7 +389,7 @@ const loadMore = () => {
             <div>
               <CardTitle className={isDarkMode ? "text-white" : "text-gray-900"}>문의 목록</CardTitle>
               <CardDescription className={isDarkMode ? "text-gray-400" : "text-gray-600"}>
-                총 {filteredTickets.length}개의 문의
+                {/* 총 {filteredTickets.length}개의 문의 */}
               </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
@@ -433,7 +442,7 @@ const loadMore = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tickets.map((ticket) => (
+              {filteredTickets.map((ticket) => (
                 <TableRow
                   key={ticket.inquiry_id}
                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
