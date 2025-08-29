@@ -2,9 +2,9 @@
 services:
   fastapi-app:
     build: ./fastapi-app
-    volumes:
-      - ./fastapi-app:/app
-      - ./key/pickcoin-687a99cb3128.json:/app/secrets/pickcoin-687a99cb3128.json
+    # volumes:
+    #   - ./fastapi-app:/app
+    #   - ./key/pickcoin-687a99cb3128.json:/app/secrets/pickcoin-687a99cb3128.json
     ports:
       - "8000:8000"
     env_file:
@@ -25,7 +25,7 @@ services:
       - elasticsearch
       - kibana
       - spring-app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     networks:
     - elastic-net
 
@@ -46,14 +46,14 @@ services:
       context: ./spring-app
       #도커파일 설정
       dockerfile: Dockerfile.dev
-    volumes:
-      - ./spring-app:/home/gradle/app
+    # volumes:
+    #   - ./spring-app:/home/gradle/app
     container_name: spring-app
     ports:
       - "8080:8080"
     environment:
       #Docker에게 volume으로 연결된 폴더의 변경 사항을 적극적으로 감시명령 (dev-tools의존성)
-      - SPRING_DEVTOOLS_WATCH_ADDITIONAL_PATHS=/home/gradle/app
+      # - SPRING_DEVTOOLS_WATCH_ADDITIONAL_PATHS=/home/gradle/app
       - SPRING_PROFILES_ACTIVE=default
       - SPRING_MAIL_HOST=smtp.gmail.com
       - SPRING_MAIL_PORT=587
@@ -75,11 +75,10 @@ services:
     - elastic-net
 
   react-app:
-
     build: ./react-app
-    volumes:
-      - ./react-app:/app
-      - /app/node_modules
+    # volumes:
+    #   - ./react-app:/app
+    #   - /app/node_modules
     container_name: react-app
     ports:
       - "3000:3000"
