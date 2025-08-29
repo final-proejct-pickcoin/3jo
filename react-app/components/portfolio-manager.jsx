@@ -13,6 +13,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Plus, Minus, Eye, EyeOff, RefreshCw } from "lucide-react"
 import { useWebSocket } from "@/components/websocket-provider"
 
+
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
 const formatValue = (value, currency, krwRate, hide) => {
   if (hide) return "••••••"
   if (currency === "KRW") return `₩${(value * krwRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -20,8 +25,8 @@ const formatValue = (value, currency, krwRate, hide) => {
 }
 
 //기본 백단 주소들
-const ACCOUNT_API = "http://localhost:8080/api/account";
-const PORTFOLIO_API = "http://localhost:8080/api/portfolio";
+const ACCOUNT_API   = `${clean(springUrl)}/api/account`;
+const PORTFOLIO_API = `${clean(springUrl)}/api/portfolio`;
 
 
 //====원화 입출금 기능===
@@ -111,7 +116,7 @@ export const PortfolioManager = () => {
   const deposit_logs = async (id) =>{
     try{
       // console.log("입출금 user_id:",user_id)
-      const res = await axios.get(`http://localhost:8000/users/${id}/transactions`)
+      const res = await axios.get(`${fastapiUrl}/users/${id}/transactions`)
       setLogs(res.data)
     }catch(err){
       console.error(err)
@@ -150,7 +155,7 @@ export const PortfolioManager = () => {
 
     idle(() => {
       if (!mounted) return;
-      fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`, {
+      fetch(`${springUrl}/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`, {
         signal: controller.signal,
         headers: { Accept: "application/json" },
       })

@@ -11,6 +11,10 @@ import { useWebSocket } from "@/components/websocket-provider"
 import axios from "axios"
 import { useBookmark } from "@/components/bookmark-provider.jsx" // (유지)
 
+
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 유틸
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +51,7 @@ function NewsSummaryCard() {
   const fetchSummary = async () => {
     try {
       setLoading(true)
-      const res = await fetch("http://127.0.0.1:8000/news/summary?limit=20")
+      const res = await fetch(`${fastapiUrl}/news/summary?limit=20`)
       const data = await res.json()
       setSummary(data)
     } catch (e) {
@@ -127,7 +131,7 @@ export const MarketAnalysis = () => {
       const payload = JSON.parse(atob(tokenValue.split(".")[1]))
       const user_mail = payload.email || payload.sub || null
       if (user_mail) {
-        fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
+        fetch(`${springUrl}/api/mypage/user-id?email=${encodeURIComponent(user_mail)}`)
           .then((res) => res.json())
           .then((data) => { if (data && data.user_id != null) setUserId(Number(data.user_id)) })
           .catch(console.error)
@@ -137,7 +141,7 @@ export const MarketAnalysis = () => {
 
   // 뉴스(FastAPI)
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/news")
+    fetch(`${fastapiUrl}/news`)
       .then((res) => res.json())
       .then(setMarketNews)
       .catch(console.error)
@@ -147,7 +151,7 @@ export const MarketAnalysis = () => {
   useEffect(() => {
     if (!user_id) return
     axios
-      .get(`http://localhost:8080/api/Market_assets/assets_and_bookmarks`, { params: { user_id } })
+      .get(`${springUrl}/api/Market_assets/assets_and_bookmarks`, { params: { user_id } })
       .then((res) => setItems(res.data))
       .catch(console.error)
   }, [user_id])
@@ -246,8 +250,7 @@ export const MarketAnalysis = () => {
 
     const fetchTopCap = async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
-        const res = await fetch(`${base}/proxy/topcap?vs=${v}`)
+        const res = await fetch(`${fastapiUrl}/proxy/topcap?vs=${v}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const arr = await res.json()
 
@@ -277,7 +280,7 @@ export const MarketAnalysis = () => {
   // ───────────────────────────────────────────────────────────────────────────
   // ⭐ 즐겨찾기 토글 (별표 → 노란색 on/off, 마이페이지 즐겨찾기와 연동)
   // ───────────────────────────────────────────────────────────────────────────
-  const BOOKMARK_API = "http://localhost:8080/api/Market_assets/bookmarks"
+  const BOOKMARK_API = `${springUrl.replace(/\/$/, "")}/api/Market_assets/bookmarks`
 
   const toggleBookmark = async (asset_id, is_bookmarkedRaw) => {
     const is_bookmarked = Number(is_bookmarkedRaw) === 1 // 0/1 정규화

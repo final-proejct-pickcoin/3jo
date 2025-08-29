@@ -12,6 +12,11 @@ import { Alert, AlertDescription } from "@/components_admin/ui/alert";
 import { Eye, EyeOff, Shield, Smartphone, Mail, Phone, User, Building, CheckCircle, AlertTriangle } from "lucide-react";
 import axios from "axios";
 
+
+  const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+  const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+  const clean = (u) => (u || "").replace(/\/$/, "");
+
 export default function ProfileDialogs({
   isDarkMode,
   isProfileDialogOpen,
@@ -74,7 +79,7 @@ export default function ProfileDialogs({
     formData.append("email", profileData.email);
     formData.append("currentPassword", passwordData.currentPassword);
     formData.append("newPassword", passwordData.newPassword);
-    axios.post("http://localhost:8000/admin/change-pwd", formData)
+    axios.post(`${clean(fastapiUrl)}/admin/change-pwd`, formData)
       .then(response => {
         console.log(response.data);
         setPasswordData({

@@ -2,6 +2,11 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 
+
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
 // 전역 캐시 시스템
 const coinDataCache = new Map();
 const CACHE_DURATION_COIN = 30 * 60 * 1000; // 30분
@@ -33,7 +38,7 @@ const fetchCoinCapData = async (symbol) => {
 
    console.log(`📊 ${symbol} CoinCap 상세 데이터 요청 중...`);
 
-   const response = await fetch(`http://localhost:8000/api/coincap/coin/${symbol}`);
+   const response = await fetch(`${clean(fastapiUrl)}/api/coincap/coin/${symbol}`);
    const result = await response.json();
 
    if (result.status === 'success') {

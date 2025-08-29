@@ -8,9 +8,18 @@ import { Badge } from "@/components/ui/badge"
 import { Brain, Mic, MicOff, Send } from "lucide-react"
 import axios from "axios"
 
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+
+const wsFastapi = process.env.NEXT_PUBLIC_WS_FASTAPI_URL; // ex) ws://localhost:8000
+const wsSpring  = process.env.NEXT_PUBLIC_WS_SPRING_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
+
 /* 공지 (읽기 전용) – 목록 기본 전개 + 항목별 토글 */
 function NoticeBoard() {
-  const BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "")
+  //const BASE = (process.env.NEXT_PUBLIC_API_BASE || springUrl ).replace(/\/$/, "")
+  const BASE = (springUrl || "").replace(/\/$/, "")
   const ANN_API = `${BASE}/admin/announcements`
 
   const [list, setList] = useState([])
@@ -144,7 +153,7 @@ export function AIAssistant() {
   const user_id = userData?.user_id
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return
+    if (!inputMessage.trim() || !user_id) return
 
     const userMessage = {
       room_id: user_id,
@@ -156,7 +165,7 @@ export function AIAssistant() {
     setInputMessage("")
     setIsLoading(true)
 
-    await axios.post("http://localhost:8080/chat/send", userMessage)
+    await axios.post(`${clean(springUrl)}/chat/send`, userMessage)
     ws.current?.send(JSON.stringify(userMessage))
 
     setTimeout(() => {
@@ -187,7 +196,8 @@ export function AIAssistant() {
 
   useEffect(() => {
     // console.log("유저 아이디", user_id)
-    axios.get(`http://localhost:8080/chat/history/${user_id}`)
+    if (!user_id) return
+    axios.get(`${clean(springUrl)}/chat/history/${user_id}`)
       .then(res => {
         // console.log(res.data)
         const messageObjects = res.data.map(msg => {
@@ -202,7 +212,7 @@ export function AIAssistant() {
         console.error(err)
       })
 
-    ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${user_id}`)
+    ws.current = new WebSocket(`${clean(wsFastapi)}/ws/chat/${user_id}`)
 
     ws.current.onopen = () => {
       console.log("웹소켓 연결됨")

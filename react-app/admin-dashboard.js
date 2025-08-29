@@ -26,11 +26,15 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 // import { headers } from "next/headers";
 
-//API
-const API_BASE = "http://localhost:8000";
+
+
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+
 // 공지 전용 Spring API
-const BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");
-const ANN_API_BASE = `${BASE}/admin/announcements`;
+// const BASE = (springUrl || "http://localhost:8080").replace(/\/$/, "");
+// const ANN_API_BASE = `${BASE}/admin/announcements`;
+
 
 const toInt = (v) => {
   if (v === null || v === undefined) return null;
@@ -215,7 +219,7 @@ const handleUserStatusToggle = async (userId) => {
   );
 
   try {
-    await axios.get("http://localhost:8000/admin/user-status", {
+    await axios.get(`${fastapiUrl}/admin/user-status`, {
       params: { user_id: userId, is_verified: nextVerified },
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
@@ -234,7 +238,7 @@ const handleUserStatusToggle = async (userId) => {
 const fetchAnnouncements = async () => {
   try {    
 
-    const { data } = await axios.get(ANN_API_BASE, {
+    const { data } = await axios.get(`${springUrl}/admin/announcements`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
 
@@ -282,7 +286,7 @@ const createAnnouncement = async (payload) => {
   try {
 
     const { data } = await axios.post(
-      ANN_API_BASE,
+      `${springUrl}/admin/announcements`,
       {
         title: payload.title,
         content: payload.content,
@@ -336,7 +340,7 @@ const patchAnnouncementStatus = async (serverId, active) => {
   if (sid === null) throw new Error("상태 변경 불가: serverId 없음");
 
   console.log("[PATCH] /admin/announcements/%s/status?active=%s", sid, active);
-  await axios.patch(`${ANN_API_BASE}/${sid}/status`, {}, {
+  await axios.patch(`${springUrl}/admin/announcements/${sid}/status`, {}, {
     params: { active },
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
 });
@@ -348,7 +352,7 @@ const deleteAnnouncement = async (serverId) => {
 
   console.log("[DELETE] /admin/announcements/%s", sid); // 디버그
 
-  await axios.delete(`${ANN_API_BASE}/${sid}`, {
+  await axios.delete(`${springUrl}/admin/announcements/${sid}`, {
    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
  });
 };
@@ -396,7 +400,7 @@ const openEditDialog = (ann) => {
 // 공지 수정 API
 const updateAnnouncement = async (serverId, payload) => {
   
-  const { data } = await axios.put(`${ANN_API_BASE}/${serverId}`, payload, {
+  const { data } = await axios.put(`${springUrl}/admin/announcements/${serverId}`, payload, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -471,7 +475,7 @@ const handleLogout = () => {
   // 로그아웃 처리
   axios
     .post(
-      "http://localhost:8000/admin/logout",
+      `${fastapiUrl}/admin/logout`,
       new URLSearchParams({ email }),
       {
         headers: { "Content-Type": "application/x-www-form-urlencoded" }
@@ -528,7 +532,7 @@ const handleLogout = () => {
   const handleMarkAllNotificationsAsRead = async () => {
   try {
     // (선택) 백엔드 모두 읽음 API 호출
-    await axios.patch(`${BASE}/report/alerts/read-all`);
+    await axios.patch(`${springUrl}/report/alerts/read-all`);
 
     // 프론트 상태 업데이트
     setNotifications(
@@ -604,7 +608,7 @@ const handleLogout = () => {
 
   // 수익 관리
   const getTradeAmount = () => {
-    axios.get("http://localhost:8000/admin/gettradeamount")
+    axios.get(`${fastapiUrl}/admin/gettradeamount`)
       .then((res)=>{
         setTradeAmount(res.data);
         const data = res.data;
@@ -620,7 +624,7 @@ const handleLogout = () => {
   }
 
   useEffect(() => {
-    fetch(`http://localhost:8000/logs?index=login-logs`)
+    fetch(`${fastapiUrl}/logs?index=login-logs`)
       .then(res => res.json())
       .then(data => setLogs(data))
       .catch(err => console.error(err));
@@ -630,7 +634,7 @@ const handleLogout = () => {
 
     setCurrentPage(requestPage)
 
-    await axios.get("http://localhost:8000/admin/getuser", {
+    await axios.get(`${fastapiUrl}/admin/getuser`, {
       params:{
         page: requestPage,
         limit: itemsPerPage
@@ -674,10 +678,10 @@ const handleLogout = () => {
       
       const fetchReports = async () => {
       try {
-      const { data: countRes } = await axios.get(`${BASE}/report/alerts/count`);
+      const { data: countRes } = await axios.get(`${springUrl}/report/alerts/count`);
       setUnreadCount(countRes.count);
 
-      const { data: unreadRes } = await axios.get(`${BASE}/report/alerts/unread?limit=10`);
+      const { data: unreadRes } = await axios.get(`${springUrl}/report/alerts/unread?limit=10`);
       // Report → notification 형태로 변환
       const mapped = unreadRes.map(r => ({
         id: r.report_id,

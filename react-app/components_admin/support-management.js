@@ -65,6 +65,12 @@ export default function SupportManagement({ isDarkMode }) {
   const messagesEndRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+  const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+  const clean = (u) => (u || "").replace(/\/$/, "");
+
+  const wsFastapi = process.env.NEXT_PUBLIC_WS_FASTAPI_URL; // ex) ws://localhost:8000
   
   const itemsPerPage = 10;
   const totalPages = Math.ceil(total / itemsPerPage);
@@ -97,7 +103,7 @@ export default function SupportManagement({ isDarkMode }) {
     // console.log("선택된 티켓:", ticket);
 
     try{
-      const res = await axios.get(`http://localhost:8000/chat/history/${ticket.user_id}`);
+      const res = await axios.get(`${clean(fastapiUrl)}/chat/history/${ticket.user_id}`);
       const messages = res.data.messages || [];
       
       // 티켓에 messages를 보함시켜서 셋팅
@@ -131,7 +137,7 @@ export default function SupportManagement({ isDarkMode }) {
       )
     );
     
-    axios.post("http://localhost:8000/admin/inq-status", null, {
+    axios.post(`${clean(fastapiUrl)}/admin/inq-status`, null, {
       params: {
         inquiry_id: ticketId,
         status: newStatus
@@ -218,7 +224,7 @@ export default function SupportManagement({ isDarkMode }) {
 
     setCurrentPage(requestPage)
 
-    await axios.get("http://localhost:8000/admin/getinq",{
+    await axios.get(`${clean(fastapiUrl)}/admin/getinq`,{
       params:{
         page: requestPage,
         limit: itemsPerPage
@@ -248,7 +254,7 @@ export default function SupportManagement({ isDarkMode }) {
     const roomId = selectedTicket?.user_id    
     if(!roomId) return;
 
-    ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${roomId}`)
+    ws.current = new WebSocket(`${clean(wsFastapi)}/ws/chat/${roomId}`)
     // console.log(roomId)
     ws.current.onopen = () => {
       console.log("웹소켓 연결됨");
@@ -288,7 +294,7 @@ export default function SupportManagement({ isDarkMode }) {
       if (ws.current) ws.current.close();
     }
     // , selectedTicket?.messages
-  },[selectedTicket?.user_id, selectedTicket?.messages])
+  }, [selectedTicket?.user_id])
 
   // 버튼 클릭 시 페이지 증가
 const loadMore = () => {
