@@ -5,6 +5,8 @@ export default function Document() {
     <Html lang="ko">
       <Head>
         <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <body>
         <Main />
