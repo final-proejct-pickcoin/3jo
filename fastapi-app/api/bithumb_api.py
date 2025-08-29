@@ -1193,4 +1193,3 @@ async def get_coin_detail(symbol: str):
         fb["error"] = str(e)
         fb["last_updated"] = datetime.now().isoformat()
         return {"status": "success", "data": fb}
-
