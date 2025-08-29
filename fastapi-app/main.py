@@ -11,10 +11,9 @@ import redis
 from utils.user_manager import ConnectionManager
 from service.alert_manager import AlertManager
 
-from passlib.context import CryptContext
+
 from utils.jwt_helper import create_access_token, verify_token
-from dotenv import load_dotenv
-from utils.user_manager import ConnectionManager
+
 from typing import Dict
 
 from json import dumps

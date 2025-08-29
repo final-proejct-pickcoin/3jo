@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/components/auth-provider"
 import PhoneLinkDialog from "@/components/phoneLinkDialog"
 import { Zap } from "lucide-react"
+import LogoIcon from '@/assets/logo.svg'
 
 /** 
  * AuthModal의 로직/주석을 랜딩 페이지로 이식한 버전.
@@ -162,9 +163,13 @@ export const LandingPage = () => {
         <div className="flex justify-between items-center px-8 py-4">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
-              <Zap className="h-4 w-4 text-white" />
+              <img 
+                src={LogoIcon.src} 
+                alt="pickCoin 로고" 
+                className="h-6 w-6" // 아이콘 크기는 내부 콘텐츠에 맞게 조절
+              />
             </div>
-            <span className="font-bold text-lg">pickCoin</span>
+            <span className="font-bold text-lg">PickCoin</span>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={handleClearStorage} className="text-xs">설정 초기화</Button>
@@ -406,7 +411,11 @@ export const LandingPage = () => {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
-                  <Zap className="h-4 w-4 text-white" />
+                  <img 
+                    src={LogoIcon.src} 
+                    alt="pickCoin 로고" 
+                    className="h-6 w-6" // 아이콘 크기는 내부 콘텐츠에 맞게 조절
+                  />
                 </div>
                 <span className="font-bold">PickCoin</span>
               </div>

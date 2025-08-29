@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useAuth } from "@/components/auth-provider"
 import { useWebSocket } from "@/components/websocket-provider"
 import { useRouter } from "next/navigation"
+import LogoIcon from '@/assets/logo.svg'
 
 const avatarGradients = [
   "bg-[conic-gradient(at_top_left,_#d1c4e9,_#b3e5fc,_#f8bbd0,_#b2dfdb,_#f3e5f5,_#e1bee7,_#b2ebf2,_#d1c4e9)]",
@@ -62,7 +63,11 @@ export const Navigation = () => {
                   aria-label="홈으로 이동"
                 >
                   <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <Zap className="h-5 w-5 text-primary-foreground" />
+                    <img 
+                      src={LogoIcon.src} 
+                      alt="pickCoin 로고" 
+                      className="h-6 w-6" // 아이콘 크기는 내부 콘텐츠에 맞게 조절
+                    /> 
                   </div>
                   <span>PickCoin</span>
                 </button>
