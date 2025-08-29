@@ -2,7 +2,7 @@ from pybithumb import WebSocketManager
 import pymysql
 
 def selectCoin():
-    conn = pymysql.connect(host='localhost', port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host='mysql', port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
