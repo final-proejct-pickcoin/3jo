@@ -65,6 +65,12 @@ export default function SupportManagement({ isDarkMode }) {
   const messagesEndRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+  const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+  const clean = (u) => (u || "").replace(/\/$/, "");
+
+  const wsFastapi = process.env.NEXT_PUBLIC_WS_FASTAPI_URL; // ex) ws://localhost:8000
   
   const itemsPerPage = 10;
   const totalPages = Math.ceil(total / itemsPerPage);
@@ -106,7 +112,7 @@ export default function SupportManagement({ isDarkMode }) {
     // console.log("선택된 티켓:", ticket);
 
     try{
-      const res = await axios.get(`http://localhost:8000/chat/history/${ticket.user_id}`);
+      const res = await axios.get(`${clean(fastapiUrl)}/chat/history/${ticket.user_id}`);
       const messages = res.data.messages || [];
       
       // 티켓에 messages를 보함시켜서 셋팅
@@ -140,7 +146,7 @@ export default function SupportManagement({ isDarkMode }) {
       )
     );
     
-    axios.post("http://localhost:8000/admin/inq-status", null, {
+    axios.post(`${clean(fastapiUrl)}/admin/inq-status`, null, {
       params: {
         inquiry_id: ticketId,
         status: newStatus
@@ -166,18 +172,18 @@ export default function SupportManagement({ isDarkMode }) {
     };
 
     // 화면 먼저 업데이트
-    setTickets((prev) => 
-      prev.map((ticket) => 
-        ticket.user_id === selectedTicket.user_id ? {
-          ...ticket,
-          messages: [...ticket.messages, newMessage],
-          lastReply: newMessage.timestamp,
-        } : ticket
-      )
-    );
-    setSelectedTicket((prev) => 
-      prev ? {...prev, messages: [...prev.messages, newMessage], lastReply: newMessage} : prev
-    );
+    // setTickets((prev) => 
+    //   prev.map((ticket) => 
+    //     ticket.user_id === selectedTicket.user_id ? {
+    //       ...ticket,
+    //       messages: [...ticket.messages, newMessage],
+    //       lastReply: newMessage.timestamp,
+    //     } : ticket
+    //   )
+    // );
+    // setSelectedTicket((prev) => 
+    //   prev ? {...prev, messages: [...prev.messages, newMessage], lastReply: newMessage} : prev
+    // );
 
     // 웹소켓으로 전송
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -193,6 +199,10 @@ export default function SupportManagement({ isDarkMode }) {
     }
 
     setReplyMessage("");
+
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
 
   };
 
@@ -227,7 +237,7 @@ export default function SupportManagement({ isDarkMode }) {
 
     setCurrentPage(requestPage)
 
-    await axios.get("http://localhost:8000/admin/getinq",{
+    await axios.get(`${clean(fastapiUrl)}/admin/getinq`,{
       params:{
         page: requestPage,
         limit: itemsPerPage
@@ -257,7 +267,7 @@ export default function SupportManagement({ isDarkMode }) {
     const roomId = selectedTicket?.user_id    
     if(!roomId) return;
 
-    ws.current = new WebSocket(`ws://localhost:8000/ws/chat/${roomId}`)
+    ws.current = new WebSocket(`${clean(wsFastapi)}/ws/chat/${roomId}`)
     // console.log(roomId)
     ws.current.onopen = () => {
       console.log("웹소켓 연결됨");
@@ -268,20 +278,38 @@ export default function SupportManagement({ isDarkMode }) {
       console.log(`받은메세지: ${msg}`) // 여기서 ticket / selectedTicet 업데이트 가능
         // 1) tickets 상태 업데이트
       setTickets((prevTickets) =>
-        prevTickets.map((ticket) =>
-          ticket.user_id === selectedTicket?.user_id
-            ? { ...ticket, messages: [...(ticket.messages || []), msg] }
-            : ticket
-        )
+        prevTickets.map((ticket) => {
+          if (ticket.user_id !== selectedTicket?.user_id) return ticket;
+
+          // 중복 체크
+          const isDuplicate = ticket.messages.some(
+            (m) => m.timestamp === msg.timestamp && m.message === msg.message
+          );
+
+          return {
+            ...ticket,
+            messages: isDuplicate ? ticket.messages : [...ticket.messages, msg],
+          };
+        })
       );
 
       // 2) selectedTicket 상태도 업데이트 (채팅창 열려 있는 경우 즉시 반영)
-      setSelectedTicket((prev) =>
-        prev
-          ? { ...prev, messages: [...(prev.messages || []), msg] }
-          : prev
-      );
+      setSelectedTicket((prev) => {
+        if (!prev) return prev;
+
+        const isDuplicate = prev.messages.some(
+          (m) => m.timestamp === msg.timestamp && m.message === msg.message
+        );
+
+        return {
+          ...prev,
+          messages: isDuplicate ? prev.messages : [...prev.messages, msg],
+        };
+      });
       
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
       
     }
     // messages 바뀔 때마다 스크롤 아래로.
@@ -297,7 +325,7 @@ export default function SupportManagement({ isDarkMode }) {
       if (ws.current) ws.current.close();
     }
     // , selectedTicket?.messages
-  },[selectedTicket?.user_id, selectedTicket?.messages])
+  }, [selectedTicket?.user_id])
 
   // 버튼 클릭 시 페이지 증가
 const loadMore = () => {

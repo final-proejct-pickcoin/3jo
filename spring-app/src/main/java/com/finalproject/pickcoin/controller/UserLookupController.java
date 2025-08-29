@@ -15,7 +15,7 @@ import com.finalproject.pickcoin.repository.MypageRepository;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = {"http://localhost:3000"}, allowCredentials = "true")
+@CrossOrigin(origins = "${FRONTEND_APP_URL}", allowCredentials = "true")
 public class UserLookupController {
 
     @Autowired

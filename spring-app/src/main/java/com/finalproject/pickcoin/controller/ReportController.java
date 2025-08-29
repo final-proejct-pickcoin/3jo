@@ -29,7 +29,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/report")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${FRONTEND_APP_URL}")
 @RequiredArgsConstructor
 public class ReportController {
     private final ReportService reportService;

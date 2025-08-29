@@ -20,7 +20,7 @@ import com.finalproject.pickcoin.service.CommunityService;
 import com.finalproject.pickcoin.service.StatsService;
 
 
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${FRONTEND_APP_URL}")
 @RestController
 @RequestMapping("/community")
 public class CommunityController {

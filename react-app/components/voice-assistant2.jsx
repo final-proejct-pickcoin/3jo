@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Mic, MicOff, Volume2, X, Send, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react"; // 아이콘 추가
 
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+
+const wsFastapi = process.env.NEXT_PUBLIC_WS_FASTAPI_URL; // ex) ws://localhost:8000
+const clean = (u) => (u || "").replace(/\/$/, "");
+
 // 애니메이션을 위한 CSS
 const styles = `
   .voice-recording { animation: pulse-animation 1.5s infinite; }
@@ -68,18 +74,8 @@ export const VoiceAssistant2 = () => {
    * - 개발 환경에서는 localhost 사용
    * - 프로덕션 환경에서는 적절한 URL 사용
    */
-  const getBackendUrl = () => {
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'ws://localhost:8000';
-      } else {
-        // Docker 환경이나 기타 환경
-        return 'ws://host.docker.internal:8000';
-      }
-    }
-    return 'ws://localhost:8000';
-  };
+  const getBackendUrl = () =>
+    clean(wsFastapi || (fastapiUrl || "").replace(/^http/, "ws"));
 
   /*
    * 현재 재생 중인 TTS 음성을 즉시 중단하는 함수
@@ -730,7 +726,7 @@ export const VoiceAssistant2 = () => {
       <Card className="w-96 shadow-xl flex flex-col">
         <CardContent className="p-4 flex-grow">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-lg">AI 비서 🤖</h3>
+            <h3 className="font-semibold text-lg">음성 AI 어시스턴스</h3>
             <div className="flex items-center gap-2">
               {/* ✅ [추가] 연결 상태 표시 */}
               <Badge variant={statusBadge.variant} className={`text-xs ${statusBadge.color}`}>

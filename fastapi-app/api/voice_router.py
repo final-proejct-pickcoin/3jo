@@ -1,4 +1,4 @@
-# voice_router.py - bithumb_api.py 활용하여 중복 제거 및 연동
+# voice_router.py - bithumb_api.py 활용하여 중복 제거 및 연동 + ML 예측 통합
 
 import asyncio
 import json
@@ -36,6 +36,57 @@ except Exception as e:
     print(f"🚨 Gemini 모델 초기화 실패: {e}")
     gemini_model = None
 
+# ===== 🤖 ML 연동을 위한 함수 추가 =====
+async def get_ml_prediction_for_voice(coin_symbol: str):
+    """음성 AI에서 ML 예측을 요청하는 함수"""
+    try:
+        # ✅ ml_router의 함수 직접 호출
+        from .ml_router import predict_single_coin
+        
+        result, error = await predict_single_coin(coin_symbol)
+        
+        if error:
+            return None, error
+        
+        return result, None
+        
+    except Exception as e:
+        return None, f"ML 예측 연동 오류: {str(e)}"
+
+def format_ml_prediction_for_voice(prediction_result: dict) -> str:
+    """ML 예측 결과를 음성 AI 응답용으로 포맷팅"""
+    try:
+        symbol = prediction_result.get('coin_symbol', '')
+        current = prediction_result.get('current_price')
+        predicted = prediction_result.get('predicted_next_day_price')
+        change_amount = prediction_result.get('price_change_amount')
+        change_percent = prediction_result.get('price_change_percentage')
+        
+        # 한글 코인명 가져오기
+        korean_name = get_korean_name(symbol)
+        display_name = f"{korean_name}({symbol})" if korean_name != symbol else symbol
+        
+        # 응답 텍스트 구성
+        response_text = f"""
+{display_name}의 AI 예측 결과입니다:
+
+📊 현재 가격: {current:,.0f}원
+🔮 내일 예상 가격: {predicted:,.0f}원
+"""
+        
+        if change_amount and change_percent:
+            if change_percent > 0:
+                response_text += f"📈 예상 상승: +{change_amount:,.0f}원 (+{change_percent:.2f}%)"
+            else:
+                response_text += f"📉 예상 하락: {change_amount:,.0f}원 ({change_percent:.2f}%)"
+        
+        response_text += "\n\n⚠️ 이 예측은 AI 모델의 분석 결과이며, 투자 조언이 아닙니다."
+        
+        return response_text
+        
+    except Exception as e:
+        return f"예측 결과 포맷팅 오류: {str(e)}"
+
 # ------------------------------------
 
 ### [개선] 동적 코인 매핑 시스템 - bithumb_api.py 활용 ###
@@ -46,7 +97,7 @@ class DynamicCoinMapper:
         self.symbol_map = {}  # 심볼 -> 정보 매핑
         self.last_update = None
         
-        # 📄 업데이트 주기 최적화
+        # 🔄 업데이트 주기 최적화
         self.cache_duration = timedelta(minutes=30)  # 30분마다 업데이트
         self.price_cache_duration = timedelta(minutes=5)  # 가격 정보는 5분마다
         self.realtime_threshold = timedelta(seconds=30)  # 30초 이내는 실시간으로 간주
@@ -178,31 +229,6 @@ class DynamicCoinMapper:
         
         return None, None
     
-    async def get_symbol_from_text(self, text: str) -> tuple:
-        """텍스트에서 코인 심볼과 한글명을 찾아서 반환"""
-        # 매핑이 비어있거나 오래되면 업데이트
-        if (not self.coin_map or 
-            not self.last_update or 
-            datetime.now() - self.last_update > self.cache_duration):
-            await self.update_coin_mapping()
-        
-        text_lower = text.lower()
-        
-        # 가장 긴 매치를 우선으로 찾기 (예: "비트코인캐시" vs "비트")
-        matched_names = []
-        for name, symbol in self.coin_map.items():
-            if name in text_lower:
-                matched_names.append((name, symbol, len(name)))
-        
-        if matched_names:
-            # 가장 긴 매치를 선택
-            best_match = max(matched_names, key=lambda x: x[2])
-            symbol = best_match[1]
-            korean_name = self.symbol_map.get(symbol, {}).get("korean_name", symbol)
-            return symbol, korean_name
-        
-        return None, None
-
     def cleanup_cache(self):
         """오래된 캐시 정리"""
         now = datetime.now()
@@ -261,6 +287,8 @@ data_manager = CoinDataManager(coin_mapper)
 # ✅ /api/coins 엔드포인트 제거 - bithumb_api.py에서 처리하도록 함
 # 중복된 @router.get("/coins") 제거
 
+'''
+#############레퍼런스(사용처) 없으면 삭제###################
 # [신규] 빗썸 API 직접 연동 함수들 - bithumb_api.py 활용
 async def get_bithumb_coin_list():
     """빗썸에서 활성 코인 목록 조회 - bithumb_api.py 활용"""
@@ -272,6 +300,9 @@ async def get_bithumb_coin_list():
     except Exception as e:
         print(f"⚠️ bithumb_api 호출 실패: {e}")
         return []
+'''
+
+# ===== 기존 함수들 =====
 
 def get_realtime_price(symbol: str) -> dict | None:
     """Redis 캐시에서 코인 시세 정보를 가져오고, 실패 시 직접 API 호출"""
@@ -371,7 +402,7 @@ async def get_coin_market_analysis(symbol: str) -> dict:
         print(f"⚠️ 시장 분석 오류: {e}")
         return None
 
-# [수정] Gemini 응답 생성 함수 - bithumb_api.py 완전 연동
+# [수정] Gemini 응답 생성 함수 - ML 예측 통합
 async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
     if not gemini_model:
         await send_error_message(ws, "Gemini API가 설정되지 않았습니다.")
@@ -381,7 +412,10 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
     
     # 1. 사용자의 질문에 가격 관련 키워드가 있는지 확인
     price_keywords = ["가격", "얼마", "시세", "현재가", "값", "가치", "코인", "암호화폐", "가상화폐"]
+    prediction_keywords = ["예측", "예상", "내일", "미래", "전망", "예보", "AI", "인공지능"]
+    
     has_price_query = any(keyword in user_text for keyword in price_keywords)
+    has_prediction_query = any(keyword in user_text for keyword in prediction_keywords)
     
     # 2. 코인 목록 요청인지 확인
     list_keywords = ["코인", "목록", "리스트", "종류", "뭐있어", "어떤", "추천"]
@@ -396,7 +430,6 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
                 
                 coin_info_text = "현재 거래량이 많은 상위 10개 코인입니다:\n\n"
                 for i, coin in enumerate(top_coins, 1):
-                    # bithumb_api.py에서 이미 처리된 korean_name 활용
                     korean_name = coin.get("korean_name", coin.get("symbol", ""))
                     price_formatted = f"{coin.get('current_price', 0):,.0f}원"
                     change_formatted = f"{coin.get('change_rate', 0):+.2f}%"
@@ -413,6 +446,7 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
                 
                 위 정보를 바탕으로 친절하고 도움이 되는 답변을 해주세요. 
                 구체적인 코인에 대해 더 자세히 알고 싶다면 "비트코인 가격 알려줘" 같은 방식으로 질문해달라고 안내해주세요.
+                가격 예측을 원한다면 "비트코인 내일 가격 예측해줘" 같은 방식으로 질문할 수 있다고 안내해주세요.
                 """
             else:
                 final_prompt = f"죄송합니다. 현재 코인 목록 정보를 가져올 수 없습니다. 사용자 질문: '{user_text}'"
@@ -420,8 +454,8 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
             print(f"⚠️ 코인 목록 조회 중 오류: {e}")
             final_prompt = f"죄송합니다. 코인 정보를 조회하는 중 오류가 발생했습니다. 사용자 질문: '{user_text}'"
     
-    elif has_price_query:
-        # ✅ 개별 코인 가격 조회 - DynamicCoinMapper + bithumb_api.py 조합
+    elif has_price_query or has_prediction_query:
+        # ✅ 개별 코인 가격 조회 또는 예측 요청 - DynamicCoinMapper + bithumb_api.py + ML 통합
         found_coin_symbol, found_coin_name = await coin_mapper.get_symbol_from_text_fast(user_text)
 
         print(f"🔍 동적 매핑 결과: {found_coin_name} ({found_coin_symbol})")
@@ -432,51 +466,105 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
             if not korean_name or korean_name == found_coin_symbol:
                 korean_name = found_coin_name or found_coin_symbol
             
-            # 상세 시장 분석 정보 조회
-            market_analysis = await get_coin_market_analysis(found_coin_symbol)
-            
-            if market_analysis:
-                # 숫자 포맷팅
-                price_formatted = f"{market_analysis['current_price']:,.0f}"
-                change_formatted = f"{market_analysis['change_rate']:+.2f}%"
-                change_amount_formatted = f"{market_analysis['change_amount']:+,.0f}"
-                volume_formatted = f"{market_analysis['volume']/100000000:.1f}억원"
+            # 🤖 ML 예측 요청인지 확인
+            if has_prediction_query:
+                print(f"🤖 ML 예측 요청 감지: {found_coin_symbol}")
                 
-                final_prompt = f"""
-                [실시간 정보]
-                - 코인: {korean_name} ({found_coin_symbol})
-                - 현재 가격: {price_formatted} 원 (KRW)
-                - 24시간 변동률: {change_formatted}
-                - 24시간 변동액: {change_amount_formatted} 원
-                - 24시간 거래대금: {volume_formatted}
-                - 현재 추세: {market_analysis['trend']}
-                - 거래량 상태: {market_analysis['volume_status']}
-                
-                위 최신 실시간 정보를 바탕으로 다음 사용자 질문에 대해 친절하고 정확하게 답변해주세요: "{user_text}"
-                
-                답변할 때는 구체적인 가격과 변동률을 포함해서 설명해주세요.
-                별도의 요구가 없을 시 투자 조언은 하지 말고, 객관적인 시장 정보만 제공해주세요.
-                """
-                print(f"📊 정보 보강 완료: {found_coin_symbol} 가격은 {price_formatted} 원, 추세: {market_analysis['trend']}")
-                
+                try:
+                    ml_result, ml_error = await get_ml_prediction_for_voice(found_coin_symbol)
+                    
+                    if ml_result:
+                        # ML 예측 성공
+                        ml_response_text = format_ml_prediction_for_voice(ml_result)
+                        
+                        final_prompt = f"""
+                        사용자가 {korean_name}({found_coin_symbol})의 가격 예측을 요청했습니다.
+                        
+                        다음은 AI가 분석한 예측 결과입니다:
+                        {ml_response_text}
+                        
+                        사용자 질문: "{user_text}"
+                        
+                        위 AI 예측 결과를 바탕으로 친절하고 전문적인 답변을 해주세요.
+                        예측의 근거나 시장 상황도 간단히 설명해주시고, 반드시 투자 판단은 본인의 책임임을 강조해주세요.
+                        """
+                    else:
+                        # ML 예측 실패
+                        final_prompt = f"""
+                        사용자가 {korean_name}({found_coin_symbol})의 가격 예측을 요청했지만, 
+                        해당 코인에 대한 AI 모델이 없거나 예측에 실패했습니다.
+                        
+                        오류: {ml_error}
+                        
+                        사용자 질문: "{user_text}"
+                        
+                        예측이 불가능한 이유를 설명하고, 현재 시세 정보라도 제공해주세요.
+                        또한 예측 가능한 다른 코인들을 추천해주세요.
+                        """
+                        
+                except Exception as e:
+                    print(f"🤖 ML 예측 연동 오류: {e}")
+                    final_prompt = f"""
+                    사용자가 {korean_name}({found_coin_symbol})의 가격 예측을 요청했지만,
+                    AI 예측 시스템에 일시적인 문제가 발생했습니다.
+                    
+                    사용자 질문: "{user_text}"
+                    
+                    현재 시세 정보를 제공하고, 나중에 다시 시도해달라고 안내해주세요.
+                    """
             else:
-                final_prompt = f"""
-                죄송합니다. {korean_name if korean_name else found_coin_symbol} 코인의 실시간 가격 정보를 현재 조회할 수 없습니다.
+                # 일반적인 가격 정보 요청 // 상세 시장 분석 정보 조회
+                market_analysis = await get_coin_market_analysis(found_coin_symbol)
                 
-                다음과 같은 방법으로 가격을 확인해보세요:
-                1. 빗썸(bithumb.com) 사이트 직접 방문
-                2. 다른 거래소 앱 또는 웹사이트 이용
-                3. 잠시 후 다시 질문해보기
-                
-                현재 서버 상태나 네트워크 문제로 일시적으로 가격 정보를 가져올 수 없는 상태입니다.
-                
-                사용자 질문: "{user_text}"
-                """
+                if market_analysis:
+                    # 숫자 포맷팅
+                    price_formatted = f"{market_analysis['current_price']:,.0f}"
+                    change_formatted = f"{market_analysis['change_rate']:+.2f}%"
+                    change_amount_formatted = f"{market_analysis['change_amount']:+,.0f}"
+                    volume_formatted = f"{market_analysis['volume']/100000000:.1f}억원"
+                    
+                    final_prompt = f"""
+                    당신은 암호화폐 시장을 분석하는 전문 애널리스트입니다.
+                    아래 제공된 최신 실시간 데이터를 바탕으로, 전문적인 분석가의 관점에서 사용자 질문에 답변해주세요.
+
+                    [실시간 정보]
+                    - 코인: {korean_name} ({found_coin_symbol})
+                    - 현재 가격: {price_formatted} 원 (KRW)
+                    - 24시간 변동률: {change_formatted}
+                    - 24시간 변동액: {change_amount_formatted} 원
+                    - 24시간 거래대금: {volume_formatted}
+                    - 현재 추세: {market_analysis['trend']}
+                    - 거래량 상태: {market_analysis['volume_status']}
+                    
+                    위 최신 실시간 정보를 바탕으로 다음 사용자 질문에 대해 친절하고 정확하게 답변해주세요: "{user_text}"
+
+                    [답변 가이드라인]
+                    1. 먼저 현재 시세를 명확하게 언급해주세요.
+                    2. 제공된 데이터를 근거로 현재 시장 상황을 분석해주세요.
+                    3. 가격 예측을 원한다면 "비트코인 내일 가격 예측해줘" 같은 방식으로 요청할 수 있다고 안내해주세요.
+                    4. 답변 마지막에는 반드시 "이 분석은 주어진 데이터를 바탕으로 한 참고용 의견이며, 투자 조언이 아닙니다."와 같은 면책 조항을 포함해주세요.
+                    """
+                    # 답변할 때는 구체적인 가격과 변동률을 포함해서 설명해주세요.
+                    # 별도의 요구가 없을 시 투자 조언은 하지 말고, 객관적인 시장 정보만 제공해주세요.
+                    print(f"📊 정보 보강 완료: {found_coin_symbol} 가격은 {price_formatted} 원, 추세: {market_analysis['trend']}")
+                else:
+                    final_prompt = f"""
+                    죄송합니다. {korean_name if korean_name else found_coin_symbol} 코인의 실시간 가격 정보를 현재 조회할 수 없습니다.
+                    
+                    다음과 같은 방법으로 가격을 확인해보세요:
+                    1. 빗썸(bithumb.com) 사이트 직접 방문
+                    2. 다른 거래소 앱 또는 웹사이트 이용
+                    3. 잠시 후 다시 질문해보기
+                    
+                    현재 서버 상태나 네트워크 문제로 일시적으로 가격 정보를 가져올 수 없는 상태입니다.
+                    
+                    사용자 질문: "{user_text}"
+                    """
         else:
             # 코인을 찾지 못한 경우
             supported_coins = coin_mapper.get_all_supported_coins()
             if supported_coins:
-                sample_coins = list(supported_coins.keys())[:20]  # 상위 20개만 표시
+                sample_coins = list(supported_coins.keys())[:20]
                 
                 final_prompt = f"""
                 질문에서 구체적인 코인 이름을 찾을 수 없습니다.
@@ -485,7 +573,9 @@ async def generate_and_send_gemini_response(ws: WebSocket, user_text: str):
                 {', '.join([f"{info.get('korean_name', symbol)} ({symbol})" 
                            for symbol, info in list(supported_coins.items())[:10]])}
                 
-                예시: "비트코인 가격 알려줘", "이더리움 얼마야?", "솔라나 시세" 등으로 질문해주세요.
+                예시: 
+                - 가격 조회: "비트코인 가격 알려줘", "이더리움 얼마야?", "솔라나 시세"
+                - AI 예측: "비트코인 내일 가격 예측해줘", "이더리움 예상 가격"
                 
                 사용자 질문: "{user_text}"
                 """

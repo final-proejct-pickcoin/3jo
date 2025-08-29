@@ -35,6 +35,10 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from functools import lru_cache
 
+# from .ai_coin_connect import redis_client
+import redis
+redis_client = redis.Redis(host='redis', port=6379, db=0, decode_responses=True)
+
 # 라우터 생성 (원형 유지)
 router = APIRouter(prefix="/api", tags=["bithumb"])
 

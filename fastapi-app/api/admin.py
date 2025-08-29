@@ -7,7 +7,10 @@ from .elasticsearch import get_user_trend, get_trading_volume_trend, fetch_logs_
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
 import logging
+from dotenv import load_dotenv
+import os
 
+load_dotenv() 
 
 
 router = APIRouter()
@@ -25,13 +28,13 @@ class User(BaseModel):
     trade_count: int
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-host = "34.47.81.41"
+mysql_url = os.getenv("MYSQL_HOST")
 
 @router.get("/admin/getuser")
 def getuser(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
     offset = (page - 1) * limit
     try:
-        conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+        conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
         with conn.cursor() as cursor:
             # 데이터 총 개수 조회
             count_sql = "SELECT COUNT(*) as total FROM inquiry"
@@ -99,7 +102,7 @@ def getuser(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
 @router.get("/admin/getinq")
 def getinq(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
     offset = (page - 1) * limit
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
     try:
         with conn.cursor() as cursor:
             # 데이터 총 개수 조회
@@ -132,7 +135,7 @@ def getinq(page: int = Query(1, ge=1), limit: int = Query(10, ge=1, le=100)):
 @router.get("/admin/user-status")
 def userStatus(user_id: int, is_verified: bool):
     
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
     try:
         with conn.cursor() as cursor:            
             new_verified = 0 if is_verified == 1 else 1
@@ -156,7 +159,7 @@ def userStatus(user_id: int, is_verified: bool):
 @router.get("/admin/info")
 def getAdminInfo(token: str = Depends(oauth2_scheme)):
 
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
     with conn.cursor() as cursor:
         sql = """
                 WITH user_counts AS (
@@ -194,7 +197,7 @@ def getAdminInfo(token: str = Depends(oauth2_scheme)):
 
 @router.get("/admin/gettradeamount")
 def get_trade_amount():
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=DictCursor)
     with conn.cursor() as cursor:
         query = """
         SELECT

@@ -1,4 +1,3 @@
-// components/trading-clean.jsx
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -9,15 +8,23 @@ import TradingOrderPanel from "./trading-orderform";
 import Tradingcoininfo from "./trading-coininfo";
 import TradingChart from "./trading-chart.jsx";
 
-// ✅ import 정리
 
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
 
-const TRADE_API = "http://localhost:8080/api/trade";
+// Spring 거래 API BASE
+const TRADE_API = `${clean(springUrl)}/api/trade`;
 
-// ✅ 컴포넌트 외부로 이동
+// WebSocket(FastAPI) 실시간 URL
+const REALTIME_WS = `${clean(fastapiUrl).replace(/^http/, "ws")}/api/realtime`;
+
+// =========================
+// ✅ 컴포넌트 외부 함수들
+// =========================
 const fetchAssetId = async (assetSymbol) => {
   try {
-    const url = `http://localhost:8080/api/Market_assets/asset-id?asset_symbol=${encodeURIComponent(assetSymbol)}`;
+    const url = `${clean(springUrl)}/api/Market_assets/asset-id?asset_symbol=${encodeURIComponent(assetSymbol)}`;
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return null;
     const arr = await res.json();
@@ -40,9 +47,10 @@ const normalizeOrders = (payload) => {
 
 const formatKRW = (n) => (Number.isFinite(n) ? n.toLocaleString() : "-");
 
+// =========================
 // ✅ 메인 컴포넌트
+// =========================
 function TradingInterface() {
-  // 모든 상태를 컴포넌트 최상단에 선언
   const [user_id, setUserId] = useState(null);
   const [asset_id, setAsset_id] = useState(null);
   const [selectedCoin, setSelectedCoin] = useState("BTC");
@@ -64,19 +72,17 @@ function TradingInterface() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState(null);
-  
+
   const highlighted = useHighlightEffect(coinList, realTimeData);
   const [combinedHeight] = useState(600);
   const mainPanelRef = useRef(null);
 
-  // ✅ 모든 함수들을 useCallback으로 감싸거나 컴포넌트 외부로 이동
   const handleBuy = async () => {
     if (!selectedCoin || !user_id) {
       alert("로그인이 필요합니다.");
       return;
     }
 
-    // asset_id 가져오기 전에 먼저 알림창 표시
     let id = asset_id;
     if (!id) {
       console.log(`🔍 ${selectedCoin}의 asset_id 조회 중...`);
@@ -85,17 +91,15 @@ function TradingInterface() {
       console.log(`📋 조회된 asset_id: ${id}`);
     }
 
-    // 매수 데이터 미리 알림 (조건 없이 무조건 표시)
     alert(`💰 매수 주문 데이터 확인:\n\n코인: ${selectedCoin}\nuser_id: ${user_id}\nasset_id: ${id || '조회중...'}\n수량: ${orderQty}\n가격: ${orderPrice?.toLocaleString()}원\n총 금액: ${(orderPrice * orderQty)?.toLocaleString()}원`);
 
-    // asset_id가 없으면 에러 처리
     if (!id) {
       alert("❌ 에러: 코인 정보를 찾을 수 없습니다.");
       return;
     }
 
     try {
-      await axios.post("http://localhost:8080/api/trade/market_buy", {
+      await axios.post(`${TRADE_API}/market_buy`, {
         user_id, asset_id: id, amount: orderQty, price: orderPrice
       });
       alert(`✅ ${selectedCoin} 매수 성공!`);
@@ -110,7 +114,6 @@ function TradingInterface() {
       return;
     }
 
-    // asset_id 가져오기 전에 먼저 알림창 표시
     let id = asset_id;
     if (!id) {
       console.log(`🔍 ${selectedCoin}의 asset_id 조회 중...`);
@@ -119,17 +122,15 @@ function TradingInterface() {
       console.log(`📋 조회된 asset_id: ${id}`);
     }
 
-    // 매도 데이터 미리 알림 (조건 없이 무조건 표시)
     alert(`💸 매도 주문 데이터 확인:\n\n코인: ${selectedCoin}\nuser_id: ${user_id}\nasset_id: ${id || '조회중...'}\n수량: ${orderQty}\n가격: ${orderPrice?.toLocaleString()}원\n총 금액: ${(orderPrice * orderQty)?.toLocaleString()}원`);
 
-    // asset_id가 없으면 에러 처리
     if (!id) {
       alert("❌ 에러: 코인 정보를 찾을 수 없습니다.");
       return;
     }
 
     try {
-      await axios.post("http://localhost:8080/api/trade/market_sell", {
+      await axios.post(`${TRADE_API}/market_sell`, {
         user_id, asset_id: id, amount: orderQty, price: orderPrice
       });
       alert(`✅ ${selectedCoin} 매도 성공!`);
@@ -155,9 +156,11 @@ function TradingInterface() {
     return selectedCoin;
   };
 
-  // ✅ useEffect들을 올바른 순서로 배치
-  
-  // 사용자 ID 가져오기
+  // =========================
+  // ✅ useEffect 영역
+  // =========================
+
+  // 사용자 ID 가져오기 (JWT → email → user_id)
   useEffect(() => {
     const cached = sessionStorage.getItem("cached_user_id");
     if (cached) {
@@ -172,7 +175,7 @@ function TradingInterface() {
       const email = payload.email || payload.sub;
       if (!email) return;
 
-      fetch(`http://localhost:8080/api/mypage/user-id?email=${encodeURIComponent(email)}`)
+      fetch(`${clean(springUrl)}/api/mypage/user-id?email=${encodeURIComponent(email)}`)
         .then(res => res.ok ? res.json() : Promise.reject())
         .then(data => {
           if (data?.user_id) {
@@ -186,7 +189,7 @@ function TradingInterface() {
     }
   }, []);
 
-  // 코인 목록 로딩
+  // 코인 목록 로딩 (FastAPI)
   useEffect(() => {
     setCoinListLoading(true);
     fetchCoinList()
@@ -200,41 +203,41 @@ function TradingInterface() {
       .finally(() => setCoinListLoading(false));
   }, []);
 
-  // 선택된 코인 상세 정보 로딩
+  // 선택된 코인 상세 정보 로딩 (FastAPI)
   useEffect(() => {
     if (!selectedCoin) return;
-    
+
     let isMounted = true;
     console.log(`🔍 ${selectedCoin} 상세 정보 로딩 시작`);
-    
+
     setCoinDetail(null);
-    
+
     fetchCoinFullDetail(selectedCoin)
-      .then(detail => { 
+      .then(detail => {
         if (isMounted) {
           setCoinDetail(detail);
           console.log(`✅ ${selectedCoin} 상세 정보 로딩 완료`);
         }
       })
-      .catch(error => { 
+      .catch(error => {
         if (isMounted) {
           console.error(`❌ ${selectedCoin} 상세 정보 로딩 실패:`, error);
           setCoinDetail(null);
         }
       });
-    
+
     return () => { isMounted = false; };
   }, [selectedCoin]);
 
-  // WebSocket 연결
+  // WebSocket 연결 (FastAPI)
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/api/realtime');
-    
+    const ws = new WebSocket(REALTIME_WS);
+
     ws.onopen = () => {
       setWsConnected(true);
       setConnectionStatus("실시간 연결됨");
     };
-    
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -256,7 +259,7 @@ function TradingInterface() {
         console.error('WebSocket 메시지 파싱 오류:', e);
       }
     };
-    
+
     ws.onclose = () => {
       setWsConnected(false);
       setConnectionStatus("연결 끊어짐");
@@ -265,7 +268,7 @@ function TradingInterface() {
     return () => ws.close();
   }, []);
 
-  // 거래내역 로딩
+  // 거래내역 로딩 (Spring)
   useEffect(() => {
     if (orderTab !== "거래내역" || !user_id || !asset_id) return;
 
@@ -282,12 +285,14 @@ function TradingInterface() {
     }
   }, [orderTab, historyTab, user_id, asset_id]);
 
-  // ✅ useMemo들
+  // =========================
+  // ✅ useMemo & 파생값
+  // =========================
   const filteredCoinList = useMemo(() => {
     if (!searchTerm) return coinList;
     const term = searchTerm.toLowerCase();
-    return coinList.filter(c => 
-      c.name.toLowerCase().includes(term) || 
+    return coinList.filter(c =>
+      c.name.toLowerCase().includes(term) ||
       c.symbol.toLowerCase().includes(term)
     );
   }, [coinList, searchTerm]);
@@ -297,8 +302,8 @@ function TradingInterface() {
     return rt?.closePrice ? parseInt(rt.closePrice) : 0;
   }, [selectedCoin, realTimeData]);
 
-  const totalAmountKRW = useMemo(() => 
-    Math.floor((orderPrice || 0) * (orderQty || 0)), 
+  const totalAmountKRW = useMemo(() =>
+    Math.floor((orderPrice || 0) * (orderQty || 0)),
     [orderPrice, orderQty]
   );
 
@@ -309,7 +314,9 @@ function TradingInterface() {
     }
   }, [currentPriceKRW, selectedCoin]);
 
+  // =========================
   // ✅ 렌더링
+  // =========================
   return (
     <div className="w-full p-0 space-y-4">
       {/* 연결 상태 */}
@@ -323,18 +330,18 @@ function TradingInterface() {
       </div>
 
       <div className="flex flex-row gap-4" style={{ height: 'calc(100vh - 100px)' }}>
-                 {/* 탭 + 코인목록 */}
-         <div className="flex flex-row">
-           <div className="flex flex-col py-4 px-2 gap-2 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-             <button
-               className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
-               onClick={() => setView('chart')}
-             >차트</button>
-             <button
-               className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
-               onClick={() => setView('info')}
-             >정보</button>
-           </div>
+        {/* 탭 + 코인목록 */}
+        <div className="flex flex-row">
+          <div className="flex flex-col py-4 px-2 gap-2 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+            <button
+              className={`w-16 py-2 rounded text-xs font-bold ${view === 'chart' ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+              onClick={() => setView('chart')}
+            >차트</button>
+            <button
+              className={`w-16 py-2 rounded text-xs font-bold ${view === 'info' ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+              onClick={() => setView('info')}
+            >정보</button>
+          </div>
 
           <div className="w-[420px]">
             <CoinListPanel
@@ -368,7 +375,7 @@ function TradingInterface() {
                 currentPrice={currentPriceKRW}
               />
             ) : (
-              <Tradingcoininfo 
+              <Tradingcoininfo
                 coin={coinList.find(c => c.symbol === selectedCoin) || {}}
                 coinDetail={coinDetail}
                 realTimeData={realTimeData[selectedCoin + '_KRW']}
@@ -405,10 +412,10 @@ function TradingInterface() {
   );
 }
 
-// --- 실제 API 함수 예시 (임시 폴백)
+// --- 실제 API 함수 예시 (FastAPI)
 export async function fetchCoinList() {
   try {
-    const response = await fetch("http://localhost:8000/api/coins");
+    const response = await fetch(`${clean(fastapiUrl)}/api/coins`);
     const data = await response.json();
     if (data.status === 'success' && Array.isArray(data.data)) {
       return data.data.map(coin => ({
@@ -422,27 +429,23 @@ export async function fetchCoinList() {
         market_warning: coin.market_warning || 'NONE',
       }));
     }
-    // API 실패 시 빈 배열 반환 (폴백 없음)
     return [];
   } catch (error) {
     console.error('❌ 코인 목록 조회 실패:', error);
-    // API 실패 시 빈 배열 반환 (폴백 없음)
     return [];
   }
 }
 
 export async function fetchCoinFullDetail(symbol) {
   try {
-    const response = await fetch(`http://localhost:8000/api/coin/${symbol}`);
+    const response = await fetch(`${clean(fastapiUrl)}/api/coin/${symbol}`);
     const data = await response.json();
     if (data.status === 'success' && data.data) {
       return data.data;
     }
-    // API 실패 시 빈 객체 반환 (폴백 없음)
     return {};
   } catch (error) {
     console.error('❌ 코인 상세 조회 실패:', error);
-    // API 실패 시 빈 객체 반환 (폴백 없음)
     return {};
   }
 }

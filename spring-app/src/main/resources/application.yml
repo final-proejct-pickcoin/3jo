@@ -91,7 +91,7 @@ mybatis:
   type-aliases-package: com.finalproject.pickcoin.domain
 
 redis:
-    host: localhost
+    host: redis
     port: 6379
     
 # Websocket 관련 (엔드포인트, broker 등은 코드에서 설정)

@@ -1,6 +1,10 @@
 import axios from "axios";
 import React, { useState } from "react";
 
+  const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+  const springUrl  = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+  const clean = (u) => (u || "").replace(/\/$/, "");
+
 export default function SignUpModal({ isOpenSignUp, onClose }) {
   if (!isOpenSignUp) return null;
 
@@ -29,7 +33,7 @@ export default function SignUpModal({ isOpenSignUp, onClose }) {
     formData.append("name", form.name);
 
     
-    axios.post("http://localhost:8000/admin/register",formData)
+    axios.post(`${clean(fastapiUrl)}/admin/register`, formData)
       .then((response) => {
         console.log("회원가입 성공", response.data);
         onClose();

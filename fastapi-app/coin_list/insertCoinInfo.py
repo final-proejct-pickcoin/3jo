@@ -1,8 +1,14 @@
 import requests
 from code import getCoinCode
 import pymysql
+from dotenv import load_dotenv
+import os
 
+load_dotenv() 
 codeList = getCoinCode()
+
+mysql_url = os.getenv("MYSQL_HOST")
+
 
 def insertCoin(data):
 

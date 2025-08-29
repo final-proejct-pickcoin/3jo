@@ -3,6 +3,9 @@
 import axios from "axios"
 import { createContext, useContext, useState, useEffect } from "react"
 
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+const clean = (u) => (u || "").replace(/\/$/, "");
+
 // JWT 파서 유틸 함수
 function parseJwt(token) {
   try {
@@ -20,6 +23,7 @@ function parseJwt(token) {
     return null;
   }
 }
+
 
 const AuthContext = createContext(undefined)
 
@@ -49,14 +53,17 @@ export const AuthProvider = ({ children }) => {
     }
     loadGoogleSDK()
 
-    // 로그인 상태 복원
+    // 로그인 상태 복원    
     const token = sessionStorage.getItem("auth_token")
     const userData = sessionStorage.getItem("user_data")
+
     if (token && userData) {
       console.log("로그인 시 유저데이타", userData)
       setUser(JSON.parse(userData))
     }
+    
     setIsLoading(false)
+    
   }, [])
 
   // 일반 로그인
@@ -68,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       formData.append("email", email)
       formData.append("password", password)
 
-      const res = await fetch("http://localhost:8080/users/login", {
+      const res = await fetch(`${clean(springUrl)}/users/login`, {
         method: "POST",
         body: formData,
       })
@@ -80,18 +87,26 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await res.json()
-
+      
       // 백엔드 응답: access_token, sub(email), user_id, name
+      const profile = {
+        user_id: data.user_id,
+        email: data.sub,
+        nickname: data.name || data.sub.split("@")[0],
+      }
+
+      // email 필드 유연 처리
       const userEmail = data.email || data.sub || email
       if (!userEmail) {
         setLoginError("이메일 정보를 가져오지 못했습니다.")
         return
       }
 
+      // console.log("일반로그인 시 유저데이타", profile)
       sessionStorage.setItem("auth_token", data.access_token)
       sessionStorage.setItem(
         "user_data",
-        JSON.stringify({ user_id: data.user_id, email: userEmail, nickname: userEmail.split("@")[0] })
+        JSON.stringify({user_id:data.user_id, email: userEmail, nickname: userEmail.split("@")[0] })
       )
       setUser({ email: userEmail, nickname: userEmail.split("@")[0] })
     } finally {
@@ -99,14 +114,15 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+
   // 로그아웃
   const logout = () => {
     const userData = JSON.parse(sessionStorage.getItem("user_data"))
     const isKakaoUser = userData?.provider === "kakao"
 
-    console.log("로그아웃 유저 정보:", userData)
-    axios.delete("http://localhost:8080/users/logout", {
-      params: { email: userData?.email }
+    console.log("로그아웃 유저 정보:",userData)
+    axios.delete(`${clean(springUrl)}/users/logout`, {
+      params : {email : userData.email}
     })
 
     // 카카오 로그아웃
@@ -121,13 +137,9 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem("auth_token")
     sessionStorage.removeItem("user_data")
     setUser(null)
-
-    // ★ (선택) 남아있을 수 있는 구글 프롬프트 정리
-    try {
-      window.google?.accounts?.id?.cancel()
-      window.google?.accounts?.id?.disableAutoSelect()
-    } catch {}
+    
   }
+
 
   // 회원가입
   const register = async (email, password, nickname, phone) => {
@@ -139,12 +151,22 @@ export const AuthProvider = ({ children }) => {
       formData.append("email", email)
       formData.append("password", password)
       formData.append("name", nickname)
+      //formData.append("phone", phone)
       formData.append("phone", normalizedPhone)
 
-      const res = await fetch("http://localhost:8080/users/register", {
+      const res = await fetch(`${clean(springUrl)}/users/register`, {
         method: "POST",
+        // headers: {
+        //   "Content-Type": "application/x-www-form-urlencoded",
+        // },
         body: formData,
       })
+
+      //  if (!res.ok) throw new Error("회원가입 실패")
+      //  const data = await res.json()
+
+      //  alert(data.success || data.error || "회원가입 완료! 이메일 인증 후 로그인하세요.")
+      //  return data
 
       const text = await res.text()
       let data = {}
@@ -175,7 +197,7 @@ export const AuthProvider = ({ children }) => {
     params.append("email", phoneLinkRequest.email)
     params.append("phone", normalized)
 
-    const res = await fetch("http://localhost:8080/users/phone/request-otp", {
+    const res = await fetch(`${clean(springUrl)}/users/phone/request-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params,
@@ -204,7 +226,7 @@ export const AuthProvider = ({ children }) => {
     body.append("otp", otp)
     if (phoneLinkRequest.tempToken) body.append("temp_token", phoneLinkRequest.tempToken)
 
-    const res = await fetch("http://localhost:8080/users/link-social", {
+    const res = await fetch(`${clean(springUrl)}/users/link-social`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -222,93 +244,69 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.setItem("auth_token", data.access_token)
     sessionStorage.setItem("user_data", JSON.stringify(profile))
     setUser(profile)
-
-    // ★ 구글 프롬프트/자동선택 정리
-    try {
-      window.google?.accounts?.id?.cancel()
-      window.google?.accounts?.id?.disableAutoSelect()
-    } catch {}
-
     setPhoneLinkRequest(null)
     return true
-  }
+    }
 
-  // 소셜 로그인(카카오/구글) → 백엔드와 통신
+  // 소셜 로그인(카카오/구글)
   const socialLogin = async (provider, email, providerId) => {
-    try {
-      const formData = new URLSearchParams()
-      formData.append("provider", provider)
-      formData.append("email", email)
-      if (providerId) formData.append("providerId", providerId)
+  try {
+    const formData = new URLSearchParams()
+    formData.append("provider", provider)
+    formData.append("email", email)
+    if (providerId) formData.append("providerId", providerId)
 
-      const res = await fetch("http://localhost:8080/users/social-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData,
+    const res = await fetch(`${clean(springUrl)}/users/social-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData,
+    })
+
+    // 응답 파싱 (200/428 모두 커버)
+    let data = {}
+    try { data = await res.json() } catch {}
+
+    // needPhone 체크
+    const needPhone =
+      res.status === 428 || data?.needPhone === true || data?.need_phone === true
+
+    if (needPhone) {
+      //  모달 열 스위치: phoneLinkRequest 세팅
+      setPhoneLinkRequest({
+        provider,
+        providerId,
+        email: data.socialEmail || data.email || email,
+        // 백엔드가 temp_token 또는 access_token 중 임시토큰 비슷한 걸 줄 수 있어 둘 다 수용
+        tempToken: data.temp_token || data.access_token || null,
       })
-
-      let data = {}
-      try { data = await res.json() } catch {}
-
-      // needPhone 체크
-      const needPhone =
-        res.status === 428 || data?.needPhone === true || data?.need_phone === true
-
-      if (needPhone) {
-        setPhoneLinkRequest({
-          provider,
-          providerId,
-          email: data.socialEmail || data.email || email,
-          tempToken: data.temp_token || data.access_token || null,
-        })
-        return { needPhone: true }
-      }
-
-      // 정상 로그인 케이스
-      if (!res.ok) throw new Error("소셜 로그인 실패")
-
-      const finalEmail = data.email || data.socialEmail || email
-      const profile = {
-        user_id: data.user_id,
-        email: finalEmail,
-        nickname: data.name || (finalEmail || "").split("@")[0],
-        provider: data.provider || provider,
-      }
-
-      sessionStorage.setItem("auth_token", data.access_token)
-      sessionStorage.setItem("user_data", JSON.stringify(profile))
-      setUser(profile)
-
-      // ★ 구글 프롬프트/자동선택 정리
-      try {
-        window.google?.accounts?.id?.cancel()
-        window.google?.accounts?.id?.disableAutoSelect()
-      } catch {}
-
-      return { needPhone: false }
-    } catch (err) {
-      console.error("소셜 로그인 오류:", err)
-      alert("소셜 로그인 중 오류가 발생했습니다.")
-      return { needPhone: false, error: true }
+      // 상위에서 분기할 수 있도록 반환
+      return { needPhone: true }
     }
-  }
 
-  // ✅ Google GSI 스크립트를 '클릭 시점'에도 확실히 보장 로드
-  async function ensureGoogleSDK() {
-    if (!window.google?.accounts?.id) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "https://accounts.google.com/gsi/client";
-        s.async = true;
-        s.defer = true;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
+    // 여기 왔으면 정상 로그인 케이스
+    if (!res.ok) throw new Error("소셜 로그인 실패")
+
+    const finalEmail = data.email || data.socialEmail || email
+    const profile = {
+      user_id: data.user_id,
+      email: finalEmail,
+      nickname: data.name || (finalEmail || "").split("@")[0],
+      provider: data.provider || provider,
     }
-  }
 
-  // OAuth 로그인 버튼 클릭 시 (카카오/구글)
+    sessionStorage.setItem("auth_token", data.access_token)
+    sessionStorage.setItem("user_data", JSON.stringify(profile))
+    setUser(profile)
+    return { needPhone: false }
+  } catch (err) {
+    console.error("소셜 로그인 오류:", err)
+    alert("소셜 로그인 중 오류가 발생했습니다.")
+    return { needPhone: false, error: true }
+  }
+}
+
+
+  // OAuth 로그인 버튼 클릭 시
   const loginWithOAuth = async (provider) => {
     if (provider === "kakao") {
       if (!window.Kakao || !window.Kakao.Auth) {
@@ -316,6 +314,7 @@ export const AuthProvider = ({ children }) => {
         return { needPhone: false }
       }
 
+      //API 호출
       return new Promise((resolve, reject) => {
         window.Kakao.Auth.login({
           scope: "account_email",
@@ -327,7 +326,7 @@ export const AuthProvider = ({ children }) => {
                   const email = res?.kakao_account?.email
                   const kakaoId = res?.id
                   const ret = await socialLogin("kakao", email, kakaoId)
-                  resolve(ret)
+                  resolve(ret)                 // ← needPhone 결과를 상위(AuthModal)로 올려보냄
                 } catch (e) { reject(e) }
               },
               fail: reject,
@@ -339,78 +338,82 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (provider === "google") {
-      await ensureGoogleSDK()
-      const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim()
-      console.log("🟢 [Google Login] CID from .env:", cid)
+  const cid = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim()
+  console.log("🟢 [Google Login] CID from .env:", cid)
 
-      if (!cid) {
-        console.error("❌ Google Client ID가 비어있습니다. (.env 확인 필요)")
-        return { needPhone: false }
-      }
-      if (!window.google?.accounts?.id) {
-        console.error("❌ Google SDK가 로드되지 않았습니다.")
-        return { needPhone: false }
-      }
-
-      return new Promise((resolve, reject) => {
-        if (!window.__gsiInitialized) {
-          console.log("GSI init start!!!")
-          window.google.accounts.id.initialize({
-            client_id: cid,
-            callback: async ({ credential }) => {
-              console.log("📌 [Step 1] Credential 수신 여부:", credential)
-              if (!credential) {
-                console.warn("⚠️ credential이 비어있음. Google 로그인 실패")
-                return resolve({ needPhone: false })
-              }
-              try {
-                const payload = parseJwt(credential)
-                console.log("📌 [Step 2] Google Payload:", payload)
-                if (!payload?.email) {
-                  console.error("❌ 이메일 정보 없음")
-                  return resolve({ needPhone: false })
-                }
-                console.log("📌 [Step 3] 백엔드로 social-login 요청 시작")
-                const ret = await socialLogin("google", payload.email, payload.sub)
-                console.log("✅ [Step 4] 백엔드 요청 완료", ret)
-                return resolve(ret)
-              } catch (e) {
-                console.error("❌ Google callback error:", e)
-                return reject(e)
-              }
-            },
-            auto_select: false,
-            use_fedcm_for_prompt: false,                // FedCM 비활성화(Abort 회피)
-            allowed_parent_origin: [window.location.origin],
-          })
-        }
-
-        const btn = document.getElementById("googleLoginBtn")
-        if (btn) {
-          console.log("🟢 renderButton on #googleLoginBtn")
-          window.google.accounts.id.renderButton(btn, { theme: "outline", size: "large" })
-
-          if (!window.__gsiPrompting) {
-            window.__gsiPrompting = true
-            window.google.accounts.id.prompt((notification) => {
-              console.log("🟢 prompt notification:", notification)
-              window.__gsiPrompting = false
-            })
-          }
-        } else {
-          console.warn("⚠️ #googleLoginBtn 요소 없음. DOM에 div 추가 필요")
-        }
-
-        window.__gsiInitialized = true
-        console.log("🟢 GSI init done")
-      })
-    }
+  if (!cid) {
+    console.error("❌ Google Client ID가 비어있습니다. (.env 확인 필요)")
+    return { needPhone: false } // ← 반드시 객체 반환(상위 분기용)
   }
 
+  if (!window.google?.accounts?.id) {
+    console.error("❌ Google SDK가 로드되지 않았습니다.")
+    return { needPhone: false } // ← 반드시 객체 반환(상위 분기용)
+  }
+
+  // Promise로 감싸서 socialLogin() 결과(ret)를 resolve에 올려보냄
+  return new Promise((resolve, reject) => {
+    if (!window.__gsiInitialized) {
+      console.log("GSI init start!!!")
+      window.google.accounts.id.initialize({
+        client_id: cid,
+        callback: async ({ credential }) => {
+          console.log("📌 [Step 1] Credential 수신 여부:", credential)
+
+          if (!credential) {
+            console.warn("⚠️ credential이 비어있음. Google 로그인 실패")
+            return resolve({ needPhone: false }) // ← 실패 시에도 객체 반환
+          }
+
+          try {
+            // JWT payload 디코딩
+            const payload = parseJwt(credential)
+            console.log("📌 [Step 2] Google Payload:", payload)
+
+            if (!payload?.email) {
+              console.error("❌ 이메일 정보 없음");
+              return resolve({ needPhone: false }) // ← 이메일 없으면 종료
+            }
+
+            // 백엔드로 전송
+            console.log("📌 [Step 3] 백엔드로 social-login 요청 시작")
+            const ret = await socialLogin("google", payload.email, payload.sub)
+            console.log("✅ [Step 4] 백엔드 요청 완료", ret)
+
+            // ✅ 핵심: needPhone 결과를 상위(AuthModal)로 올려보냄
+            return resolve(ret)
+          } catch (e) {
+            console.error("❌ Google callback error:", e)
+            return reject(e)
+          }
+        },
+      })
+    }
+
+    // 버튼 렌더링
+    const btn = document.getElementById("googleLoginBtn")
+    if (btn) {
+      console.log("🟢 renderButton on #googleLoginBtn")
+      window.google.accounts.id.renderButton(btn, { theme: "outline", size: "large" })
+
+      window.google.accounts.id.prompt((notification) => {
+        console.log("🟢 prompt notification:", notification)
+      })
+    } else {
+      console.warn("⚠️ #googleLoginBtn 요소 없음. DOM에 div 추가 필요")
+    }
+
+    window.__gsiInitialized = true
+    console.log("🟢 GSI init done")
+  })
+}
+
+  }
+  // Context Provider 리턴
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user,                 // { user_id, email, nickname }
         isAuthenticated: !!user,
         isLoading,
         login,
