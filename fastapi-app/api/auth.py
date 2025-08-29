@@ -18,7 +18,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "34.47.81.41"
+mysql_url = os.getenv("MYSQL_HOST")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -28,7 +28,7 @@ async def register(request:Request, email: str = Form(...), password: str = Form
     data = await request.form()
     # print(f"Received form data: {data}")
     # db연결
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
@@ -68,7 +68,7 @@ logged_in_users: set[str] = set()  # 나중에 redis 사용해서 로그인회�
 @router.post("/admin/login")
 async def login(email: str = Form(...), password: str = Form(...)):
 
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor)
 
     cursor = conn.cursor()
 
@@ -114,7 +114,7 @@ async def login(email: str = Form(...), password: str = Form(...)):
 # 비밀번호 변경
 @router.post("/admin/change-pwd")
 async def change_password(email: str = Form(...), currentPassword: str = Form(...), newPassword: str = Form(...)):
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
     cursor = conn.cursor()
 
     try:

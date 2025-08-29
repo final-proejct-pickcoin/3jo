@@ -10,12 +10,12 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-host = "34.47.81.41"
+mysql_url = os.getenv("MYSQL_HOST")
 
 @router.post("/inq-status")
 def inq_status(inquiry_id: int, status: str):
 
-    conn = pymysql.connect(host=host, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host=mysql_url, user="pickcoin", password="Admin1234!", port=3306, database="coindb", charset="utf8mb4")
     try:
         with conn.cursor() as cursor:
             data = (status, inquiry_id)

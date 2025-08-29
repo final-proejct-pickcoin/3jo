@@ -1,8 +1,14 @@
+from dotenv import load_dotenv
+import os
 from pybithumb import WebSocketManager
 import pymysql
 
 def selectCoin():
-    conn = pymysql.connect(host='localhost', port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
+
+    load_dotenv() 
+    mysql_url = os.getenv("MYSQL_HOST")
+
+    conn = pymysql.connect(host=mysql_url, port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 

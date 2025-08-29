@@ -67,10 +67,16 @@ app = FastAPI(
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
-host = 'mysql'
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 templates = Jinja2Templates(directory="templates")
+
+react_url = os.getenv("FRONTEND_APP_URL")
+spring_url = os.getenv("SPRING_APP_URL")
+fastapi_url = os.getenv("FASTAPI_APP_URL")
+service_url = os.getenv("SERVICE_URL")
+
 
 # Gemini API 설정
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -99,12 +105,9 @@ def api_ping():
 
 # --- CORS 설정 ---
 origins = [
-    "http://localhost:3000",
-    "http://localhost:8080", 
-    "http://localhost",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8080",
-    "http://127.0.0.1",
+    react_url,
+    spring_url,
+    service_url,
     "https://api.coingecko.com/api/v3/coins/list"
 ]
 

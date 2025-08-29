@@ -1,13 +1,16 @@
 from utils.admin_logger import log_admin_action
 import pymysql
+from dotenv import load_dotenv
+import os
 
-host = 'mysql'
+load_dotenv() 
+mysql_url = os.getenv("MYSQL_HOST")
 
 async def delete_user(email: str, admin_user: str):
 
     # 디비에서 삭제 로직 수행
     try:
-        conn = pymysql.connect(host=host, port=3306, database='coindb', user='pickcoin', password='final3', charset="utf8mb4")
+        conn = pymysql.connect(host=mysql_url, port=3306, database='coindb', user='pickcoin', password='final3', charset="utf8mb4")
         with conn.cursor() as cursor:
         
             sql = 'DELETE FROM users WHERE email=%s'
