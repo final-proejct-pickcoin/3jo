@@ -7,6 +7,6 @@
     <title>Document</title>
 </head>
 <body>
-    <a href="http://34.47.79.222:8000/login" target="_blank" rel="noopener noreferrer"><h1>테스트11</h1></a>
+    <a href="http://34.64.60.13:8000/login" target="_blank" rel="noopener noreferrer"><h1>테스트11</h1></a>
 </body>
 </html>

@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 def selectCoin():
-    conn = pymysql.connect(host='34.47.79.222', port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
+    conn = pymysql.connect(host='34.64.60.13', port=3306, user='pickcoin', password='final3', database="coindb", charset="utf8mb4")
 
     cursor = conn.cursor()
 
