@@ -32,6 +32,10 @@ const API_BASE = "http://localhost:8000";
 const BASE = (process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080").replace(/\/$/, "");
 const ANN_API_BASE = `${BASE}/admin/announcements`;
 
+const fastapiUrl = process.env.NEXT_PUBLIC_FASTAPI_BASE_URL;
+const springUrl = process.env.NEXT_PUBLIC_SPRING_BASE_URL;
+
+
 const toInt = (v) => {
   if (v === null || v === undefined) return null;
   const n = parseInt(String(v), 10);

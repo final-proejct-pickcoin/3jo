@@ -49,7 +49,7 @@ export const Navigation = () => {
 
   return (
     <>
-      <nav className="border-b border-border bg-background text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <nav className="border-b border-border bg-background text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center space-x-4">
