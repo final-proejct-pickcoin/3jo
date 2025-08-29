@@ -23,6 +23,7 @@ const formatValue = (value, currency, krwRate, hide) => {
 const ACCOUNT_API = "http://localhost:8080/api/account";
 const PORTFOLIO_API = "http://localhost:8080/api/portfolio";
 
+
 //====원화 입출금 기능===
 
 
@@ -579,32 +580,312 @@ useEffect(() => {
   });
 }, [marketData, topics]);
 
-// ── 가격 읽기: mergedMD 우선, 없으면 marketData도 폴백
+// ===== 상단 유틸 & 상태 (import들 아래, 컴포넌트 내부) =====
+
+// 터보 폴링 설정
+const EXT_TTL_MS      = 500;  // 외부가격 캐시 TTL
+const EXT_BASE_GAP    = 100;  // 기본 폴링 간격(≈1초)
+const EXT_MIN_GAP     = 300;    // 최소 간격
+const EXT_MAX_GAP     = 1500;  // 최대 간격(백오프 상한)
+const EXT_JITTER_MS   = 0;    // 지터(±)
+const EXT_CONCURRENCY = 3;      // 한 틱당 요청 개수 (레이트리밋 완화)
+
+// 외부 KRW 가격 캐시/상태
+const extKRWCacheRef = useRef({});          // { BASE: { price, ts } }
+const [extKRWMap, setExtKRWMap] = useState({}); // UI용 미러
+
+// 폴링 상태
+const pollStateRef = useRef({ idx: 0, gap: EXT_BASE_GAP });
+
+// 탭 가시성 감지(비가시성 시 폴링 완화/일시정지)
+const visibleRef = useRef(true);
+useEffect(() => {
+  const onVis = () => { visibleRef.current = (document.visibilityState === "visible"); };
+  document.addEventListener("visibilitychange", onVis);
+  onVis();
+  return () => document.removeEventListener("visibilitychange", onVis);
+}, []);
+
+// 브라우저 CORS 우회용 임시 프록시 (급한 불 끄기)
+// 필요 없으면 빈 문자열 "" 로 두면 됨.
+const PROXY = "https://cors.isomorphic-git.org/";
+// 다른 대안: "https://thingproxy.freeboard.io/fetch/"
+//            "https://api.allorigins.win/raw?url=" (이 경우 encodeURIComponent 필요)
+
+// 0) 공통: 심볼 정규화 + 숫자 안전 변환
+const normBase = (b) => {
+  // 'BTC-KRW', 'btc_krw', 'BTC/KRW' 등 → 'BTC'
+  let s = String(b || "").toUpperCase().trim();
+  // KRW-접두/접미 제거 및 구분자 통일
+  s = s.replace(/KRW[-_/]?/g, "").replace(/[-_/].*$/, "");
+  // 알파넘만 남기기
+  s = s.replace(/[^A-Z0-9]/g, "");
+  return s;
+};
+
+const toNum = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+// 1) 이상치 필터 (직전값 대비 너무 튀면 직전값 유지)
+const lastGood = new Map(); // symbol → price
+const acceptPrice = (sym, p) => {
+  if (p == null || !Number.isFinite(p) || p <= 0) return null;
+  const prev = lastGood.get(sym);
+  // 직전값 있으면 5배 이상 튀는 값은 버림
+  if (prev && Math.abs(p - prev) / prev > 5) return prev;
+  lastGood.set(sym, p);
+  return p;
+};
+
+
+// 외부 API (업비트 → 빗썸 폴백)
+const fetchUpbitKRW = async (base) => {
+  const sym = normBase(base);
+  try {
+    const { data } = await axios.get(
+      `https://api.upbit.com/v1/ticker?markets=KRW-${sym}`,
+      { timeout: 4000 }
+    );
+    const p = toNum(data?.[0]?.trade_price);
+    return acceptPrice(sym, p);
+  } catch (err) {
+    // 업비트 404(마켓 없음) 또는 브라우저 네트워크 에러면 빗썸 폴백
+    if (err?.response?.status === 404 || err?.message === "Network Error") {
+      return await fetchBithumbKRW(sym);
+    }
+    return acceptPrice(sym, null);
+  }
+};
+
+const fetchBithumbKRW = async (base) => {
+  const sym = normBase(base);
+  try {
+    const { data } = await axios.get(
+      `https://api.bithumb.com/public/ticker/${sym}_KRW`,
+      { timeout: 4000 }
+    );
+    const raw =
+      data?.data?.closing_price ??
+      data?.data?.trade_price ??
+      data?.data?.close;
+    const p = toNum(raw);
+    return acceptPrice(sym, p);
+  } catch {
+    return acceptPrice(sym, null);
+  }
+};
+
+
+
+// 캐시 고려 단일 심볼(베이스) 외부가격 조회
+const getExternalKRWOnce = async (base) => {
+  base = String(base).toUpperCase();
+  const now = Date.now();
+  const cached = extKRWCacheRef.current[base];
+  if (cached && now - cached.ts < EXT_TTL_MS) return cached.price;
+
+  let p = null, ok = false;
+  try { p = await fetchUpbitKRW(base); ok = p != null; } catch {}
+  if (!ok) { try { p = await fetchBithumbKRW(base); ok = p != null; } catch {} }
+
+  if (ok && typeof p === "number" && isFinite(p) && p > 0) {
+    extKRWCacheRef.current[base] = { price: p, ts: now };
+    return p;
+  }
+  return null;
+};
+
+// ===== 1초대 터보 폴링 (보유 코인 기준 라운드로빈) =====
+useEffect(() => {
+  // 보유 코인에서 BASE 리스트 뽑기
+  const bases = [...new Set(
+    (holdings || [])
+      .filter(h => h.symbol !== "KRW")
+      .map(h => String(h.symbol).toUpperCase().split(/[-_/]/)[0])
+  )];
+
+  if (!bases.length) return;
+  let stop = false;
+  let timer = null;
+
+  const scheduleNext = () => {
+    const ps = pollStateRef.current;
+    const jitter = (Math.random() * 2 - 1) * EXT_JITTER_MS; // -jitter ~ +jitter
+    const gap = Math.max(EXT_MIN_GAP, Math.min(EXT_MAX_GAP, ps.gap + jitter));
+    timer = setTimeout(tick, gap);
+  };
+
+  const tick = async () => {
+    if (stop) return;
+
+    // 비가시성 시 백오프
+    if (!visibleRef.current) {
+      pollStateRef.current.gap = Math.min(EXT_MAX_GAP, pollStateRef.current.gap * 1.5);
+      return scheduleNext();
+    }
+
+    const ps = pollStateRef.current;
+    const startIdx = ps.idx % bases.length;
+
+    // 라운드로빈으로 EXT_CONCURRENCY개 호출
+    const slice = [];
+    for (let i = 0; i < Math.min(EXT_CONCURRENCY, bases.length); i++) {
+      slice.push(bases[(startIdx + i) % bases.length]);
+    }
+    ps.idx = (startIdx + slice.length) % bases.length;
+
+    try {
+      const entries = await Promise.all(slice.map(async (b) => [b, await getExternalKRWOnce(b)]));
+      const next = {};
+      for (const [b, p] of entries) {
+        if (toNum(p)) next[b] = p;
+      }
+      if (Object.keys(next).length) {
+        // UI 미러
+        setExtKRWMap(prev => ({ ...prev, ...next }));
+        // 기존 로직과 자연스럽게 통합되도록 mergedMD에도 주입
+        setMergedMD(prev => {
+          const out = { ...prev };
+          for (const [b, p] of Object.entries(next)) {
+            const k = `${b}_KRW`;
+            out[k] = { ...(out[k] || {}), price: p, source: "externalKRW" };
+          }
+          return out;
+        });
+      }
+      // 성공 시 간격 유지/소폭 축소
+      pollStateRef.current.gap = Math.max(EXT_MIN_GAP, pollStateRef.current.gap * 0.95);
+    } catch (e) {
+      // 실패 시 백오프
+      pollStateRef.current.gap = Math.min(EXT_MAX_GAP, pollStateRef.current.gap * 1.3);
+    } finally {
+      scheduleNext();
+    }
+  };
+
+  // 즉시 1회 시작
+  pollStateRef.current.gap = EXT_BASE_GAP;
+  tick();
+
+  return () => { stop = true; if (timer) clearTimeout(timer); };
+}, [holdings, setMergedMD]);
+
+// ===== 최종: 외부값 우선 getLivePrice =====
 const getLivePrice = (symbol, market) => {
   const { base, quote } = normalizePair(symbol, market);
-  const keys = [`${base}_${quote}`, `${base}-${quote}`, `${base}/${quote}`, base];
 
-  for (const k of keys) {
-    const md =
-      mergedMD[k] ||
-      (marketData ? marketData[k] : undefined); // ← 폴백
-    if (!md) continue;
-
-    const v =
-      md.trade_price ??
-      md.closePrice ??
-      md.price ??
-      md.last ??
-      md.c ??
-      md.p;
-
-    if (typeof v === "number" && isFinite(v) && v > 0) {
-      return v;
-    }
+  // 1) KRW면 외부 미러 최우선
+  if (quote.toUpperCase() === "KRW") {
+    const ext = extKRWMap[String(base).toUpperCase()];
+    if (toNum(ext)) return ext;
   }
+
+  // 2) 내부 피드 폴백 (네 피드는 { price, change24h } 형태)
+  const keys = [
+    `${base}_${quote}`,
+    `${base}-${quote}`,
+    `${base}/${quote}`
+  ];
+  for (const k of keys) {
+    const md = mergedMD?.[k] ?? marketData?.[k];
+    if (!md) continue;
+    const v =
+      toNum(md.price) ??
+      toNum(md.trade_price) ??
+      toNum(md.closePrice) ??
+      toNum(md.last) ??
+      toNum(md.c) ??
+      toNum(md.p) ??
+      toNum(md?.data?.closing_price) ??
+      toNum(md?.data?.trade_price);
+    if (v) return v;
+  }
+
   return 0;
 };
 
+
+
+// 개발 편의: 콘솔에서 dumpMD('PENGU','KRW') 호출
+useEffect(() => {
+  window.dumpMD = (symbol, market = "KRW") => {
+    const { base, quote } = normalizePair(symbol, market);
+    const keys = [`${base}_${quote}`, `${base}-${quote}`, `${base}/${quote}`];
+    console.group(`[dumpMD] ${base}-${quote}`);
+    for (const k of keys) {
+      console.log("marketData[", k, "] =", marketData?.[k]);
+      console.log("mergedMD[  ", k, "] =", mergedMD?.[k]);
+    }
+    console.groupEnd();
+  };
+  return () => { delete window.dumpMD; };
+}, [marketData, mergedMD]);
+
+//== 역산용 코드
+const refKRWMapRef = useRef({}); // { BASE: priceKRW }
+const refLoadingRef = useRef(false);
+
+// 외부 API
+
+// 여러 코인 기준가 갱신 (최대 8개씩 배치)
+const refreshRefKRW = async (bases) => {
+  if (!bases?.length || refLoadingRef.current) return;
+  refLoadingRef.current = true;
+
+  const unique = [...new Set(bases.map(s => String(s).toUpperCase()))].slice(0, 50); // 과다호출 방지
+  const out = { ...refKRWMapRef.current };
+
+  for (const base of unique) {
+    let ref = await fetchUpbitKRW(base);
+    if (ref == null) ref = await fetchBithumbKRW(base);
+    if (typeof ref === "number" && isFinite(ref) && ref > 0) {
+      out[base] = ref;
+      // console.log("[REF] KRW", base, "=", ref);
+    }
+  }
+
+  refKRWMapRef.current = out;
+  refLoadingRef.current = false;
+};
+
+// 보유 코인/구독 토픽 기준으로 주기적 갱신 (holdings / topics 이미 있음)
+useEffect(() => {
+  const bases = (holdings || [])
+    .filter(h => h.symbol !== "KRW")
+    .map(h => (String(h.symbol).toUpperCase().split(/[-_/]/)[0])); // "ETH-KRW" → "ETH"
+  if (bases.length) refreshRefKRW(bases);
+
+  // 60초마다 갱신
+  const t = setInterval(() => refreshRefKRW(bases), 60_000);
+  return () => clearInterval(t);
+}, [holdings]);
+
+
+
+const calculateAllocation = useMemo(() => {
+  if (!holdings?.length) return {};
+  
+  // 투자원금 = 수량 × 평균매입가
+  const investments = holdings
+    .filter(h => h.symbol !== "KRW")
+    .map(h => ({
+      id: h.assetId,
+      symbol: h.symbol,
+      investment: Number(h.amount) * Number(h.avgPrice)
+    }));
+  
+  const totalInvestment = investments.reduce((sum, item) => sum + item.investment, 0);
+  
+  const allocations = {};
+  investments.forEach(item => {
+    allocations[item.id] = totalInvestment > 0 ? 
+      Math.round((item.investment / totalInvestment) * 100) : 0;
+  });
+  
+  return allocations;
+}, [holdings]); // holdings가 바뀔 때만 재계산
 
 const money = (vKRW) =>
   currency === "KRW"
@@ -633,24 +914,41 @@ const uiHoldings = useMemo(() => {
   const rows = holdings.filter(h => h.symbol !== "KRW").map(h => {
     const { base, quote } = normalizePair(h.symbol, h.market)
     const amount = Number(h.amount) || 0
-    const avg    = Number(h.avgPrice) || 0
-    // const live   = wsPrice(base, quote)   // ← 페어로 읽기
-    const live   = getLivePrice(h.symbol, h.market);
-    const mv     = amount * live
-    const pnl    = amount * (live - avg)
+    const avg = Number(h.avgPrice) || 0
+    
+    // 실시간 가격 조회 (기존 로직)
+    const live = getLivePrice(h.symbol, h.market);
+    
+    const mv = amount * live
+    const pnl = amount * (live - avg)
     const pnlPct = avg > 0 && live > 0 ? ((live - avg) / avg) * 100 : 0
+    
+    // ✅ 고정된 비중 사용 (투자원금 기준)
+    const allocation = calculateAllocation[h.assetId] || 0;
+    
     return {
-      assetId: h.assetId, symbol: `${base}-${quote}`, name: h.assetName,
-      amount, avgPrice: avg, livePrice: live, marketValueKRW: mv,
-      pnlKRW: pnl, pnlPct
+      assetId: h.assetId, 
+      symbol: `${base}-${quote}`, 
+      name: h.assetName,
+      amount, 
+      avgPrice: avg, 
+      livePrice: live, 
+      marketValueKRW: mv,
+      pnlKRW: pnl, 
+      pnlPct,
+      allocation // ← 이제 고정값
     }
   })
-  const total = rows.reduce((s, r) => s + r.marketValueKRW, 0)
-  return rows
-    .map(r => ({ ...r, allocation: total>0 ? Math.round((r.marketValueKRW/total)*100) : 0 }))
-    .sort((a,b) => b.marketValueKRW - a.marketValueKRW)
-// }, [holdings, marketData])
-}, [holdings, mergedMD])
+  
+  // 투자원금 기준으로 정렬 (비중이 높은 순)
+  return rows.sort((a, b) => {
+    const investmentA = a.amount * a.avgPrice;
+    const investmentB = b.amount * b.avgPrice;
+    return investmentB - investmentA;
+  });
+}, [holdings, mergedMD, calculateAllocation])
+
+
 
 
 const costBasisKRW  = uiHoldings.reduce((s,a)=> s + a.amount * a.avgPrice, 0);
@@ -663,8 +961,37 @@ useEffect(() => {
   console.log("[MD] keys:", Object.keys(mergedMD));
 }, [mergedMD]);
 
+// useEffect(() => {
+//   if (Object.keys(mergedMD).length > 0) {
+//     // console.log("[Debug] mergedMD keys:", Object.keys(mergedMD));
+//     // console.log("[Debug] Sample mergedMD data:", Object.entries(mergedMD).slice(0, 3));
+//   }
+//   if (marketData && Object.keys(marketData).length > 0) {
+//     // console.log("[Debug] marketData keys:", Object.keys(marketData));
+//     // console.log("[Debug] Sample marketData:", Object.entries(marketData).slice(0, 3));
+//   }
+// }, [mergedMD, marketData]);
 
- const renderContent = () => {
+// useEffect(() => {
+//   if (holdings?.length > 0) {
+//     // console.log("[Debug] holdings data:", holdings);
+//     // console.log("[Debug] allocation calculation:", calculateAllocation);
+//   }
+// }, [holdings, calculateAllocation]);
+
+// 가격이 이상하게 나올 때를 위한 안전장치
+// const safeFormatPrice = (price, fallback = 0) => {
+//   if (typeof price !== 'number' || !isFinite(price) || price < 0) {
+//     // console.warn('[Format] Invalid price:', price, 'using fallback:', fallback);
+//     return fallback;
+//   }
+//   return price;
+// };
+
+
+
+
+const renderContent = () => {
   switch (activeSection) {
     case "krw-account":
       return (
@@ -1241,23 +1568,23 @@ useEffect(() => {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">최고 수익 자산</span>
                     {/* 샘플: 실제로는 uiHoldings에서 max/min 찾아 표시 가능 */}
-                    <span className="font-medium text-green-500">—</span>
+                    <span className="font-medium text-green-500">+ 23%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">최저 수익 자산</span>
-                    <span className="font-medium text-red-500">—</span>
+                    <span className="font-medium text-red-500">- 7%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">수익 거래 비율</span>
-                    <span className="font-medium">—</span>
+                    <span className="font-medium">56%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">평균 보유 기간</span>
-                    <span className="font-medium">—</span>
+                    <span className="font-medium">8일</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">리스크 점수</span>
-                    <span className="font-medium text-orange-500">—</span>
+                    <span className="font-medium text-orange-500">중간</span>
                   </div>
                 </div>
               </CardContent>
@@ -1638,4 +1965,3 @@ useEffect(() => {
     </div>
   )
 }
-
