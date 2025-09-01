@@ -8,7 +8,7 @@ export default function KakaoScript() {
     script.async = true
     script.onload = () => {
       console.log(" Kakao SDK loaded")
-      window.Kakao.init("4ab1a21ffcd635a59a5a72c3f1c37903") // javaScript 키d
+      window.Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY) // javaScript 키
       console.log("Kakao Initialized?", window.Kakao.isInitialized()) // true 나오면 정상
     }
     document.body.appendChild(script)

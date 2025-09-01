@@ -743,120 +743,120 @@ async def get_coin_list():
             ticker_task = session.get(ticker_url)
             market_response, ticker_response = await asyncio.gather(market_task, ticker_task)
 
-        if ticker_response.status != 200:
-            return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
+            if ticker_response.status != 200:
+                return {"status": "error", "message": f"시세 API 오류: {ticker_response.status}"}
 
-        ticker_data = await ticker_response.json()
-        if ticker_data.get("status") != "0000":
-            return {"status": "error", "message": "빗썸 시세 API 오류"}
+            ticker_data = await ticker_response.json()
+            if ticker_data.get("status") != "0000":
+                return {"status": "error", "message": "빗썸 시세 API 오류"}
 
-        # 마켓 데이터
-        market_map = {}
-        if market_response.status == 200:
+            # 마켓 데이터
+            market_map = {}
+            if market_response.status == 200:
+                try:
+                    markets_data = await market_response.json()
+                    if isinstance(markets_data, list):
+                        for market in markets_data:
+                            market_code = market.get("market", "")
+                            if market_code.endswith("_KRW"):
+                                symbol = market_code[:-4]
+                                market_map[symbol] = {
+                                    "korean_name": market.get("korean_name", ""),
+                                    "english_name": market.get("english_name", ""),
+                                    "market_warning": market.get("market_warning", "NONE")
+                                }
+                except Exception:
+                    pass
+
+            # 기본 데이터
+            coin_symbols = []
+            coin_basic_data = []
+            for symbol, info in (ticker_data.get("data") or {}).items():
+                if symbol == "date":
+                    continue
+                current_price = float(info.get("closing_price", 0) or 0)
+                mi = market_map.get(symbol, {})
+                bithumb_k = (mi.get("korean_name") or "").strip()
+                upbit_k = upbit_korean_names.get(symbol, "")
+                bithumb_e = (mi.get("english_name") or "").strip()
+                basic_k = get_korean_name(symbol)
+                display_name = bithumb_k or upbit_k or bithumb_e or (basic_k if basic_k != symbol else symbol)
+                coin_basic_data.append({
+                    "symbol": symbol,
+                    "info": info,
+                    "market_info": mi,
+                    "display_name": display_name,
+                    "current_price": current_price
+                })
+                coin_symbols.append(symbol)
+
+            # CoinGecko 대량 처리 (배치 + 캐시)
+            coingecko_results: dict[str, dict] = {}
+            batch_size = 50
+            for i in range(0, len(coin_symbols), batch_size):
+                batch_symbols = coin_symbols[i:i + batch_size]
+                tasks = [asyncio.create_task(get_coingecko_market_cap_fast(sym, usd_krw_rate)) for sym in batch_symbols]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for sym, res in zip(batch_symbols, results):
+                    if isinstance(res, Exception) or not res:
+                        continue
+                    coingecko_results[sym] = res
+
+            # 최종 조합
+            coins = []
+            append = coins.append
+            for cd in coin_basic_data:
+                symbol = cd["symbol"]
+                info = cd["info"]
+                cp = cd["current_price"]
+                try:
+                    trade_value = float(info.get("acc_trade_value_24H", 0) or 0)
+                    cg = coingecko_results.get(symbol)
+                    if cg and cg.get("market_cap_usd"):
+                        accurate_market_cap = float(cg["market_cap_usd"]) * float(usd_krw_rate)
+                        accurate_circulating_supply = (cg.get("supply_info") or {}).get("used_for_calculation", 0) or 0
+                    else:
+                        estimated_supply = estimate_realistic_supply(symbol, cp)
+                        accurate_market_cap = cp * estimated_supply
+                        accurate_circulating_supply = estimated_supply
+
+                    change_rate = float(info.get("fluctate_rate_24H", 0) or 0)
+                    abs_cr = abs(change_rate) / 100.0
+                    estimated_high = cp * (1 + abs_cr)
+                    estimated_low  = cp * (1 - abs_cr)
+
+                    append({
+                        "symbol": symbol,
+                        "korean_name": cd["display_name"],
+                        "english_name": cd["market_info"].get("english_name", "") or symbol,
+                        "current_price": round(cp, 4),
+                        "change_rate": change_rate,
+                        "change_amount": round(float(info.get("fluctate_24H", 0) or 0), 4),
+                        "volume": round(trade_value, 4),
+                        "market_warning": cd["market_info"].get("market_warning", "NONE"),
+                        "units_traded": float(info.get("units_traded_24H", 0) or 0),
+                        "market_cap": round(accurate_market_cap, 2),
+                        "circulating_supply": round(accurate_circulating_supply, 2),
+                        "high_24h": round(estimated_high, 2),
+                        "low_24h": round(estimated_low, 2)
+                    })
+                except Exception:
+                    continue
+
+            coins.sort(key=lambda x: x["volume"], reverse=True)
+
+            result = {
+                "status": "success",
+                "data": coins,
+                "total_count": len(coins),
+                "upbit_korean_names": len(upbit_korean_names),
+                "last_updated": datetime.now().isoformat()
+            }
             try:
-                markets_data = await market_response.json()
-                if isinstance(markets_data, list):
-                    for market in markets_data:
-                        market_code = market.get("market", "")
-                        if market_code.endswith("_KRW"):
-                            symbol = market_code[:-4]
-                            market_map[symbol] = {
-                                "korean_name": market.get("korean_name", ""),
-                                "english_name": market.get("english_name", ""),
-                                "market_warning": market.get("market_warning", "NONE")
-                            }
+                redis_client.setex("coin_list_cache", 300, json.dumps(result))
             except Exception:
                 pass
-
-        # 기본 데이터
-        coin_symbols = []
-        coin_basic_data = []
-        for symbol, info in (ticker_data.get("data") or {}).items():
-            if symbol == "date":
-                continue
-            current_price = float(info.get("closing_price", 0) or 0)
-            mi = market_map.get(symbol, {})
-            bithumb_k = (mi.get("korean_name") or "").strip()
-            upbit_k = upbit_korean_names.get(symbol, "")
-            bithumb_e = (mi.get("english_name") or "").strip()
-            basic_k = get_korean_name(symbol)
-            display_name = bithumb_k or upbit_k or bithumb_e or (basic_k if basic_k != symbol else symbol)
-            coin_basic_data.append({
-                "symbol": symbol,
-                "info": info,
-                "market_info": mi,
-                "display_name": display_name,
-                "current_price": current_price
-            })
-            coin_symbols.append(symbol)
-
-        # CoinGecko 대량 처리 (배치 + 캐시)
-        coingecko_results: dict[str, dict] = {}
-        batch_size = 50
-        for i in range(0, len(coin_symbols), batch_size):
-            batch_symbols = coin_symbols[i:i + batch_size]
-            tasks = [asyncio.create_task(get_coingecko_market_cap_fast(sym, usd_krw_rate)) for sym in batch_symbols]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for sym, res in zip(batch_symbols, results):
-                if isinstance(res, Exception) or not res:
-                    continue
-                coingecko_results[sym] = res
-
-        # 최종 조합
-        coins = []
-        append = coins.append
-        for cd in coin_basic_data:
-            symbol = cd["symbol"]
-            info = cd["info"]
-            cp = cd["current_price"]
-            try:
-                trade_value = float(info.get("acc_trade_value_24H", 0) or 0)
-                cg = coingecko_results.get(symbol)
-                if cg and cg.get("market_cap_usd"):
-                    accurate_market_cap = float(cg["market_cap_usd"]) * float(usd_krw_rate)
-                    accurate_circulating_supply = (cg.get("supply_info") or {}).get("used_for_calculation", 0) or 0
-                else:
-                    estimated_supply = estimate_realistic_supply(symbol, cp)
-                    accurate_market_cap = cp * estimated_supply
-                    accurate_circulating_supply = estimated_supply
-
-                change_rate = float(info.get("fluctate_rate_24H", 0) or 0)
-                abs_cr = abs(change_rate) / 100.0
-                estimated_high = cp * (1 + abs_cr)
-                estimated_low  = cp * (1 - abs_cr)
-
-                append({
-                    "symbol": symbol,
-                    "korean_name": cd["display_name"],
-                    "english_name": cd["market_info"].get("english_name", "") or symbol,
-                    "current_price": round(cp, 4),
-                    "change_rate": change_rate,
-                    "change_amount": round(float(info.get("fluctate_24H", 0) or 0), 4),
-                    "volume": round(trade_value, 4),
-                    "market_warning": cd["market_info"].get("market_warning", "NONE"),
-                    "units_traded": float(info.get("units_traded_24H", 0) or 0),
-                    "market_cap": round(accurate_market_cap, 2),
-                    "circulating_supply": round(accurate_circulating_supply, 2),
-                    "high_24h": round(estimated_high, 2),
-                    "low_24h": round(estimated_low, 2)
-                })
-            except Exception:
-                continue
-
-        coins.sort(key=lambda x: x["volume"], reverse=True)
-
-        result = {
-            "status": "success",
-            "data": coins,
-            "total_count": len(coins),
-            "upbit_korean_names": len(upbit_korean_names),
-            "last_updated": datetime.now().isoformat()
-        }
-        try:
-            redis_client.setex("coin_list_cache", 300, json.dumps(result))
-        except Exception:
-            pass
-        return result
+            return result
 
     except Exception as e:
         fallback_data = [

@@ -12,7 +12,7 @@ import { useAuth } from "@/components/auth-provider"
 import { useOnboarding } from "@/components/onboarding-provider"
 import DepositManager from "@/components/deposit-manager"
 import { PortfolioManager } from "@/components/portfolio-manager"
-import { WatchlistManager } from "@/components/watchlist-manager"
+// import { WatchlistManager } from "@/components/watchlist-manager"
 
 export const MainDashboard = () => {
   const { user } = useAuth()
@@ -119,9 +119,9 @@ export const MainDashboard = () => {
                   <TabsContent value="portfolio" className="space-y-6">
                     <PortfolioManager />
                   </TabsContent>
-                  <TabsContent value="watchlist" className="space-y-6">
+                  {/* <TabsContent value="watchlist" className="space-y-6">
                     <WatchlistManager />
-                  </TabsContent>
+                  </TabsContent> */}
                 </Tabs>
               </div>
             </TabsContent>

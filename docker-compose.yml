@@ -2,9 +2,11 @@
 services:
   fastapi-app:
     build: ./fastapi-app
-    # volumes:
-    #   - ./fastapi-app:/app
-    #   - ./key/pickcoin-687a99cb3128.json:/app/secrets/pickcoin-687a99cb3128.json
+    env_file:
+      - ./.env
+    volumes:
+      - ./fastapi-app:/app
+      - ./key/pickcoin-687a99cb3128.json:/app/secrets/pickcoin-687a99cb3128.json
     ports:
       - "8000:8000"
     # 환경변수에 DB 접속 정보 지정(아래 예시 참고)

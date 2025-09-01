@@ -47,7 +47,7 @@ export default function TradingInterface() {
 
   // 코인 목록 관련 상태
   const [coinList, setCoinList] = useState([]);
-  const [coinListLoading, setCoinListLoading] = useState(true);
+  const [coinListLoading, setCoinListLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCoin, setSelectedCoin] = useState("BTC");
 
@@ -243,6 +243,7 @@ export default function TradingInterface() {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            // console.log('WebSocket 데이터:', data);
             
             if (data.type === 'ticker' && data.content) {
               const c = data.content;
@@ -252,14 +253,16 @@ export default function TradingInterface() {
               const symbol = content.symbol;
               if (!symbol) return;
         
-              const closePrice = parseFloat(content.closePrice);
-              const chgRate = parseFloat(content.chgRate);
-              const value = parseFloat(content.value || 0);
-        
-              if (isNaN(closePrice) || isNaN(value) || value <= 0) {
-                return;
-              }
-        
+              const closePrice = Number(content.closePrice);
+              const chgRate    = Number(content.chgRate);
+              // value는 없거나 0일 수 있음 → 필터링 조건에서 제외
+              const value      = content.value === undefined || content.value === null
+                ? undefined
+                : Number(content.value);
+            
+              // 가격만 유효하면 업데이트 진행
+              if (Number.isNaN(closePrice)) return;
+
               setRealTimeData(prev => {
                 const prevPrice = prev[symbol]?.closePrice ?? closePrice;
                 return {
@@ -319,24 +322,24 @@ export default function TradingInterface() {
   }, [selectedCoin]);
 
   // WebSocket 통계 가져오기 (FastAPI)
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch(`${clean(fastapiUrl)}/api/websocket/stats`);
-        if (response.ok) {
-          const data = await response.json();
-          setWsStats(data.subscription_stats || data || {});
-        }
-      } catch (error) {
-        // 오류 로그 생략
-      }
-    };
-    if (wsConnected) {
-      fetchStats();
-      const interval = setInterval(fetchStats, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [wsConnected]);
+  // useEffect(() => {
+  //   const fetchStats = async () => {
+  //     try {
+  //       const response = await fetch(`${clean(fastapiUrl)}/api/websocket/stats`);
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         setWsStats(data.subscription_stats || data || {});
+  //       }
+  //     } catch (error) {
+  //       // 오류 로그 생략
+  //     }
+  //   };
+  //   if (wsConnected) {
+  //     fetchStats();
+  //     const interval = setInterval(fetchStats, 30000);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [wsConnected]);
 
   // 코인 목록 가져오기 (FastAPI)
   useEffect(() => {
@@ -386,15 +389,35 @@ export default function TradingInterface() {
   const updatedCoinList = useMemo(() => {
     return coinList.map(coin => {
       const rt = realTimeData[coin.symbol + '_KRW'];
+
+      // 초기값은 API에서 받아온 값
+      let price = coin.price || 0;
       let change = coin.change || 0;
       let changeAmount = coin.changeAmount || 0;
       let trend = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
-      let price = coin.price || 0;
-      if (rt && !Number.isNaN(Number(rt.closePrice))) {
-        price = Math.floor(Number(rt.closePrice)) || 0;
+
+      if (rt) {
+        // 실시간 가격 갱신
+        if (!isNaN(Number(rt.closePrice))) {
+          price = Number(rt.closePrice);
+        }
+
+        // 실시간 전일대비 갱신
+        if (rt.chgRate !== undefined && rt.chgRate !== null && !isNaN(Number(rt.chgRate))) {
+          change = Number(rt.chgRate);
+        }
+        if (rt.chgAmt !== undefined && rt.chgAmt !== null && !isNaN(Number(rt.chgAmt))) {
+          changeAmount = Number(rt.chgAmt);
+        }
+
+        // trend 재계산
+        trend = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
       }
+
+      // 거래대금 포맷
       const millionValue = rt && Number(rt.value) > 0 ? Math.round(Number(rt.value) / 1_000_000) : 0;
       const formattedVolume = millionValue ? `${millionValue.toLocaleString()} 백만` : '';
+
       return {
         ...coin,
         price,

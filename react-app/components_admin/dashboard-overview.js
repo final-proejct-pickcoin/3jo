@@ -363,7 +363,7 @@ useEffect(() => {
                 </p>
                 <div className="flex items-center mt-2">
                   <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">{(dashboardInfo.tx_growth_rate ?? 0) + '%'}</span>
+                  <span className="text-sm text-green-600">{(dashboardInfo.tx_growth_rate ?? 0).toFixed(2) + '%'}</span>
                 </div>
               </div>
               {/* <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">

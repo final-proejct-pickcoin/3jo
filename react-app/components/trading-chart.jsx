@@ -34,7 +34,7 @@ function TradingChart({
   const [chartType, setChartType] = useState("candlestick");
   const [crosshair, setCrosshair] = useState(null);
   const [ready, setReady] = useState(false);
-  const [chartApi, setChartApi] = useState(null);
+  // const [chartApi, setChartApi] = useState(null);
   const [showIndicators, setShowIndicators] = useState(false);
   const [drawingMode, setDrawingMode] = useState(null);
   const [volumeProfile, setVolumeProfile] = useState(false);
@@ -51,7 +51,7 @@ function TradingChart({
   const priceSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
   const indicatorRefs = useRef({});
-  const priceLineRef = useRef(null);
+  // const priceLineRef = useRef(null);
   const didInitialScroll = useRef(false);
 
   // Memoized palette
@@ -65,6 +65,21 @@ function TradingChart({
     };
     return theme === "dark" ? dark : light;
   }, [theme]);
+
+const priceFormat = useMemo(() => {
+  const p = Number(
+    currentPrice ||
+    (bithumbCandles[bithumbCandles.length - 1]?.close) ||
+    0
+  );
+
+  if (p >= 1_000_000) return { type: "price", precision: 0, minMove: 1000 }; // BTC/KRW 등
+  if (p >= 1_000)     return { type: "price", precision: 0, minMove: 1 };     // 수천원대
+  if (p >= 100)       return { type: "price", precision: 2, minMove: 0.01 };  // 수백원대
+  if (p >= 1)         return { type: "price", precision: 2, minMove: 0.01 };  // 1원~수십원
+  return { type: "price", precision: 4, minMove: 0.0001 };                    // 1원 미만
+}, [currentPrice, bithumbCandles]);
+
 
   // Memoized price info
   const priceInfo = useMemo(() => {
@@ -489,7 +504,7 @@ function TradingChart({
           borderColor: palette.axis,
           scaleMargins: { 
             top: 0.05, 
-            bottom: Object.values(indicators).some(Boolean) ? 0.3 : 0.05
+            bottom: Object.values(indicators).some(Boolean) ? 0.15 : 0.05
           },
           autoScale: true,
           visible: true,
@@ -516,7 +531,7 @@ function TradingChart({
       });
 
       chartRef.current = chart;
-      setChartApi(LW);
+      // setChartApi(LW);
 
 
       // 메인 시리즈 생성
@@ -542,7 +557,9 @@ function TradingChart({
             borderDownColor: palette.down,
             wickUpColor: palette.up,
             wickDownColor: palette.down,
-            priceFormat: { type: "price", precision: 0, minMove: 1000 },
+            priceFormat,
+            lastValueVisible: true,  // 자동 현재가 라벨 표시
+            priceLineVisible: true,  // 자동 현재가 라인 표시
           });
           priceSeriesRef.current.setData(
             candles.map(({ time, open, high, low, close }) => ({ time, open, high, low, close }))
@@ -551,7 +568,9 @@ function TradingChart({
           priceSeriesRef.current = chart.addLineSeries({ 
             color: palette.accent, 
             lineWidth: 2,
-            priceFormat: { type: "price", precision: 0, minMove: 1000 }
+            priceFormat,
+            lastValueVisible: true,
+            priceLineVisible: true,
           });
           priceSeriesRef.current.setData(
             candles.map(({ time, close }) => ({ time, value: close }))
@@ -562,7 +581,9 @@ function TradingChart({
             bottomColor: `${palette.accent}08`,
             lineColor: palette.accent,
             lineWidth: 2,
-            priceFormat: { type: "price", precision: 0, minMove: 1000 }
+            priceFormat,
+            lastValueVisible: true,
+            priceLineVisible: true,
           });
           priceSeriesRef.current.setData(
             candles.map(({ time, close }) => ({ time, value: close }))
@@ -576,7 +597,9 @@ function TradingChart({
           borderDownColor: palette.down,
           wickUpColor: palette.up,
           wickDownColor: palette.down,
-          priceFormat: { type: "price", precision: 0, minMove: 1000 },
+          priceFormat,
+          lastValueVisible: true,  // 자동 현재가 라벨 표시
+          priceLineVisible: true,  // 자동 현재가 라인 표시
         });
         priceSeriesRef.current.setData(
           seriesData.map(({ time, open, high, low, close }) => ({ time, open, high, low, close }))
@@ -585,7 +608,9 @@ function TradingChart({
         priceSeriesRef.current = chart.addLineSeries({ 
           color: palette.accent, 
           lineWidth: 2,
-          priceFormat: { type: "price", precision: 0, minMove: 1000 }
+          priceFormat,
+          lastValueVisible: true,
+          priceLineVisible: true,
         });
         priceSeriesRef.current.setData(
           candles.map(({ time, close }) => ({ time, value: close }))
@@ -596,23 +621,13 @@ function TradingChart({
           bottomColor: `${palette.accent}08`,
           lineColor: palette.accent,
           lineWidth: 2,
-          priceFormat: { type: "price", precision: 0, minMove: 1000 }
+          priceFormat,
+          lastValueVisible: true,
+          priceLineVisible: true,
         });
         priceSeriesRef.current.setData(
           candles.map(({ time, close }) => ({ time, value: close }))
         );
-      }
-
-      // 현재가 라인
-      if (priceSeriesRef.current) {
-        priceLineRef.current = priceSeriesRef.current.createPriceLine({
-          price: priceInfo.displayPrice,
-          color: palette.accent,
-          lineWidth: 2,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: "현재가",
-        });
       }
 
       // 지표들 추가
@@ -880,7 +895,8 @@ function TradingChart({
       // 현재가 반영 (currentPrice가 있으면 사용)
       let price = currentPrice;
       if (!price || price === 0) {
-        price = lastCandle.close;
+        // priceInfo.displayPrice를 우선 사용하면 현재가 라인과 시각적으로 일치
+        price = priceInfo.displayPrice || lastCandle.close;
       }
       
       // 가격이 너무 극단적이지 않도록 조정
@@ -907,27 +923,7 @@ function TradingChart({
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [ready, bithumbCandles, chartType, currentPrice]);
-
-  // 실시간 현재가 라인 업데이트
-  useEffect(() => {
-    if (!ready || !priceLineRef.current || !priceInfo.displayPrice) return;
-    
-    const interval = setInterval(() => {
-      try {
-        // 현재가 라인을 실시간으로 업데이트
-        if (priceLineRef.current && priceInfo.displayPrice > 0) {
-          priceLineRef.current.applyOptions({
-            price: priceInfo.displayPrice
-          });
-        }
-      } catch (error) {
-        console.log('현재가 라인 업데이트 실패:', error);
-      }
-    }, 500); // 0.5초마다 업데이트
-    
-    return () => clearInterval(interval);
-  }, [ready, priceInfo.displayPrice]);
+  }, [ready, bithumbCandles, chartType, currentPrice, priceInfo.displayPrice]);
 
   // 드로잉 모드 토글 함수
   const toggleDrawingMode = (mode) => {
